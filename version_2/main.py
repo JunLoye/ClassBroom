@@ -2,16 +2,25 @@ import sys
 import time
 import logging
 import json
+import os
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QLabel, QVBoxLayout, QFrame, QPushButton, QMenu, 
-                             QSystemTrayIcon, QStyle, QDialog, QTextEdit, QVBoxLayout)
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
-from PyQt6.QtGui import QFont, QGuiApplication, QFont, QColor
+                             QSystemTrayIcon, QStyle, QDialog, QTextEdit)
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtGui import QFont, QGuiApplication
 
-from get_weather import get_weather, get_weather_warning
+from api.get_weather import get_weather, get_weather_warning
 
-with open('CONFIG.json', 'r') as f:
+
+def get_path(relative_path):
+    try:
+        base_path = getattr(sys, '_MEIPASS', None) or os.path.abspath(".")
+    except AttributeError as e:
+        base_path = os.path.abspath(".")
+    return os.path.normpath(os.path.join(base_path, relative_path))
+
+with open(get_path('config/config.json'), 'r', encoding='utf-8') as f:
     CONFIG = json.load(f)
 
 class WeatherWorker(QThread):
@@ -260,15 +269,15 @@ class WeatherApp(QMainWindow):
             self.show_error(f"更新天气数据时出错: {e}")
 
     def update_warnings(self, warnings):
-        """更新预警信息并根据优先级显示"""
         self.warning_count = len(warnings)
         if self.warning_count > 0:
-            priority_order = {"台风": 1, "暴雨": 2}
+            priority_order = {"台风": 0, "暴雨": 1}
             warnings.sort(key=lambda w: priority_order.get(w.get("typeName", ""), 99))
 
             highest_priority_warning = warnings[0]
             type_name = highest_priority_warning.get("typeName", "--")
             level = highest_priority_warning.get("level", "--")
+            severityColor = highest_priority_warning.get("severityColor", "#cccccc")
             warning_id = highest_priority_warning.get("id", None)
 
             if warning_id and warning_id not in self.previous_warning_ids:
@@ -276,10 +285,12 @@ class WeatherApp(QMainWindow):
                 self.show_notification(type_name, level)
 
             self.warning_widget.update_value(type_name, level)
+            
+            warning_color = {"Red": "#ff3b3b", "Yellow": "#f0dc30", "Orange": "#d35400"}.get(severityColor, "#cccccc")
 
             self.warning_widget.setStyleSheet("""
                 QFrame {
-                    background: #ff6b6b;
+                    background: """+warning_color+""";
                 }
                 QLabel {
                     color: white;
@@ -290,7 +301,6 @@ class WeatherApp(QMainWindow):
             self.warning_widget.setStyleSheet("")
 
     def show_notification(self, type_name, level):
-        """显示系统通知"""
         self.tray_icon.showMessage(f"天气预警: {type_name}", f"预警级别: {level}", QSystemTrayIcon.MessageIcon.Warning, 5000)
 
     def show_error(self, error_msg):
@@ -318,20 +328,6 @@ class WeatherApp(QMainWindow):
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
-    font = QFont("Microsoft YaHei", 12)
-    app.setFont(font)
-    window = WeatherApp()
-    screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-    center_x = screen_geometry.center().x() - window.width() // 2
-    center_y = screen_geometry.center().y() - window.height() // 2
-    window.move(center_x, center_y)
-    window.show()
-    sys.exit(app.exec())
-
-if __name__ == '__main__':
-    main()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     font = QFont("Microsoft YaHei", 12)

@@ -1,7 +1,3 @@
-"""
-天气API调用模块
-该模块用于获取天气信息和天气预警信息
-"""
 import requests
 import json
 import time
@@ -9,21 +5,29 @@ import base64
 import hmac
 from hashlib import sha256
 import logging
+import os
+import sys
+
+
+def get_path(relative_path):
+    try:
+        base_path = getattr(sys, '_MEIPASS', None) or os.path.abspath(".")
+    except AttributeError as e:
+        base_path = os.path.abspath(".")
+    return os.path.normpath(os.path.join(base_path, relative_path))
+
 
 def initialize(location):
     global API_KEY, LOCATION_ID, BASE_URL
     logging.basicConfig(level=logging.INFO)
     
     try:
-        with open("config.json", "r") as f:
+        with open(get_path("config/config.json"), "r", encoding="utf-8") as f:
             config = json.load(f)
             API_KEY = config["API_KEY"]
             LOCATION_ID = location
             BASE_URL = "https://devapi.qweather.com/v7/weather/now"
-            f.close()
-        
         logging.info("Configurations loaded successfully.")
-        
     except Exception as e:
         logging.error(f"Error loading configurations: {e}")
         raise
@@ -90,28 +94,22 @@ def get_weather(location='113.29,22.81'):
 def get_weather_warning(location='113.29,22.81'):
     global API_KEY, LOCATION_ID
     try:
-        with open("config.json", "r") as f:
+        with open(get_path("config/config.json"), "r", encoding="utf-8") as f:
             config = json.load(f)
             API_KEY = config["API_KEY"]
             LOCATION_ID = location
-            f.close()
-        
         warning_url = "https://devapi.qweather.com/v7/warning/now"
-        
         params = {
             "location": LOCATION_ID,
             "key": API_KEY,
             "lang": "zh"
         }
-        
         response = requests.get(warning_url, params=params, timeout=10)
-        
         if response.status_code == 200:
             data = response.json()
             if data.get('code') == '200' and "warning" in data and data["warning"]:
                 return data["warning"]
         return []
-        
     except Exception as e:
         logging.error(f"获取天气预警时出现错误: {e}")
         return []
