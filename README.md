@@ -1,4 +1,5 @@
 # ClassBroom
+[English](README.md) | [中文说明](README.zh-CN.md)
 
 ClassBroom is a lightweight tool for classroom systems to display the current weather and alerts. It is intended to make it easy for teachers or systems to surface environmental info (e.g. weather warnings) in a visual / dashboard style in a classroom setting.
 
