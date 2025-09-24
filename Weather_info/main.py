@@ -264,7 +264,7 @@ class WeatherApp(QMainWindow):
             if 'text' in data:
                 self.condition_widget.update_value(data['text'], "")
             current_time = datetime.now().strftime("%H:%M")
-            self.update_widget.update_value(current_time, "")
+            self.update_widget.update_value(current_time, "上次更新")
         except Exception as e:
             self.show_error(f"更新天气数据时出错: {e}")
 
