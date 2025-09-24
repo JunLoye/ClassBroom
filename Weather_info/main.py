@@ -186,7 +186,7 @@ class WeatherApp(QMainWindow):
         self.central_widget.setLayout(main_layout)
 
     def show_warning_details(self, event):
-        warnings = get_weather_warning()
+        warnings = get_weather_warning(CONFIG)
 
         if not warnings:
             self.show_error("没有找到有效的预警数据")
