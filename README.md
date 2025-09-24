@@ -1,7 +1,9 @@
 # ClassBroom
+
 [English](README.md) | [中文说明](README.zh-CN.md)
 
-ClassBroom is a lightweight tool for classroom systems to display the current weather and alerts. It is intended to make it easy for teachers or systems to surface environmental info (e.g. weather warnings) in a visual / dashboard style in a classroom setting.
+ClassBroom is a lightweight tool designed for classroom environments to display current weather conditions and alerts.  
+Its goal is to help teachers or systems present environmental information (e.g., weather warnings) quickly and visually in a dashboard-style interface.  
 
 ---
 
@@ -20,106 +22,86 @@ ClassBroom is a lightweight tool for classroom systems to display the current we
 
 ## Features
 
-- Fetches and displays current weather (temperature, conditions, etc.)  
-- Shows alerts (weather warnings, etc.)  
-- Simple to deploy in a classroom environment  
+- Fetch and display current weather (temperature, conditions, etc.)  
+- Show weather alerts and warnings  
+- Easy to deploy in a classroom setting  
 - Minimal dependencies  
 
 ---
 
 ## Demo / Screenshots
 
-*(You can insert images or GIFs here to showcase the UI in a classroom screen, alerts, etc.)*
+<img width="1268" height="63" alt="image" src="https://github.com/user-attachments/assets/865bdb97-4c0d-49b9-972c-59e890f7d862" />
 
 ---
 
 ## Requirements
 
-- A system capable of running (specify OS, e.g. Linux, Windows)  
-- Internet connectivity to fetch weather and warnings  
-- (Any dependencies, e.g. a specific Python / Node / library requirement)  
+- A device capable of running the application (OS such as Linux, Windows, etc.)  
+- Stable internet connection (for fetching weather and alerts)  
+- (Depending on the project, Python / Node or other environments may be required)  
 
 ---
 
 ## Installation & Setup
 
-1. Clone this repository  
-   ```bash
-   git clone https://github.com/LoyeJun/ClassBroom.git
-   cd ClassBroom
-  ```
+1. Clone the repository  
+    ```bash
+    git clone https://github.com/LoyeJun/ClassBroom.git
+    cd ClassBroom
+    ```
+    
+2. Configure your API key and other settings (see [Configuration](#configuration))  
 
-2. Install dependencies
-   ```bash
-   # e.g. for Python projects
-   pip install -r requirements.txt
-   ```
-
-3. Configure API keys or settings (see [Configuration](#configuration))
-
-4. Start the application / server
-
-   ```bash
-   # e.g.
-   python app.py
-   ```
+3. Start the application / service  
 
 ---
 
 ## Usage
 
-Once running, ClassBroom will:
+Once running, ClassBroom will:  
 
-* Poll a weather service (e.g. OpenWeatherMap, etc.)
-* Display current temperature, condition icons, etc.
-* Show active alerts or warnings
-* Auto-refresh / update periodically
-
-You can point a classroom display (monitor, TV, projector) to the local URL or service endpoint.
+* Periodically call the weather service (`qweather`)  
+* Display current temperature and conditions  
+* Show active weather alerts  
+* Auto-refresh and update at regular intervals  
 
 ---
 
 ## Configuration
 
-Create or update a configuration file (e.g. `config.yaml`, `settings.json`, environment variables) with settings such as:
+You can create or modify a configuration file (e.g., `config.yaml`, `settings.json`, or environment variables) to customize the following parameters:  
 
 | Key                |描述|
-| ------------------ | --------------------------------------------- |
-| `weather_api_key`  | Your API key for the weather provider         |
-| `location`         | Coordinates or city name to fetch weather for |
-| `refresh_interval` | How often (in seconds) to refresh data        |
-| `alert_thresholds` | Criteria for showing alerts                   |
-| (others...)        | ...                                           |
+| ------------------ | ------------------------------- |
+| `weather_api_key`  | QWeather API Key                |
+| `location`         | Coordinates or city name for weather data |
+| `refresh_interval` | Data refresh frequency (seconds) |
+| `alert_thresholds` | Criteria for displaying alerts (*not yet supported*) |
+| Others             | *Coming soon*                   |
 
 ---
 
 ## Contributing
 
-Contributions are very welcome! Here are some guidelines:
+Contributions are welcome! Suggested workflow:  
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes with clear messages
-4. Submit a Pull Request
-5. (Optional) Add tests for new functionality
+1. Fork this repository  
+2. Test and submit an `Issue`  
+3. Create a new branch (`git checkout -b feature/YourFeature`)  
+4. Commit your changes with clear messages  
+5. Submit a Pull Request  
 
-Please follow consistent code style, test your changes, and document new features.
+Please keep code style consistent, test your changes, and document any new features.  
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details. ([GitHub][1])
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.  
 
 ---
 
-## Acknowledgements / Credits
+## Acknowledgements
 
-* (Optional) List weather API providers, icon sets, etc.
-* (Optional) Inspiration or related projects
-
----
-
-
-
-[1]: https://github.com/LoyeJun/ClassBroom "GitHub - LoyeJun/ClassBroom: ClassBroom is a tool for systems running in the classroom, etc ,making it easier to view the current weather and alerts."
+* QWeather
