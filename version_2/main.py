@@ -101,7 +101,7 @@ class WeatherApp(QMainWindow):
         self.setFixedHeight(50)
         self.setMinimumWidth(0)
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.setStyleSheet("""
@@ -147,7 +147,7 @@ class WeatherApp(QMainWindow):
         self.warning_widget.mousePressEvent = self.show_warning_details
         main_layout.addWidget(self.warning_widget)
 
-        self.update_widget = WeatherWidget("--", "", "更新时间")
+        self.update_widget = WeatherWidget("--", "上次更新", "更新时间")
         main_layout.addWidget(self.update_widget)
 
         # Close button
