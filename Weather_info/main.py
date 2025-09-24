@@ -20,15 +20,29 @@ def get_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.normpath(os.path.join(base_path, relative_path))
 
-with open(get_path('config/config.json'), 'r', encoding='utf-8') as f:
-    CONFIG = json.load(f)
+try:
+    with open('config.json', 'r', encoding='utf-8') as f:
+        CONFIG = json.load(f)
+        logging.info("Config file loaded successfully.")
+except Exception as e:
+    logging.error(f"Error reading config file: {e}")
+    default_config = {
+        "location": "101010100",
+        "update_interval": 300,
+        "api_key": "your_apiKey"
+    }
+    with open('config.json', 'w', encoding='utf-8') as f:
+        json.dump(default_config, f, indent=4)
+    with open('config.json', 'r', encoding='utf-8') as f:
+        CONFIG = json.load(f)
+    
 
 class WeatherWorker(QThread):
     weather_data = pyqtSignal(dict)
     warning_data = pyqtSignal(list)
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, location='113.65,22.77', update_interval=300):
+    def __init__(self, location='110000', update_interval=300):
         super().__init__()
         self.location = location
         self.update_interval = update_interval
@@ -37,11 +51,11 @@ class WeatherWorker(QThread):
     def run(self):
         while self.running:
             try:
-                data = get_weather(location=self.location)
+                data = get_weather(CONFIG=CONFIG)
                 if data:
                     self.weather_data.emit(data)
                 
-                warnings = get_weather_warning(location=self.location)
+                warnings = get_weather_warning(CONFIG)
                 if warnings:
                     self.warning_data.emit(warnings)
                     
@@ -243,7 +257,7 @@ class WeatherApp(QMainWindow):
             self.tray_icon.setToolTip("天气监测")
 
     def init_worker(self):
-        self.worker = WeatherWorker(location=CONFIG['default_location'], update_interval=CONFIG['update_interval'])
+        self.worker = WeatherWorker(location=CONFIG['location'], update_interval=CONFIG['update_interval'])
         self.worker.weather_data.connect(self.update_weather)
         self.worker.warning_data.connect(self.update_warnings)
         self.worker.error_occurred.connect(self.show_error)

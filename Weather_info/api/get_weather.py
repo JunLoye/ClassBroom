@@ -5,42 +5,21 @@ import base64
 import hmac
 from hashlib import sha256
 import logging
-import os
-import sys
 
 
-def get_path(relative_path):
-    try:
-        base_path = getattr(sys, '_MEIPASS', None) or os.path.abspath(".")
-    except AttributeError as e:
-        base_path = os.path.abspath(".")
-    return os.path.normpath(os.path.join(base_path, relative_path))
+logging.basicConfig(level=logging.INFO)
+BASE_URL = "https://devapi.qweather.com/v7/weather/now"
 
 
-def initialize(location):
-    global API_KEY, LOCATION_ID, BASE_URL
-    logging.basicConfig(level=logging.INFO)
-    
-    try:
-        with open(get_path("config/config.json"), "r", encoding="utf-8") as f:
-            config = json.load(f)
-            API_KEY = config["API_KEY"]
-            LOCATION_ID = location
-            BASE_URL = "https://devapi.qweather.com/v7/weather/now"
-        logging.info("Configurations loaded successfully.")
-    except Exception as e:
-        logging.error(f"Error loading configurations: {e}")
-        raise
-
-def get_info():
+def get_weather(CONFIG):
     timestamp = str(round(time.time() * 1000))
     nonce = "aRandomString"
-    signature_input = API_KEY + timestamp + nonce
-    secret_key = API_KEY
+    signature_input = CONFIG['api_key'] + timestamp + nonce
+    secret_key = CONFIG['api_key']
     signature = base64.b64encode(hmac.new(secret_key.encode(), signature_input.encode(), sha256).digest()).decode()
 
     headers = {
-        "X-Client-Id": API_KEY,
+        "X-Client-Id": CONFIG['api_key'],
         "X-Timestamp": timestamp,
         "X-Nonce": nonce,
         "X-Signature": signature,
@@ -48,8 +27,8 @@ def get_info():
     }
 
     params = {
-        "location": LOCATION_ID,
-        "key": API_KEY,
+        "location": CONFIG['location'],
+        "key": CONFIG['api_key'],
         "lang": "zh",
     }
 
@@ -61,11 +40,12 @@ def get_info():
             
             if data.get('code') != '200':
                 logging.error(f"API返回错误: {data.get('code')} - {data.get('message', '未知错误')}")
+                logging.error(f"Full response: {data}")
                 return {}
                 
             if "now" in data:
                 weather_data = data["now"]
-                weather_data['location'] = LOCATION_ID
+                weather_data['location'] = CONFIG['location']
                 if 'fxLink' in data:
                     weather_data['name'] = "江门"
                 return weather_data
@@ -87,21 +67,13 @@ def get_info():
         logging.error(f"JSON decode error: {e}")
         return {}
 
-def get_weather(location='113.29,22.81'):
-    initialize(location)
-    return get_info()
 
-def get_weather_warning(location='113.29,22.81'):
-    global API_KEY, LOCATION_ID
+def get_weather_warning(CONFIG):
     try:
-        with open(get_path("config/config.json"), "r", encoding="utf-8") as f:
-            config = json.load(f)
-            API_KEY = config["API_KEY"]
-            LOCATION_ID = location
         warning_url = "https://devapi.qweather.com/v7/warning/now"
         params = {
-            "location": LOCATION_ID,
-            "key": API_KEY,
+            "location": CONFIG['location'],
+            "key": CONFIG["api_key"],
             "lang": "zh"
         }
         response = requests.get(warning_url, params=params, timeout=10)
