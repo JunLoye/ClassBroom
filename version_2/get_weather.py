@@ -1,3 +1,7 @@
+"""
+天气API调用模块
+该模块用于获取天气信息和天气预警信息
+"""
 import requests
 import json
 import time
@@ -15,7 +19,6 @@ def initialize(location):
             config = json.load(f)
             API_KEY = config["API_KEY"]
             LOCATION_ID = location
-            # 使用实时天气API，而不是预警API
             BASE_URL = "https://devapi.qweather.com/v7/weather/now"
             f.close()
         
@@ -26,7 +29,6 @@ def initialize(location):
         raise
 
 def get_info():
-    # 生成必要的认证参数
     timestamp = str(round(time.time() * 1000))
     nonce = "aRandomString"
     signature_input = API_KEY + timestamp + nonce
@@ -44,7 +46,7 @@ def get_info():
     params = {
         "location": LOCATION_ID,
         "key": API_KEY,
-        "lang": "zh"  # 添加语言参数，确保返回中文
+        "lang": "zh",
     }
 
     try:
@@ -52,20 +54,15 @@ def get_info():
         
         if response.status_code == 200:
             data = response.json()
-            print("天气数据请求成功！")
             
-            # 检查API返回状态码
             if data.get('code') != '200':
                 logging.error(f"API返回错误: {data.get('code')} - {data.get('message', '未知错误')}")
                 return {}
                 
-            # 返回实时天气数据
             if "now" in data:
                 weather_data = data["now"]
-                # 添加位置信息（从响应中获取或使用默认值）
                 weather_data['location'] = LOCATION_ID
                 if 'fxLink' in data:
-                    # 从链接中提取位置名称（简化处理）
                     weather_data['name'] = "江门"
                 return weather_data
             else:
@@ -73,8 +70,6 @@ def get_info():
                 return {}
                 
         else:
-            print(f"请求失败，状态码: {response.status_code}")
-            print(f"错误信息: {response.text}")
             logging.error(f"Request failed with status code {response.status_code}: {response.text}")
             return {}
 
@@ -88,13 +83,11 @@ def get_info():
         logging.error(f"JSON decode error: {e}")
         return {}
 
-def get_weather(location='113.65,22.77'):  # 使用更准确的江门经纬度
+def get_weather(location='113.29,22.81'):
     initialize(location)
     return get_info()
 
-# 新增：获取灾害预警信息的函数
-def get_weather_warning(location='113.65,22.77'):
-    """获取灾害预警信息"""
+def get_weather_warning(location='113.29,22.81'):
     global API_KEY, LOCATION_ID
     try:
         with open("config.json", "r") as f:

@@ -7,8 +7,8 @@ from datetime import datetime  # 提供日期和时间相关的类
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QLabel, QVBoxLayout, QFrame, QPushButton, QMenu, 
                              QSystemTrayIcon, QStyle, QDialog, QTextEdit, QVBoxLayout)
-from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QSize, QRectF, QEasingCurve, QPropertyAnimation
-from PyQt6.QtGui import QFont, QPalette, QColor, QPainter, QIcon, QGuiApplication
+from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QSize, QRectF, QEasingCurve, QPropertyAnimation, QRect, QPoint
+from PyQt6.QtGui import QFont, QPalette, QColor, QPainter, QIcon, QGuiApplication, QFont
 from PyQt6.QtSvg import QSvgRenderer
 
 from get_weather import get_weather, get_weather_warning
@@ -17,17 +17,17 @@ from get_weather import get_weather, get_weather_warning
 with open('config.json', 'r') as f:
     config = json.load(f)
 
-# 创建SVG图标数据（内嵌图标，避免外部文件依赖）
+# 创建SVG图标数据(内嵌图标，避免外部文件依赖）
 WEATHER_ICONS = {
-    "location": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "temperature": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "humidity": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "wind": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "pressure": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "condition": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "warning": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "update": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>""",
-    "refresh": """<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>"""
+    "location": "",
+    "temperature": "",
+    "humidity": "",
+    "wind": "",
+    "pressure": "",
+    "condition": "",
+    "warning": "",
+    "update": "",
+    "refresh": ""
 }
 
 class SvgIcon(QWidget):
@@ -83,7 +83,7 @@ class WeatherWidget(QFrame):
     def __init__(self, icon_svg, value, unit="", tooltip="", parent=None):
         super().__init__(parent)
         self.setFrameStyle(QFrame.Shape.NoFrame)
-        self.setFixedSize(120, 60)  # Reduced size for compact view
+        self.setFixedSize(120, 60)
         
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 2, 5, 2)  # Reduced margins
@@ -101,11 +101,11 @@ class WeatherWidget(QFrame):
         # 数值和单位
         self.value_label = QLabel(value)
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.value_label.setStyleSheet("color: #2c3e50; font-size: 18px; font-weight: bold;")
+        self.value_label.setStyleSheet("color: #2c3e50; font-size: 20px; font-weight: bold;")
         
         self.unit_label = QLabel(unit)
         self.unit_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.unit_label.setStyleSheet("color: #4a4a4a; font-size: 14px;")
+        self.unit_label.setStyleSheet("color: #4a4a4a; font-size: 16px;")
         
         icon_value_layout.addWidget(self.value_label)
         icon_value_layout.addWidget(self.unit_label)
@@ -133,11 +133,9 @@ class WeatherApp(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("天气监测")
-        self.setFixedHeight(80)  # 设置窗口高度
-        self.setMinimumWidth(750)
-        self.setMinimumHeight(80)
+        self.setFixedHeight(70)  # 设置窗口高度
+        self.setMinimumWidth(800)
 
-        # 设置窗口样式 - 圆角无边框窗口
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
@@ -149,12 +147,11 @@ class WeatherApp(QMainWindow):
             }
         """)
 
-        # 创建中央部件
         central_widget = QWidget()
         central_widget.setStyleSheet("""
             QWidget {
-                background: #ffffff;
-                border-radius: 8px;
+                background: #f0f0f0;
+                border-radius: 5px;
             }
         """)
         self.setCentralWidget(central_widget)
@@ -200,11 +197,12 @@ class WeatherApp(QMainWindow):
         )
         main_layout.addWidget(self.pressure_widget)
 
-        # 预警信息（显示在窗口内）
+        # 预警信息
         self.warning_widget = WeatherWidget(
             WEATHER_ICONS["warning"], "--", "--", "预警信息"
         )
-        self.warning_widget.mousePressEvent = self.show_warning_details  # Added click event to show details
+        self.warning_widget.setFixedSize(120, 60)  # 设置宽度为120，高度为60
+        self.warning_widget.mousePressEvent = self.show_warning_details
         main_layout.addWidget(self.warning_widget)
 
         # 更新时间
@@ -222,7 +220,8 @@ class WeatherApp(QMainWindow):
                 color: white;
                 border: none;
                 border-radius: 10px;
-                font-size: 16px;
+                font-size: 18px;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background: #c0392b;
@@ -237,28 +236,58 @@ class WeatherApp(QMainWindow):
         central_widget.setLayout(main_layout)
 
     def show_warning_details(self, event):
-        """Show warning details when clicked with animation"""
-        warning_details = """暂无预警信息"""
+        """显示预警详情"""
+        # Retrieve the latest warning data
+        warning_data = self.warning_widget.value_label.text()  # Assuming type name is stored in the label
+        warning_level = self.warning_widget.unit_label.text()  # Assuming level is stored in the unit label
 
-        # Create and show a dialog with the full warning message
-        dialog = QDialog(self)
-        dialog.setWindowTitle("预警详情")
-        layout = QVBoxLayout()
-        text_edit = QTextEdit(dialog)
-        text_edit.setText(warning_details)
-        text_edit.setReadOnly(True)
-        layout.addWidget(text_edit)
-        dialog.setLayout(layout)
+        # Read the warning details from the loaded alert.json data
+        alert_data = None
+        try:
+            with open('alert.json', 'r', encoding='utf-8') as f:
+                alert_data = json.load(f)
+        except Exception as e:
+            self.show_error(f"加载预警数据失败: {e}")
+            return
 
-        # Animation effect to expand background color
-        animation = QPropertyAnimation(self.warning_widget, b"minimumHeight")
-        animation.setDuration(300)
-        animation.setStartValue(60)  # Initial height
-        animation.setEndValue(150)  # Expanded height
-        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        animation.start()
+        # Find the first warning in the data (assuming one warning is available)
+        if alert_data and "warning" in alert_data and len(alert_data["warning"]) > 0:
+            warning = alert_data["warning"][0]
+            title = warning.get("title", "未知预警")
+            type_info = warning.get("typeName", "未知类型")
+            level = warning.get("level", "未知级别")
+            severity = warning.get("severity", "未知严重等级")
+            status = warning.get("status", "未知状态")
+            sender = warning.get("sender", "未知来源")
+            pubTime = warning.get("pubTime", "未知发布时间")
+            text = warning.get("text", "未知详细内容")
 
-        dialog.exec()
+            # Prepare detailed information to display
+            warning_details = f"""预警名称：{title}
+预警类型：{type_info}
+预警级别：{level}
+严重等级：{severity}
+发布状态：{status}
+发布单位：{sender}
+发布时间：{pubTime}
+详细内容：{text}"""
+
+            # Create a dialog to display warning details
+            dialog = QDialog(self)
+            dialog.setWindowTitle("预警详情")
+            dialog.setFixedSize(400, 300)
+
+            layout = QVBoxLayout(dialog)
+            text_edit = QTextEdit(dialog)
+            text_edit.setText(warning_details.strip())
+            text_edit.setReadOnly(True)
+            text_edit.setStyleSheet("font-size: 14px; color: #ddd;")
+            layout.addWidget(text_edit)
+
+            dialog.setLayout(layout)
+            dialog.exec()
+        else:
+            self.show_error("没有找到有效的预警数据")
 
 
     def init_tray(self):
@@ -394,25 +423,10 @@ def main():
     window = WeatherApp()
     window.setFixedHeight(80)  # 再次确保窗口高度
     screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-    window.move(screen_geometry.right() - window.width() - 20, 50)
-    window.show()
-    sys.exit(app.exec())
-
-if __name__ == '__main__':
-    main()
-        if event.buttons() == Qt.MouseButton.LeftButton and hasattr(self, 'drag_start_position'):
-            self.move(event.globalPosition().toPoint() - self.drag_start_position)
-            event.accept()
-
-def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
-    font = QFont("Microsoft YaHei", 10)
-    app.setFont(font)
-    window = WeatherApp()
-    screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-    window.move(screen_geometry.right() - window.width() - 20, 50)
+    # 设置窗口初始位置在屏幕中央
+    center_x = screen_geometry.center().x() - window.width() // 2
+    center_y = screen_geometry.center().y() - window.height() // 2
+    window.move(center_x, center_y)
     window.show()
     sys.exit(app.exec())
 
