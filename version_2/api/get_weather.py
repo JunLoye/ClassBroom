@@ -113,5 +113,5 @@ def get_weather_warning(location='113.29,22.81'):
         return []
         
     except Exception as e:
-        logging.error(f"获取预警信息错误: {e}")
+        logging.error(f"获取天气预警时出现错误: {e}")
         return []

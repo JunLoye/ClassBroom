@@ -1,52 +1,20 @@
-# 导入必要的Python标准库
-import sys  # 提供对Python解释器使用或维护的一些变量的访问，以及与解释器强烈交互的函数
-import time  # 提供各种时间相关的函数
-import logging  # 提供记录日志的功能
-import json  # 用于处理JSON数据
-from datetime import datetime  # 提供日期和时间相关的类
+import sys
+import time
+import logging
+import json
+from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QLabel, QVBoxLayout, QFrame, QPushButton, QMenu, 
                              QSystemTrayIcon, QStyle, QDialog, QTextEdit, QVBoxLayout)
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QRectF, QRect
-from PyQt6.QtGui import QFont, QColor, QPainter, QGuiApplication, QFont
-from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
+from PyQt6.QtGui import QFont, QGuiApplication, QFont, QColor
 
 from get_weather import get_weather, get_weather_warning
 
-# 获取配置文件内容
 with open('CONFIG.json', 'r') as f:
     CONFIG = json.load(f)
 
-# 创建SVG图标数据(内嵌图标，避免外部文件依赖）
-WEATHER_ICONS = {
-    "location": "",
-    "temperature": "",
-    "humidity": "",
-    "wind": "",
-    "pressure": "",
-    "condition": "",
-    "warning": "",
-    "update": "",
-    "refresh": ""
-}
-
-class SvgIcon(QWidget):
-    """SVG图标组件"""
-    def __init__(self, svg_data, size=32, color="#2c3e50", parent=None):
-        super().__init__(parent)
-        self.svg_data = svg_data
-        self.size = size
-        self.color = color
-        self.setFixedSize(size, size)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        renderer = QSvgRenderer(self.svg_data.encode('utf-8'))
-        painter.setBrush(QColor(self.color))  # Set icon color
-        renderer.render(painter, QRectF(self.rect()))
-
 class WeatherWorker(QThread):
-    """工作线程，用于获取天气数据"""
     weather_data = pyqtSignal(dict)
     warning_data = pyqtSignal(list)
     error_occurred = pyqtSignal(str)
@@ -60,12 +28,10 @@ class WeatherWorker(QThread):
     def run(self):
         while self.running:
             try:
-                # 获取常规天气数据
                 data = get_weather(location=self.location)
                 if data:
                     self.weather_data.emit(data)
                 
-                # 获取预警信息
                 warnings = get_weather_warning(location=self.location)
                 if warnings:
                     self.warning_data.emit(warnings)
@@ -73,32 +39,22 @@ class WeatherWorker(QThread):
             except Exception as e:
                 self.error_occurred.emit(str(e))
             
-            time.sleep(self.update_interval)  # 根据配置更新频率
+            time.sleep(self.update_interval)
     
     def stop(self):
         self.running = False
 
 class WeatherWidget(QFrame):
-    """单个天气信息组件"""
-    def __init__(self, icon_svg, value, unit="", tooltip="", parent=None):
+    def __init__(self, value, unit="", tooltip="", parent=None):
         super().__init__(parent)
         self.setFrameStyle(QFrame.Shape.NoFrame)
         self.setFixedSize(120, 60)
         
         layout = QVBoxLayout()
-        # layout.setContentsMargins(5, 2, 5, 1)
-        # layout.setSpacing(2)
-        
-        # 图标和数值单位水平布局
         icon_value_layout = QHBoxLayout()
         icon_value_layout.setContentsMargins(0, 0, 0, 0)
         icon_value_layout.setSpacing(5)
         
-        # 图标
-        self.icon = SvgIcon(icon_svg, 32)
-        icon_value_layout.addWidget(self.icon)
-        
-        # 数值和单位
         self.value_label = QLabel(value)
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.value_label.setStyleSheet("color: #2c3e50; font-size: 18px; font-weight: bold;")
@@ -113,7 +69,6 @@ class WeatherWidget(QFrame):
         layout.addLayout(icon_value_layout)
         self.setLayout(layout)
         
-        # 设置提示文本
         if tooltip:
             self.setToolTip(tooltip)
     
@@ -121,89 +76,69 @@ class WeatherWidget(QFrame):
         self.value_label.setText(str(value))
         self.unit_label.setText(unit)
 
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer, QRect
-
 class WeatherApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.warning_count = 0
         self.tray_icon = None
         self.is_minimized_to_tray = False
+        self.previous_warning_ids = set()
         self.init_ui()
         self.init_tray()
         self.init_worker()
 
     def init_ui(self):
         self.setWindowTitle("天气监测")
-        self.setFixedHeight(50)  # Reduced window height
-        self.setMinimumWidth(800)
+        self.setFixedHeight(50)
+        self.setMinimumWidth(0)
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.setStyleSheet("""
             QMainWindow {
-                border-radius: 10px;
                 background: #f4f6f7;
+                border-radius: 10px;
             }
         """)
 
-        central_widget = QWidget()
-        central_widget.setStyleSheet("""
+        self.central_widget = QWidget()
+        self.central_widget.setStyleSheet("""
             QWidget {
-                background: #f0f0f0;
-                border-radius: 5px;
+                background: #f4f6f7;
+                border-radius: 8px;
             }
         """)
-        self.setCentralWidget(central_widget)
-        
-        # Main layout
+        self.setCentralWidget(self.central_widget)
+
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(4, 3, 4, 1)
+        main_layout.setContentsMargins(4, 2, 4, 1)
         main_layout.setSpacing(2)
 
-        # Weather widgets
-        self.condition_widget = WeatherWidget(
-            WEATHER_ICONS["condition"], "--", "", "天气状况"
-        )
+        self.condition_widget = WeatherWidget("--", "", "天气状况")
         main_layout.addWidget(self.condition_widget)
 
-        self.temp_widget = WeatherWidget(
-            WEATHER_ICONS["temperature"], "--", "°C", "温度"
-        )
+        self.temp_widget = WeatherWidget("--", "°C", "温度")
         main_layout.addWidget(self.temp_widget)
 
-        self.humidity_widget = WeatherWidget(
-            WEATHER_ICONS["humidity"], "--", "%", "湿度"
-        )
+        self.humidity_widget = WeatherWidget("--", "%", "湿度")
         main_layout.addWidget(self.humidity_widget)
 
-        self.wind_widget = WeatherWidget(
-            WEATHER_ICONS["wind"], "--", "km/h", "风速"
-        )
+        self.wind_widget = WeatherWidget("--", "km/h", "风速")
         main_layout.addWidget(self.wind_widget)
 
-        self.winddir_widget = WeatherWidget(
-            WEATHER_ICONS["wind"], "--", "", "风向"
-        )
+        self.winddir_widget = WeatherWidget("--", "", "风向")
         main_layout.addWidget(self.winddir_widget)
 
-        self.pressure_widget = WeatherWidget(
-            WEATHER_ICONS["pressure"], "--", "hPa", "气压"
-        )
+        self.pressure_widget = WeatherWidget("--", "hPa", "气压")
         main_layout.addWidget(self.pressure_widget)
 
-        # Warning widget
-        self.warning_widget = WeatherWidget(
-            WEATHER_ICONS["warning"], "--", "--", "预警信息"
-        )
-        self.warning_widget.setFixedSize(120, 60)  # Reduced size
+        self.warning_widget = WeatherWidget("--", "--", "预警信息")
+        self.warning_widget.setFixedSize(120, 40)
         self.warning_widget.mousePressEvent = self.show_warning_details
         main_layout.addWidget(self.warning_widget)
 
-        self.update_widget = WeatherWidget(
-            WEATHER_ICONS["update"], "--", "", "更新时间"
-        )
+        self.update_widget = WeatherWidget("--", "", "更新时间")
         main_layout.addWidget(self.update_widget)
 
         # Close button
@@ -225,12 +160,10 @@ class WeatherApp(QMainWindow):
         close_btn.setToolTip("关闭应用")
 
         main_layout.addWidget(close_btn)
-
-        central_widget.setLayout(main_layout)
+        self.central_widget.setLayout(main_layout)
 
     def show_warning_details(self, event):
-        """显示预警详情"""
-        warnings = get_weather_warning()  # 调用 get_weather_warning 获取预警信息
+        warnings = get_weather_warning()
 
         if not warnings:
             self.show_error("没有找到有效的预警数据")
@@ -256,17 +189,16 @@ class WeatherApp(QMainWindow):
         text_edit = QTextEdit(dialog)
         text_edit.setReadOnly(True)
 
-        # 显示所有预警信息
         warning_details = ""
         for i, warning in enumerate(warnings, start=1):
-            title = warning.get("title", "未知预警")
-            type_info = warning.get("typeName", "未知类型")
-            level = warning.get("level", "未知级别")
-            severity = warning.get("severity", "未知严重等级")
-            status = warning.get("status", "未知状态")
-            sender = warning.get("sender", "未知来源")
-            pubTime = warning.get("pubTime", "未知发布时间")
-            text = warning.get("text", "未知详细内容")
+            title = warning.get("title", "--")
+            type_info = warning.get("typeName", "--")
+            level = warning.get("level", "--")
+            severity = warning.get("severity", "--")
+            status = warning.get("status", "--")
+            sender = warning.get("sender", "--")
+            pubTime = warning.get("pubTime", "--")
+            text = warning.get("text", "--")
             warning_details += f"""预警 {i}:
 预警名称：{title}
 预警类型：{type_info}
@@ -285,7 +217,6 @@ class WeatherApp(QMainWindow):
         dialog.exec()
 
     def init_tray(self):
-        """初始化系统托盘"""
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray_icon = QSystemTrayIcon(self)
             self.tray_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
@@ -303,7 +234,6 @@ class WeatherApp(QMainWindow):
             self.tray_icon.setToolTip("天气监测")
 
     def init_worker(self):
-        """初始化工作线程"""
         self.worker = WeatherWorker(location=CONFIG['default_location'], update_interval=CONFIG['update_interval'])
         self.worker.weather_data.connect(self.update_weather)
         self.worker.warning_data.connect(self.update_warnings)
@@ -311,7 +241,6 @@ class WeatherApp(QMainWindow):
         self.worker.start()
 
     def update_weather(self, data):
-        """更新天气数据显示"""
         try:
             if 'temp' in data:
                 self.temp_widget.update_value(data['temp'], "°C")
@@ -334,17 +263,20 @@ class WeatherApp(QMainWindow):
         """更新预警信息并根据优先级显示"""
         self.warning_count = len(warnings)
         if self.warning_count > 0:
-            # 根据优先级排序：台风 > 暴雨 > 其它
             priority_order = {"台风": 1, "暴雨": 2}
             warnings.sort(key=lambda w: priority_order.get(w.get("typeName", ""), 99))
 
-            # 显示优先级最高的预警
             highest_priority_warning = warnings[0]
             type_name = highest_priority_warning.get("typeName", "--")
             level = highest_priority_warning.get("level", "--")
+            warning_id = highest_priority_warning.get("id", None)
+
+            if warning_id and warning_id not in self.previous_warning_ids:
+                self.previous_warning_ids.add(warning_id)
+                self.show_notification(type_name, level)
+
             self.warning_widget.update_value(type_name, level)
 
-            # 设置样式
             self.warning_widget.setStyleSheet("""
                 QFrame {
                     background: #ff6b6b;
@@ -357,35 +289,32 @@ class WeatherApp(QMainWindow):
             self.warning_widget.update_value("--", "--")
             self.warning_widget.setStyleSheet("")
 
+    def show_notification(self, type_name, level):
+        """显示系统通知"""
+        self.tray_icon.showMessage(f"天气预警: {type_name}", f"预警级别: {level}", QSystemTrayIcon.MessageIcon.Warning, 5000)
+
     def show_error(self, error_msg):
-        """显示错误信息"""
         logging.error(f"程序错误: {error_msg}")
 
     def quit_application(self):
-        """退出应用程序"""
         if hasattr(self, 'worker'):
             self.worker.stop()
             self.worker.wait(2000)
         QApplication.quit()
+
     def hide_to_tray(self):
-        """隐藏窗口到系统托盘"""
         self.hide()
         self.is_minimized_to_tray = True
-        if self.tray_icon:
-            self.tray_icon.showMessage("天气监测", "应用已隐藏到系统托盘", QSystemTrayIcon.MessageIcon.Information, 2000)
 
     def mousePressEvent(self, event):
-        """记录鼠标按下时的位置"""
         if event.button() == Qt.MouseButton.LeftButton:
             self.drag_start_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             event.accept()
 
     def mouseMoveEvent(self, event):
-        """实现窗口拖拽"""
         if event.buttons() == Qt.MouseButton.LeftButton and hasattr(self, 'drag_start_position'):
             self.move(event.globalPosition().toPoint() - self.drag_start_position)
             event.accept()
-
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -394,9 +323,7 @@ def main():
     font = QFont("Microsoft YaHei", 12)
     app.setFont(font)
     window = WeatherApp()
-    window.setFixedHeight(80)  # 再次确保窗口高度
     screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-    # 设置窗口初始位置在屏幕中央
     center_x = screen_geometry.center().x() - window.width() // 2
     center_y = screen_geometry.center().y() - window.height() // 2
     window.move(center_x, center_y)
@@ -405,11 +332,12 @@ def main():
 
 if __name__ == '__main__':
     main()
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
+    font = QFont("Microsoft YaHei", 12)
     app.setFont(font)
     window = WeatherApp()
-    window.setFixedHeight(80)  # 再次确保窗口高度
     screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-    # 设置窗口初始位置在屏幕中央
     center_x = screen_geometry.center().x() - window.width() // 2
     center_y = screen_geometry.center().y() - window.height() // 2
     window.move(center_x, center_y)
