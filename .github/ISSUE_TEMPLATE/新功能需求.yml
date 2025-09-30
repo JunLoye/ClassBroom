@@ -7,9 +7,7 @@ body:
   id: "yml-1"
   attributes:
     label: "提交前检查"
-    description: "请逐个检查下列项目，并勾选确认。
-  > [!IMPORTANT]
-> 请确认以下内容，否则可能会被直接关闭。"
+    description: "请逐个检查下列项目，并勾选确认。"
     options:
     - label: "我已在 [议题 页面](https://github.com/Meloong-Git/PCL/issues?q=is%3Aissue+) 和 [常见&难检反馈及问题列表](https://github.com/Meloong-Git/PCL/discussions/1930) 中搜索，确认了这一提案未被提交过。"
       required: true
