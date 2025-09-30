@@ -25,11 +25,13 @@ log_file = "ClassBroom.log"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-if not logger.handlers:
-    file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
 
 logging.info("程序启动")
 
