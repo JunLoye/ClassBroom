@@ -1,7 +1,10 @@
 ---
 name: 综合Bug反馈
 about: 遇到了没有细分选项的其它Bug
+title: ''
 labels: bug, 新提交
+assignees: ''
+
 ---
 
 ## 检查项
