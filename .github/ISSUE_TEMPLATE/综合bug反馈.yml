@@ -1,0 +1,64 @@
+name: "综合 Bug 反馈"
+description: "遇见了没有细分选项的其他 Bug"
+labels: [Bug, 新提交]
+body:
+- type: checkboxes
+  id: "yml-1"
+  attributes:
+    label: "检查项"
+    description: "请逐个检查下列项目，并勾选确认。
+    > [!IMPORTANT]
+> 这很重要，重复的反馈会被忽略"
+    options:
+    - label: "我已在 [Issues 页面](https://github.com/Meloong-Git/PCL/issues?q=is%3Aissue+) 和 [常见&难检反馈及问题列表](https://github.com/Meloong-Git/PCL/discussions/1930) 中搜索，确认了这一 Bug 未被提交过。"
+      required: true
+
+- type: textarea
+  id: "yml-2"
+  attributes:
+    label: 描述
+    description: "描述该 Bug 的具体表现。"
+  validations:
+    required: true
+    
+- type: textarea
+  id: "yml-3"
+  attributes:
+    label: 重现步骤
+    description: "详细说明如何重现该问题："
+    value: |
+      1. 打开 xxxx
+      2. 点击 xxxx
+      3. 往下滚动，然后点击 xxxx
+      4. 出现报错/异常
+  validations:
+    required: true
+
+- type: textarea
+  id: "yml-4"
+  attributes:
+    label: 预期行为
+    description: "说明正确情况下应该发生什么。"
+    placeholder: ""
+  validations:
+    required: true
+    
+- type: textarea
+  id: "yml-5"
+  attributes:
+    label: 日志与附件
+    description: "上传可能的日志与附件"
+    placeholder: "先点击这个文本框，然后再将文件直接拖拽到文本框中以上传。"
+  validations:
+    required: true
+
+- type: textarea
+  id: "yml-6"
+  attributes:
+    label: 其他信息
+    description: "上传其它有助于解决问题的信息"
+    placeholder: "- 操作系统: Windows xx / Linux / macOS
+- ClassBroom版本: Alpla / Beta / v-x.x.x
+- 其他可能相关的信息"
+  validations:
+    required: true
