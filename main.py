@@ -25,7 +25,8 @@ logger.addHandler(file_handler)
 
 
 # ----------------------- 配置文件 -----------------------
-LAUNCHER_CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "launcher_config.json")
+# ----------------------- 配置文件 -----------------------
+LAUNCHER_CONFIG_FILE = "config.json"
 
 default_launcher_config = {
     "apps": {
@@ -48,7 +49,7 @@ default_launcher_config = {
         "notes": {
             "name": "便签",
             "icon": "notes_icon.png",
-            "enabled": False,
+            "enabled": True,
             "position": 1
         },
         "calculator": {
@@ -56,6 +57,16 @@ default_launcher_config = {
             "icon": "calc_icon.png",
             "enabled": False,
             "position": 2
+        },
+        "countdown": {
+            "name": "倒计日",
+            "icon": "countdown_icon.png",
+            "enabled": True,
+            "position": 3,
+            "config": {
+                "target_date": "2024-12-31",
+                "title": "目标日"
+            }
         }
     },
     "theme": "light",
@@ -63,19 +74,18 @@ default_launcher_config = {
 }
 
 def save_launcher_config():
-    """保存启动器配置到文件"""
     try:
         with open(LAUNCHER_CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(LAUNCHER_CONFIG, f, indent=4, ensure_ascii=False)
-        logging.info("启动器配置已保存")
+        logging.info("[ClassBroom] 启动器配置已保存")
     except Exception as e:
-        logging.error(f"保存启动器配置失败: {e}")
+        logging.error(f"[ClassBroom] 保存启动器配置失败: {e}")
 
 try:
     with open(LAUNCHER_CONFIG_FILE, 'r', encoding='utf-8') as f:
         LAUNCHER_CONFIG = json.load(f)
 except Exception as e:
-    logging.info(f"读取启动器配置文件失败，使用默认配置: {e}")
+    logging.info(f"[ClassBroom] 读取启动器配置文件失败，使用默认配置: {e}")
     with open(LAUNCHER_CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(default_launcher_config, f, indent=4, ensure_ascii=False)
     LAUNCHER_CONFIG = default_launcher_config.copy()
@@ -116,7 +126,8 @@ class AppLauncher(QFrame):
             icon_map = {
                 "weather": "🌤️",
                 "notes": "📝",
-                "calculator": "🧮"
+                "calculator": "🧮",
+                "countdown": "⏰"
             }
             icon_text = icon_map.get(self.app_id, "📱")
             icon_label.setText(icon_text)
@@ -207,6 +218,8 @@ class EdgeTrayWindow(QMainWindow):
         self.animation.setDuration(250)
 
         self.weather_app = None
+        self.notes_app = None
+        self.countdown_app = None
         self.dragging_widget = None
         self.drag_start_pos = None
         
@@ -336,6 +349,14 @@ class EdgeTrayWindow(QMainWindow):
             weather_action = QAction("天气", self)
             weather_action.triggered.connect(self.launch_weather_app)
             tray_menu.addAction(weather_action)
+
+            notes_action = QAction("便签", self)
+            notes_action.triggered.connect(self.launch_notes_app)
+            tray_menu.addAction(notes_action)
+
+            countdown_action = QAction("倒计时", self)
+            countdown_action.triggered.connect(self.launch_countdown_app)
+            tray_menu.addAction(countdown_action)
 
             quit_action = QAction("退出", self)
             quit_action.triggered.connect(self.quit_application)
@@ -568,12 +589,16 @@ class EdgeTrayWindow(QMainWindow):
     def on_app_clicked(self, app_id):
         if app_id == "weather":
             self.launch_weather_app()
+        elif app_id == "notes":
+            self.launch_notes_app()
+        elif app_id == "countdown":
+            self.launch_countdown_app()
         else:
             logging.info(f"[ClassBroom] 启动应用 {app_id}")
 
     def launch_weather_app(self):
         try:
-            from weather.main import WeatherApp
+            from apps.weather.main import WeatherApp
 
             self.weather_app = WeatherApp()
 
@@ -588,6 +613,34 @@ class EdgeTrayWindow(QMainWindow):
         except Exception as e:
             logging.error(f"[ClassBroom] weather 启动失败: {e}")
 
+    def launch_notes_app(self):
+        try:
+            from apps.notes.main import NotesApp
+
+            self.notes_app = NotesApp()
+
+            screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
+            self.notes_app.move(screen_geometry.right() - self.notes_app.width() - 50, 
+                               screen_geometry.top() + 100)
+            self.notes_app.show()
+
+            logging.info("[ClassBroom] notes 已启动")
+
+        except Exception as e:
+            logging.error(f"[ClassBroom] notes 启动失败: {e}")
+
+    def launch_countdown_app(self):
+        try:
+            from apps.countdown.main import CountdownManager
+            
+            self.countdown_manager = CountdownManager()
+            self.countdown_manager.show()
+            
+            logging.info("[ClassBroom] countdown 已启动")
+            
+        except Exception as e:
+            logging.error(f"[ClassBroom] countdown 启动失败: {e}")
+
     def show_window(self):
         self.show()
         self.expand_window()
@@ -596,6 +649,10 @@ class EdgeTrayWindow(QMainWindow):
         logging.info("[ClassBroom] 应用退出")
         if self.weather_app:
             self.weather_app.close()
+        if self.notes_app:
+            self.notes_app.close()
+        if self.countdown_app:
+            self.countdown_app.close()
         QApplication.quit()
 
 

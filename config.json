@@ -1,0 +1,44 @@
+{
+    "apps": {
+        "weather": {
+            "name": "天气监测",
+            "icon": "weather_icon.png",
+            "enabled": true,
+            "position": 0,
+            "config": {
+                "location": "101280801",
+                "update_interval": 300,
+                "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
+                "language": "zh",
+                "temperature_unit": "C",
+                "autostart": false,
+                "notifications": true,
+                "theme": "light"
+            }
+        },
+        "notes": {
+            "name": "便签",
+            "icon": "notes_icon.png",
+            "enabled": false,
+            "position": 1
+        },
+        "calculator": {
+            "name": "计算器",
+            "icon": "calc_icon.png",
+            "enabled": false,
+            "position": 2
+        },
+        "countdown": {
+            "name": "倒计日",
+            "icon": "countdown_icon.png",
+            "enabled": true,
+            "position": 3,
+            "config": {
+                "target_date": "2025-10-03",
+                "title": "目标日"
+            }
+        }
+    },
+    "theme": "light",
+    "columns": 3
+}
