@@ -12,10 +12,6 @@ BASE_URL = "https://devapi.qweather.com/v7/weather/now"
 
 
 def get_weather(CONFIG):
-    # 简化API请求，去掉签名验证部分
-
-    # 不再需要特殊headers
-
     params = {
         "location": CONFIG['location'],
         "key": CONFIG['api_key'],
@@ -24,15 +20,15 @@ def get_weather(CONFIG):
 
     try:
         response = requests.get(BASE_URL, params=params, timeout=10)
-        logging.info(f"天气API请求URL: {response.url}")
+        logging.info(f"[weather] 配置API请求URL: {response.url}")
         
         if response.status_code == 200:
             data = response.json()
-            logging.info(f"天气API响应: {data}")
+            logging.info(f"[weather] API响应: {data}")
             
             if data.get('code') != '200':
-                logging.error(f"API返回错误: {data.get('code')} - {data.get('message', '未知错误')}")
-                logging.error(f"Full response: {data}")
+                logging.error(f"[weather] API返回错误: {data.get('code')} - {data.get('message', '未知错误')}")
+                logging.error(f"[weather] Full response: {data}")
                 return {}
                 
             if "now" in data:
@@ -42,21 +38,19 @@ def get_weather(CONFIG):
                     weather_data['fxLink'] = data['fxLink']
                 return weather_data
             else:
-                logging.error("API响应中缺少'now'字段")
+                logging.error("[weather] API响应中缺少'now'字段")
                 return {}
                 
         else:
-            logging.error(f"Request failed with status code {response.status_code}: {response.text}")
+            logging.error(f"[weather] Request failed with status code {response.status_code}: {response.text}")
             return {}
 
     except requests.exceptions.RequestException as e:
-        print(f"请求过程中出现错误: {e}")
-        logging.error(f"Request exception: {e}")
+        logging.error(f"[weather] Request exception: {e}")
         return {}
         
     except json.JSONDecodeError as e:
-        print(f"解析JSON数据时出现错误: {e}")
-        logging.error(f"JSON decode error: {e}")
+        logging.error(f"[weather] JSON decode error: {e}")
         return {}
 
 
@@ -69,15 +63,15 @@ def get_weather_warning(CONFIG):
             "lang": "zh"
         }
         response = requests.get(warning_url, params=params, timeout=10)
-        logging.info(f"预警API请求URL: {response.url}")
+        logging.info(f"[weather] 预警API请求URL: {response.url}")
         
         if response.status_code == 200:
             data = response.json()
-            logging.info(f"预警API响应: {data}")
+            logging.info(f"[weather] 预警API响应: {data}")
             
             if data.get('code') == '200' and "warning" in data and data["warning"]:
                 return data
         return {}
     except Exception as e:
-        logging.error(f"获取天气预警时出现错误: {e}")
+        logging.error(f"[weather] 获取天气预警时出现错误: {e}")
         return {}

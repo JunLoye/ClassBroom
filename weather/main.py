@@ -8,15 +8,16 @@ from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout,
                              QLabel, QVBoxLayout, QFrame, QPushButton, QMenu,
                              QDialog, QFormLayout, QLineEdit, QSpinBox, 
-                             QDialogButtonBox, QComboBox, QCheckBox, QScrollArea)
+                             QDialogButtonBox, QComboBox, QCheckBox, QScrollArea,
+                             QSystemTrayIcon)
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont, QGuiApplication
 
 try:
     from weather.api.get_weather import get_weather, get_weather_warning
-    logging.info("成功导入天气API模块")
+    logging.info("[weather] 成功导入天气API模块")
 except ImportError:
-    logging.error("未找到天气API模块，请检查是否已安装")
+    logging.error("[weather] 未找到天气API模块，请检查是否已安装")
 
 
 # ----------------------- 配置文件 -----------------------
@@ -34,9 +35,10 @@ default_config = {
 try:
     with open('launcher_config.json', 'r', encoding='utf-8') as f:
         CONFIG = json.load(f)['apps']['weather']['config']
-    logging.info("配置文件加载成功")
+    logging.info("[weather] 配置文件加载成功")
 except Exception as e:
-    logging.warning(f"读取配置文件失败: {e}")
+    logging.warning(f"[weather] 读取配置文件失败: {e}")
+
 
 # ----------------------- 天气线程 -----------------------
 class WeatherWorker(QThread):
@@ -52,34 +54,38 @@ class WeatherWorker(QThread):
         self.running = True
 
     def run(self):
-        logging.info("天气线程启动")
+        logging.info("[weather] 天气线程启动")
         while self.running:
             try:
                 data = get_weather(CONFIG=CONFIG)
                 if data:
-                    logging.info(f"天气数据获取成功: {data}")
+                    logging.info(f"[weather] 天气数据获取成功: {data}")
                     self.weather_data.emit(data)
+                    
                 warnings_data = get_weather_warning(CONFIG)
-                logging.info(f"预警数据获取成功: {warnings_data}")
+                logging.info(f"[weather] 预警数据获取成功: {warnings_data}")
+                
                 if isinstance(warnings_data, dict):
                     warnings = warnings_data.get('warning')
+                    
                     fxLink = warnings_data.get('fxLink')
                     self.fxLink.emit(fxLink)
-                    logging.info(f"fxLink更新为: {fxLink}")
+                    logging.info(f"[weather] fxLink更新为: {fxLink}")
+                    
                     if warnings is not None:
-                        logging.info(f"预警数据获取成功: {warnings}")
+                        logging.info(f"[weather] 预警数据解析成功: {warnings}")
                         self.warning_data.emit(warnings)
                 else:
-                    # 如果warnings_data不是字典类型，发送空预警列表
                     self.warning_data.emit([])
             except Exception as e:
-                logging.error(f"天气更新线程出错: {e}")
+                logging.error(f"[weather] 天气更新线程出错: {e}")
                 self.error_occurred.emit(str(e))
             time.sleep(self.update_interval)
 
     def stop(self):
         self.running = False
-        logging.info("天气线程停止")
+        logging.info("[weather] 线程停止")
+
 
 # ----------------------- 天气小组件 -----------------------
 class WeatherWidget(QFrame):
@@ -105,7 +111,8 @@ class WeatherWidget(QFrame):
     def update_value(self, value, unit=""):
         self.value_label.setText(str(value))
         self.unit_label.setText(unit)
-        logging.debug(f"Widget更新: value={value}, unit={unit}")
+        logging.debug(f"[weather] Widget更新: value={value}, unit={unit}")
+        
 
 # ----------------------- 预警详情窗口 -----------------------
 class WarningDetailDialog(QDialog):
@@ -138,7 +145,8 @@ class WarningDetailDialog(QDialog):
 
             for l in [lbl, lbl_pub_time, lbl_status, lbl_desc, lbl_sender]:
                 l.setWordWrap(True)
-
+                l.setStyleSheet("margin-bottom: 5px;")
+                
             v.addWidget(lbl)
             v.addWidget(lbl_pub_time)
             v.addWidget(lbl_status)
@@ -150,6 +158,7 @@ class WarningDetailDialog(QDialog):
         btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         btns.accepted.connect(self.accept)
         layout.addWidget(btns)
+        
 
 # ----------------------- 设置窗口 -----------------------
 class SettingsDialog(QDialog):
@@ -159,13 +168,12 @@ class SettingsDialog(QDialog):
         self.setFixedSize(400, 350)
         layout = QVBoxLayout(self)
 
-        # 从配置文件中读取最新配置
         try:
             with open('launcher_config.json', 'r', encoding='utf-8') as f:
                 current_config = json.load(f)['apps']['weather']['config']
-            logging.info("设置窗口：成功读取最新配置文件")
+            logging.info("[weather] 读取最新配置文件成功")
         except Exception as e:
-            logging.warning(f"设置窗口：读取配置文件失败，使用默认配置: {e}")
+            logging.warning(f"[weather] 读取配置文件失败，使用默认配置: {e}")
             current_config = default_config
 
         form_layout = QFormLayout()
@@ -224,11 +232,44 @@ class SettingsDialog(QDialog):
             full_config["apps"]["weather"]["config"] = CONFIG
             with open("launcher_config.json", "w", encoding="utf-8") as f:
                 json.dump(full_config, f, indent=4, ensure_ascii=False)
-            logging.info(f"配置已保存: {CONFIG}")
+            logging.info(f"[weather] 配置已保存: {CONFIG}")
         except Exception as e:
-            logging.error(f"保存配置失败: {e}")
+            logging.error(f"[weather] 保存配置失败: {e}")
 
         self.accept()
+
+# ----------------------- 右侧窗口 -----------------------
+class RightEdgeWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("右侧窗口")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        screen = QGuiApplication.primaryScreen()
+        if screen:
+            geometry = screen.availableGeometry()
+            self.setGeometry(geometry.right() - 250, geometry.top(), 250, geometry.height())
+        else:
+            logging.error("[weather] 未能获取屏幕信息，无法设置右侧窗口位置")
+
+        self.setStyleSheet("""
+            QMainWindow {
+                background: rgba(255, 255, 255, 200);
+                border-radius: 10px;
+            }
+        """)
+
+        central_widget = QWidget()
+        layout = QVBoxLayout(central_widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        label = QLabel("右侧窗口内容")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+
+        self.setCentralWidget(central_widget)
 
 # ----------------------- 主窗口 -----------------------
 class WeatherApp(QMainWindow):
@@ -237,8 +278,34 @@ class WeatherApp(QMainWindow):
         self.warning_count = 0
         self.previous_warning_ids = set()
         self.current_warnings = []
+        self.current_fxLink = ""  # 存储当前的fxLink
         self.init_ui()
         self.init_worker()
+        self.init_tray_icon()
+
+    def init_tray_icon(self):
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_icon = QSystemTrayIcon(self)
+            self.tray_icon.setIcon(self.style().standardIcon(
+                getattr(self.style().StandardPixmap, 'SP_MessageBoxInformation', 
+                        self.style().StandardPixmap.SP_ComputerIcon)
+            ))
+            self.tray_icon.setToolTip("天气监测")
+            
+            # 连接消息点击信号
+            self.tray_icon.messageClicked.connect(self.on_notification_clicked)
+            
+            self.tray_icon.show()
+        else:
+            logging.warning("[weather] 系统托盘不可用，无法显示系统通知")
+
+    def on_notification_clicked(self):
+        """点击系统通知时的处理"""
+        if self.current_fxLink:
+            logging.info(f"[weather] 点击通知，打开链接: {self.current_fxLink}")
+            webbrowser.open(self.current_fxLink)
+        else:
+            logging.warning("[weather] 点击通知，但当前没有有效的链接")
 
     def eventFilter(self, obj, event):
         if obj == self.warning_widget and event.type() == event.Type.MouseButtonPress:
@@ -310,9 +377,8 @@ class WeatherApp(QMainWindow):
         self.central_widget.setLayout(main_layout)
 
 
-
     def update_fxLink(self, fxLink):
-        self.fxLink = fxLink
+        self.current_fxLink = fxLink
 
     def init_worker(self):
         self.worker = WeatherWorker(location=CONFIG['location'], update_interval=CONFIG['update_interval'])
@@ -342,14 +408,17 @@ class WeatherApp(QMainWindow):
                 self.condition_widget.update_value(data['text'])
             current_time = datetime.now().strftime("%H:%M")
             self.update_widget.update_value(current_time, "更新")
-            logging.info(f"天气界面已更新: {data}")
+            logging.info(f"[weather] 天气界面已更新: {data}")
         except Exception as e:
-            self.show_error(f"更新天气数据时出错: {e}")
+            self.show_error(f"[weather] 更新天气数据时出错: {e}")
 
     def update_warnings(self, warnings):
+        severity_order = {"Red": 1, "Orange": 2, "Yellow": 3}
+        warnings.sort(key=lambda x: severity_order.get(x.get("severityColor", ""), float('inf')))
+
         self.current_warnings = warnings[:]
         self.warning_count = len(warnings)
-        logging.info(f"预警更新: {warnings}")
+        logging.info(f"[weather] 预警更新: {warnings}")
         if self.warning_count > 0:
             highest = warnings[0]
             type_name = highest.get("typeName", "--")
@@ -374,47 +443,61 @@ class WeatherApp(QMainWindow):
             self.warning_widget.setStyleSheet("")
 
     def show_notification(self, type_name, severityColor, level):
-        # 不再使用系统托盘通知，改为在窗口内显示通知
-        icons = {
-            "Red": "🚨",
-            "Orange": "⚠️",
-            "Yellow": "🔔",
+        if not CONFIG.get("notifications", True):
+            return
+            
+        if not hasattr(self, 'tray_icon') or not self.tray_icon.isSystemTrayAvailable():
+            logging.warning("[weather] 系统托盘不可用，无法显示通知")
+            return
+
+        severity_info = {
+            "Red": {
+                "title": "🚨 红色预警",
+                "icon": QSystemTrayIcon.MessageIcon.Critical,
+                "duration": 10000
+            },
+            "Orange": {
+                "title": "⚠️ 橙色预警", 
+                "icon": QSystemTrayIcon.MessageIcon.Warning,
+                "duration": 8000
+            },
+            "Yellow": {
+                "title": "🔔 黄色预警",
+                "icon": QSystemTrayIcon.MessageIcon.Information, 
+                "duration": 5000
+            }
         }
-        status = {
-            "Red": "红色预警",
-            "Orange": "橙色预警",
-            "Yellow": "黄色预警",
+        
+        default_info = {
+            "title": "🔔 天气预警",
+            "icon": QSystemTrayIcon.MessageIcon.Information,
+            "duration": 5000
         }
-        icon = icons.get(severityColor, "🔔")
-        title = status.get(severityColor, "天气预警")
-
-        # 更新预警窗口显示
-        if hasattr(self, 'warning_widget'):
-            self.warning_widget.update_value(icon, title)
-            warning_color = {
-                "Red": "#ff3b3b",
-                "Yellow": "#f0dc30",
-                "Orange": "#d35400"
-            }.get(severityColor, "#cccccc")
-            self.warning_widget.setStyleSheet(f"background: {warning_color}; color: white;")
-
-        logging.info(f"天气预警: {title} - {type_name} {level}")
-
-
+        
+        info = severity_info.get(severityColor, default_info)
+        
+        message = f"{type_name} {level}\n点击此通知查看详细信息..."
+        
+        self.tray_icon.showMessage(
+            info["title"],
+            message,
+            info["icon"],
+            info["duration"]
+        )
+        
+        logging.info(f"[weather] 系统通知已发送: {info['title']} - {type_name} {level}")
 
     def show_error(self, error_msg):
-        logging.error(f"程序错误: {error_msg}")
+        logging.error(f"[weather] 程序错误: {error_msg}")
 
     def quit_application(self):
-        logging.info("应用退出")
+        logging.info("[weather] 应用退出")
         if hasattr(self, 'worker'):
             self.worker.stop()
             self.worker.quit()
             self.worker.wait()
         QApplication.quit()
 
-
-        
     def open_settings(self):
         dialog = SettingsDialog(self)
         if dialog.exec():
@@ -423,15 +506,15 @@ class WeatherApp(QMainWindow):
                 self.worker.wait(2000)
             self.init_ui()
             self.init_worker()
-            logging.info("设置更改已生效，重新初始化天气线程和UI")
+            logging.info("[weather] 设置更改已生效，重新初始化天气线程和UI")
 
     def on_warning_clicked(self, event):
         if self.current_warnings:
             dlg = WarningDetailDialog(self.current_warnings, parent=self)
             dlg.exec()
-            logging.info("显示预警详情窗口")
+            logging.info("[weather] 显示预警详细信息窗口")
         else:
-            logging.info("点击预警Widget，但当前无预警")
+            logging.info("[weather] 点击预警Widget，但当前无预警")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -444,12 +527,17 @@ class WeatherApp(QMainWindow):
             new_pos = event.globalPosition().toPoint() - self.drag_start_position + self.window_start_position
             self.move(new_pos)
             event.accept()
+            
 
 # ----------------------- 主函数 -----------------------
 def main():
-    logging.info("weather 程序启动")
+    logging.info("[weather] 启动成功")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     font = QFont("Microsoft YaHei", 11)
     app.setFont(font)
+
+    right_window = RightEdgeWindow()
+    right_window.show()
+
     sys.exit(app.exec())
