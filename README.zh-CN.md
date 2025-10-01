@@ -1,4 +1,5 @@
 # ClassBroom（教室的飞天扫帚）
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/LoyeJun/ClassBroom)
 
 [English](README.md) | [中文说明](README.zh-CN.md)
 
