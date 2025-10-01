@@ -81,13 +81,17 @@ class WeatherWorker(QThread):
                     self.weather_data.emit(data)
                 warnings_data = get_weather_warning(CONFIG)
                 logging.info(f"预警数据获取成功: {warnings_data}")
-                warnings = warnings_data.get('warning') if isinstance(warnings_data, dict) else None
-                fxLink = warnings_data.get('fxLink')
-                self.fxLink.emit(fxLink)
-                logging.info(f"fxLink更新为: {fxLink}")
-                if warnings is not None:
-                    logging.info(f"预警数据获取成功: {warnings}")
-                    self.warning_data.emit(warnings)
+                if isinstance(warnings_data, dict):
+                    warnings = warnings_data.get('warning')
+                    fxLink = warnings_data.get('fxLink')
+                    self.fxLink.emit(fxLink)
+                    logging.info(f"fxLink更新为: {fxLink}")
+                    if warnings is not None:
+                        logging.info(f"预警数据获取成功: {warnings}")
+                        self.warning_data.emit(warnings)
+                else:
+                    # 如果warnings_data不是字典类型，发送空预警列表
+                    self.warning_data.emit([])
             except Exception as e:
                 logging.error(f"天气更新线程出错: {e}")
                 self.error_occurred.emit(str(e))
@@ -334,7 +338,7 @@ class WeatherApp(QMainWindow):
     def init_worker(self):
         self.worker = WeatherWorker(location=CONFIG['location'], update_interval=CONFIG['update_interval'])
         self.worker.fxLink.connect(self.update_fxLink)
-        self.worker.start()
+        self.worker.weather_data.connect(self.update_weather)
         self.worker.warning_data.connect(self.update_warnings)
         self.worker.error_occurred.connect(self.show_error)
         self.worker.start()

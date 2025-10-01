@@ -12,19 +12,9 @@ BASE_URL = "https://devapi.qweather.com/v7/weather/now"
 
 
 def get_weather(CONFIG):
-    timestamp = str(round(time.time() * 1000))
-    nonce = "aRandomString"
-    signature_input = CONFIG['api_key'] + timestamp + nonce
-    secret_key = CONFIG['api_key']
-    signature = base64.b64encode(hmac.new(secret_key.encode(), signature_input.encode(), sha256).digest()).decode()
+    # 简化API请求，去掉签名验证部分
 
-    headers = {
-        "X-Client-Id": CONFIG['api_key'],
-        "X-Timestamp": timestamp,
-        "X-Nonce": nonce,
-        "X-Signature": signature,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
+    # 不再需要特殊headers
 
     params = {
         "location": CONFIG['location'],
@@ -33,10 +23,12 @@ def get_weather(CONFIG):
     }
 
     try:
-        response = requests.get(BASE_URL, headers=headers, params=params, timeout=10)
+        response = requests.get(BASE_URL, params=params, timeout=10)
+        logging.info(f"天气API请求URL: {response.url}")
         
         if response.status_code == 200:
             data = response.json()
+            logging.info(f"天气API响应: {data}")
             
             if data.get('code') != '200':
                 logging.error(f"API返回错误: {data.get('code')} - {data.get('message', '未知错误')}")
@@ -47,7 +39,7 @@ def get_weather(CONFIG):
                 weather_data = data["now"]
                 weather_data['location'] = CONFIG['location']
                 if 'fxLink' in data:
-                    weather_data['name'] = "江门"
+                    weather_data['fxLink'] = data['fxLink']
                 return weather_data
             else:
                 logging.error("API响应中缺少'now'字段")
@@ -77,11 +69,15 @@ def get_weather_warning(CONFIG):
             "lang": "zh"
         }
         response = requests.get(warning_url, params=params, timeout=10)
+        logging.info(f"预警API请求URL: {response.url}")
+        
         if response.status_code == 200:
             data = response.json()
+            logging.info(f"预警API响应: {data}")
+            
             if data.get('code') == '200' and "warning" in data and data["warning"]:
                 return data
-        return []
+        return {}
     except Exception as e:
         logging.error(f"获取天气预警时出现错误: {e}")
-        return []
+        return {}
