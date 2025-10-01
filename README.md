@@ -1,5 +1,5 @@
 # ClassBroom
-
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/LoyeJun/ClassBroom)
 [English](README.md) | [中文说明](README.zh-CN.md)
 
 ClassBroom is a lightweight tool designed for classroom environments to display current weather and warning information.  
