@@ -80,7 +80,7 @@ def get_weather_warning(CONFIG):
         if response.status_code == 200:
             data = response.json()
             if data.get('code') == '200' and "warning" in data and data["warning"]:
-                return data["warning"]
+                return data
         return []
     except Exception as e:
         logging.error(f"获取天气预警时出现错误: {e}")
