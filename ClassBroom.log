@@ -2405,3 +2405,1175 @@
 2025-10-05 10:29:31,454 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
 2025-10-05 10:29:31,466 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
 2025-10-05 10:29:31,466 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 10:34:24,382 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:34:25,461 - INFO - [Weather] 天气线程启动
+2025-10-05 10:34:25,476 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:34:25,613 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:34:26,276 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:34:27,113 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:27,114 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:27+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:27,116 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:34:27,117 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:34:27,305 - INFO - [Weather] 天气线程启动
+2025-10-05 10:34:27,305 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:34:27,588 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:34:28,912 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:28,912 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:28,914 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:28,914 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:34:28,914 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:34:29,140 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:29,140 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:27+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:29,143 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:34:29,144 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:34:31,353 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:31,354 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:31,357 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:31,357 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:34:31,357 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:34:31,359 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 10:34:31,359 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 10:34:33,393 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:33,393 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:27+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:33,395 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:26+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '305', 'text': '小雨', 'wind360': '90', 'windDir': '东风', 'windScale': '5', 'windSpeed': '31', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:34:35,558 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:34:35,558 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:35,559 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:33+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:34:35,559 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:34:35,559 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:36:52,681 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:36:55,151 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:37:42,711 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:37:42,712 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:37:42,831 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:37:44,305 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:37:44,939 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:45,197 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:37:50,894 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:37:51,535 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:51,928 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:37:53,393 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:37:54,184 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:54,354 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:54,608 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:54,768 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:54,904 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:55,041 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:37:55,225 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:38:00,201 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:38:00,555 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:38:00,869 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:38:01,414 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:38:01,555 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:38:01,685 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:38:01,843 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:39:02,769 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:39:03,611 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:03,755 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:03,887 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,017 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,142 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,271 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,395 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,515 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,656 - INFO - [ClassBroom] 启动应用 Weather
+2025-10-05 10:39:04,814 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:39:46,785 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:39:46,785 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:39:46,925 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:39:50,738 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:39:51,552 - ERROR - [Weather] 未找到天气API模块，请检查是否已安装
+2025-10-05 10:39:51,553 - INFO - [Weather] 配置文件加载成功
+2025-10-05 10:39:51,618 - INFO - [Weather] 天气线程启动
+2025-10-05 10:39:51,618 - ERROR - [Weather] 天气更新线程出错: name 'get_weather' is not defined
+2025-10-05 10:39:51,631 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:39:51,708 - ERROR - [Weather] 程序错误: name 'get_weather' is not defined
+2025-10-05 10:39:51,738 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:40:23,693 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:40:23,694 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:40:23,858 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:40:25,105 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:40:26,060 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 10:40:26,060 - INFO - [Weather] 配置文件加载成功
+2025-10-05 10:40:26,109 - INFO - [Weather] 天气线程启动
+2025-10-05 10:40:26,122 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:40:26,571 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:40:27,909 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:40:27,909 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:36+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:40:27,910 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:40:27,911 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:40:30,721 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:40:30,721 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:39+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:40:30,723 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:39+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:40:30,723 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:40:30,723 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:40:30,723 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 10:40:30,724 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 10:40:45,537 - INFO - [Weather] 显示预警详细信息窗口
+2025-10-05 10:40:46,047 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:40:46,284 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:40:48,098 - INFO - [ClassBroom] 应用退出
+2025-10-05 10:40:48,099 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 10:40:48,099 - INFO - [Weather] 应用退出
+2025-10-05 10:40:48,099 - INFO - [Weather] 线程停止
+2025-10-05 10:41:23,765 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:41:23,766 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:41:23,902 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:41:24,802 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:41:25,577 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 10:41:25,577 - INFO - [Weather] 配置文件加载成功
+2025-10-05 10:41:25,628 - INFO - [Weather] 天气线程启动
+2025-10-05 10:41:25,642 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:41:26,039 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:41:27,340 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:41:27,340 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:36+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:41:27,341 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:41:27,342 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:41:28,366 - INFO - [ClassBroom] 应用退出
+2025-10-05 10:41:28,367 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 10:41:28,367 - INFO - [Weather] 应用退出
+2025-10-05 10:41:28,367 - INFO - [Weather] 线程停止
+2025-10-05 10:41:28,900 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:41:28,900 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:40+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:41:28,902 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:40+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:41:28,902 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:41:28,902 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:41:45,186 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:41:45,187 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:41:45,342 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:41:46,208 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:41:46,992 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 10:41:46,993 - INFO - [Weather] 配置文件加载成功
+2025-10-05 10:41:47,040 - INFO - [Weather] 天气线程启动
+2025-10-05 10:41:47,054 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:41:47,179 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:41:48,750 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:41:48,750 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:36+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:41:48,751 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:41:48,752 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:32+08:00', 'temp': '25', 'feelsLike': '24', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '25', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:41:49,111 - INFO - [ClassBroom] 应用退出
+2025-10-05 10:50:28,593 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:50:28,593 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:50:28,702 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:50:30,048 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:50:32,128 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:51:24,341 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 10:51:24,341 - INFO - [ClassBroom] 进程启动
+2025-10-05 10:51:24,464 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 10:51:25,807 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:51:27,167 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 10:51:27,840 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:51:31,311 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:51:32,415 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 10:51:32,416 - INFO - [Weather] 配置文件加载成功
+2025-10-05 10:51:32,469 - INFO - [Weather] 天气线程启动
+2025-10-05 10:51:32,493 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 10:51:32,653 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:51:34,292 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:51:34,292 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:50+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:51:34,294 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:51:34,294 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:51:36,284 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:51:36,285 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:50+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:51:36,286 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:50+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:51:36,286 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:51:36,286 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:51:36,287 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 10:51:36,287 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 10:55:37,112 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:55:37,382 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:55:37,746 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:55:38,158 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 10:56:37,748 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:56:37,749 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:51+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:56:37,750 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:56:37,751 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:48+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '21', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 10:56:39,225 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 10:56:39,226 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T10:55+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:56:39,227 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T10:55+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 10:56:39,227 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 10:56:39,227 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 10:56:39,227 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 10:59:32,349 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 10:59:32,390 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:01:40,725 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 11:01:40,725 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T10:58+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T10:56+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '22', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:01:40,726 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T10:56+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '22', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 11:01:40,727 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T10:56+08:00', 'temp': '25', 'feelsLike': '25', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '4', 'windSpeed': '22', 'humidity': '87', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 11:01:42,220 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 11:01:42,220 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T11:00+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:01:42,221 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T11:00+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:01:42,222 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 11:01:42,222 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 11:01:42,222 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 11:06:13,052 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:06:14,795 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:06:15,141 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:06:15,654 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:06:15,858 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:06:43,730 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 11:06:43,730 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T11:02+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T11:00+08:00', 'temp': '25', 'feelsLike': '26', 'icon': '305', 'text': '小雨', 'wind360': '180', 'windDir': '南风', 'windScale': '3', 'windSpeed': '13', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:06:43,732 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T11:00+08:00', 'temp': '25', 'feelsLike': '26', 'icon': '305', 'text': '小雨', 'wind360': '180', 'windDir': '南风', 'windScale': '3', 'windSpeed': '13', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 11:06:43,732 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T11:00+08:00', 'temp': '25', 'feelsLike': '26', 'icon': '305', 'text': '小雨', 'wind360': '180', 'windDir': '南风', 'windScale': '3', 'windSpeed': '13', 'humidity': '86', 'precip': '4.0', 'pressure': '1005', 'vis': '30', 'cloud': '97', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 11:06:45,247 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 11:06:45,247 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T11:05+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:06:45,248 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T11:05+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 11:06:45,248 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 11:06:45,248 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 11:06:45,249 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 11:08:59,435 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:08:59,435 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:08:59,553 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:12:34,907 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:12:38,044 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:39,272 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:46,282 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:12:46,610 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:12:46,972 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:12:56,134 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:12:56,848 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:56,976 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,114 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,265 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,390 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,536 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,679 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:12:57,914 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:14:35,296 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:14:36,050 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:14:36,191 - INFO - [ClassBroom] 启动应用 TextDisplay
+2025-10-05 11:14:36,314 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:15:57,673 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:15:57,673 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:15:57,785 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:16:42,556 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:16:43,336 - ERROR - [ClassBroom] TextDisplay 启动失败: No module named 'apps.textdisplay'
+2025-10-05 11:16:43,633 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:16:47,047 - INFO - [ClassBroom] 进程退出
+2025-10-05 11:17:34,901 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:17:34,901 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:17:35,029 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:17:42,853 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:17:43,845 - ERROR - [ClassBroom] TextDisplay 启动失败: module 'tkinter.font' has no attribute 'Style'
+2025-10-05 11:17:44,611 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:19:07,376 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:19:07,376 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:19:07,489 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:19:12,178 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:19:12,988 - ERROR - [ClassBroom] TextDisplay 启动失败: bad -slant value "normal": must be roman, or italic
+2025-10-05 11:19:13,371 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:19:47,649 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:19:47,649 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:19:47,758 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:19:53,360 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:19:54,259 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:19:54,337 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:20:42,562 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:20:42,563 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:20:42,673 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:20:47,894 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:20:48,749 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:20:49,725 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:23:04,592 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:23:04,592 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:23:04,707 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:23:06,986 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:23:07,663 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:23:08,682 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:23:56,298 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:23:56,298 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:23:56,411 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:24:11,814 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:24:12,418 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:24:12,885 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:26:05,176 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:26:05,177 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:26:05,312 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:26:19,738 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:26:20,450 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:26:20,719 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:28:36,054 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:28:36,057 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:28:37,897 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:29:18,793 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:29:20,089 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:29:21,597 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:39:15,037 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:39:15,040 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:39:16,054 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:39:20,253 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:39:21,679 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:39:23,206 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:45:35,895 - INFO - [ClassBroom] 进程退出
+2025-10-05 11:48:05,182 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:48:05,183 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:48:05,303 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:48:06,600 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:48:07,265 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:48:08,091 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:48:33,545 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:48:33,546 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:48:33,669 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:48:47,462 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:48:47,462 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:48:47,606 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:48:48,897 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:48:49,789 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:48:49,969 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:49:06,462 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:49:06,631 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:49:07,011 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:49:07,580 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:49:07,828 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:49:12,558 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:49:13,332 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:49:13,515 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:49:15,248 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:49:15,469 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:49:17,094 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:49:17,639 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:49:17,804 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:50:10,909 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:50:10,910 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:50:11,081 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:50:12,594 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:50:13,275 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:50:13,606 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:50:30,403 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:50:30,403 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:50:30,519 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:50:31,474 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:50:32,179 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:50:32,725 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:51:46,676 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:51:46,677 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:51:46,786 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:51:47,795 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:51:48,487 - ERROR - [ClassBroom] TextDisplay 启动失败: Can't get local object 'EdgeTrayWindow.launch_TextDisplay_app.<locals>.text_display'
+2025-10-05 11:51:49,460 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:52:26,233 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:52:26,234 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:52:26,350 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:52:27,986 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:52:28,607 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:52:29,431 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:52:33,468 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:52:34,171 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:52:34,461 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:52:35,367 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:52:39,164 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:52:40,034 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 11:52:40,498 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:54:59,575 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:54:59,575 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:54:59,689 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:55:01,124 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:55:01,729 - ERROR - [ClassBroom] TextDisplay 启动失败: 'module' object is not callable
+2025-10-05 11:55:01,942 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:57:08,114 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 11:57:08,115 - INFO - [ClassBroom] 进程启动
+2025-10-05 11:57:08,398 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 11:57:13,502 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 11:57:14,792 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 11:58:20,150 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:04:09,551 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:04:09,552 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:04:09,667 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:04:14,778 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:04:16,105 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:07:09,647 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:07:09,648 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:07:09,789 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:07:10,877 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:07:11,639 - ERROR - [ClassBroom] TextDisplay 启动失败: 'TextDisplayApp' object has no attribute 'load_settings'
+2025-10-05 12:07:11,771 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:07:28,754 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:07:28,755 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:07:28,894 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:07:31,730 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:07:33,408 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:07:34,981 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:07:36,232 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:07:38,630 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:07:39,994 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:09:40,116 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:09:40,116 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:09:40,246 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:09:41,016 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:09:41,910 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:10:23,536 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:10:23,536 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:10:23,726 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:10:24,811 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:10:25,441 - ERROR - [ClassBroom] TextDisplay 启动失败: No module named 'apps.TextDisplay.config_manager'
+2025-10-05 12:10:25,703 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:11:04,436 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:11:05,003 - ERROR - [ClassBroom] TextDisplay 启动失败: No module named 'apps.TextDisplay.config_manager'
+2025-10-05 12:11:05,127 - ERROR - [ClassBroom] TextDisplay 启动失败: No module named 'apps.TextDisplay.config_manager'
+2025-10-05 12:11:06,849 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:11:07,081 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:11:07,177 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:11:08,359 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:11:11,824 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:13:38,537 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:13:38,538 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:13:38,654 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:13:49,362 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:13:50,112 - ERROR - [ClassBroom] TextDisplay 启动失败: unexpected indent (main.py, line 484)
+2025-10-05 12:13:51,687 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:14:45,697 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:14:45,698 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:14:45,810 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:14:47,324 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:14:48,025 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:48,026 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:48,028 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:48,260 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:14:51,983 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:51,984 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:51,985 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:52,296 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:52,296 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:52,297 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:52,833 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:52,833 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:52,834 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:52,991 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:52,991 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:52,992 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:53,132 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:53,132 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:53,134 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:53,607 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:53,607 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:53,608 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:14:53,833 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:14:53,833 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:14:53,834 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:15:18,687 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:15:19,051 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:15:21,819 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:15:21,819 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:15:21,820 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:15:23,518 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:15:23,518 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:15:23,520 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:16:57,792 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:16:57,792 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:16:57,916 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:16:59,595 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:17:00,377 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:00,377 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:00,378 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:00,579 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:17:01,819 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:01,820 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:01,821 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:02,463 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:02,464 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:02,465 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:02,629 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:02,630 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:02,631 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:02,778 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:02,779 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:02,779 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:03,006 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:03,007 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:03,008 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:04,432 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:04,433 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:04,434 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:05,520 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:05,521 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:05,525 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:06,137 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:06,138 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:06,141 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:09,268 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:09,269 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:09,271 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:09,272 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:17:55,044 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:17:55,956 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:55,956 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:55,958 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:55,959 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:55,959 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:55,960 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:55,960 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:17:56,084 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:56,085 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:56,086 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:56,086 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:56,087 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:56,088 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:56,088 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:17:56,257 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:56,257 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:56,258 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:56,259 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:17:56,259 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:17:56,260 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:17:56,260 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:17:56,322 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:18:10,365 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:18:10,366 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:18:10,522 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:18:11,489 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:18:12,208 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:18:12,209 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:18:12,212 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:18:12,432 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:18:13,201 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:18:13,202 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:18:13,203 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:18:13,203 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:19:34,941 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:19:34,941 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:19:35,064 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:19:36,688 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:19:37,512 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:19:37,542 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:19:37,542 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:19:37,543 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:19:38,958 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:19:39,117 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:19:39,161 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:13,942 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:14,116 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:18,150 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:38:18,151 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:38:18,439 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:38:19,978 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:20,826 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:38:20,826 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:38:20,829 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:38:20,829 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:38:20,921 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:23,608 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:24,614 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:38,459 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:39,153 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:38:39,154 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:38:39,155 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:38:39,155 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:38:39,307 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:38:39,308 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:38:39,309 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:38:39,309 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:38:39,434 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:38:39,434 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:38:39,436 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:38:39,437 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:38:39,640 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:50,214 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:50,259 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:50,740 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:38:51,561 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 12:38:51,562 - INFO - [Weather] 配置文件加载成功
+2025-10-05 12:38:51,637 - INFO - [Weather] 天气线程启动
+2025-10-05 12:38:51,654 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:38:52,092 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:38:53,228 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:38:53,229 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T12:36+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T12:32+08:00', 'temp': '24', 'feelsLike': '22', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '29', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:38:53,231 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T12:32+08:00', 'temp': '24', 'feelsLike': '22', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '29', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:38:53,232 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T12:32+08:00', 'temp': '24', 'feelsLike': '22', 'icon': '305', 'text': '小雨', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '29', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:38:54,698 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:38:54,699 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T12:38+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:38:54,700 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T12:38+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:38:54,701 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 12:38:54,701 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 12:38:54,703 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 12:38:54,703 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 12:38:59,122 - INFO - [Weather] 显示预警详细信息窗口
+2025-10-05 12:38:59,630 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:38:59,630 - INFO - [Weather] 应用退出
+2025-10-05 12:38:59,630 - INFO - [Weather] 线程停止
+2025-10-05 12:43:54,442 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:43:54,442 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:43:54,561 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:43:55,797 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:43:56,777 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:43:56,777 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:43:56,780 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:43:56,780 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:43:56,952 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:44:07,993 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:44:07,994 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:44:08,122 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:44:09,260 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:44:10,147 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 12:44:10,148 - INFO - [Weather] 配置文件加载成功
+2025-10-05 12:44:10,199 - INFO - [Weather] 天气线程启动
+2025-10-05 12:44:10,220 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:44:10,319 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:44:11,856 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:44:11,856 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T12:42+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:44:11,858 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:44:11,860 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:44:12,849 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:44:12,849 - INFO - [Weather] 应用退出
+2025-10-05 12:44:12,849 - INFO - [Weather] 线程停止
+2025-10-05 12:44:13,553 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:44:13,553 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T12:43+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:44:13,555 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T12:43+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:44:13,555 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 12:44:13,555 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 12:45:21,166 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:45:21,167 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:45:21,273 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:45:26,021 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:45:26,981 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 12:45:26,982 - INFO - [Weather] 配置文件加载成功
+2025-10-05 12:45:27,038 - INFO - [Weather] 天气线程启动
+2025-10-05 12:45:27,060 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:45:27,144 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:45:28,290 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:45:28,291 - INFO - [Weather] 应用退出
+2025-10-05 12:45:28,291 - INFO - [Weather] 线程停止
+2025-10-05 12:45:28,574 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:45:28,575 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T12:42+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:45:28,576 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:45:30,040 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:45:30,041 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T12:44+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:45:30,042 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T12:44+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:45:30,042 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 12:45:30,042 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 12:47:06,598 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:47:06,598 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:47:06,710 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:47:08,348 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:47:09,153 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 12:47:09,153 - INFO - [Weather] 配置文件加载成功
+2025-10-05 12:47:09,202 - INFO - [Weather] 天气线程启动
+2025-10-05 12:47:09,220 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:47:09,314 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:47:10,777 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:47:10,777 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T12:42+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:47:10,778 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:47:10,779 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:47:10,939 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:47:10,939 - INFO - [Weather] 应用退出
+2025-10-05 12:47:10,939 - INFO - [Weather] 线程停止
+2025-10-05 12:47:12,261 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:47:12,262 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T12:46+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:47:12,263 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T12:46+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:47:12,263 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 12:47:12,263 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 12:49:13,261 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:49:13,261 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:49:13,368 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:49:15,132 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:49:16,979 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 12:49:16,979 - INFO - [Weather] 配置文件加载成功
+2025-10-05 12:49:17,027 - INFO - [Weather] 天气线程启动
+2025-10-05 12:49:17,039 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:49:17,394 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:49:18,576 - INFO - [weather] 配置API请求URL: https://devapi.qweather.com/v7/weather/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:49:18,576 - INFO - [weather] API响应: {'code': '200', 'updateTime': '2025-10-05T12:42+08:00', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html', 'now': {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24'}, 'refer': {'sources': ['QWeather'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:49:18,577 - INFO - [Weather] 天气数据获取成功: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:49:18,578 - INFO - [Weather] 天气界面已更新: {'obsTime': '2025-10-05T12:40+08:00', 'temp': '25', 'feelsLike': '23', 'icon': '104', 'text': '阴', 'wind360': '135', 'windDir': '东南风', 'windScale': '5', 'windSpeed': '31', 'humidity': '84', 'precip': '23.0', 'pressure': '1005', 'vis': '30', 'cloud': '100', 'dew': '24', 'location': '101280801', 'fxLink': 'https://www.qweather.com/weather/shunde-101280801.html'}
+2025-10-05 12:49:20,081 - INFO - [weather] 预警API请求URL: https://devapi.qweather.com/v7/warning/now?location=101280801&key=7ab1cc2363ba4f5aa546f9961bb277cf&lang=zh
+2025-10-05 12:49:20,081 - INFO - [weather] 预警API响应: {'code': '200', 'updateTime': '2025-10-05T12:48+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:49:20,085 - INFO - [Weather] 预警数据获取成功: {'code': '200', 'updateTime': '2025-10-05T12:48+08:00', 'fxLink': 'https://www.qweather.com/severe-weather/shunde-101280801.html', 'warning': [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}], 'refer': {'sources': ['国家预警信息发布中心 (12379)'], 'license': ['QWeather Developers License']}}
+2025-10-05 12:49:20,086 - INFO - [Weather] fxLink更新为: https://www.qweather.com/severe-weather/shunde-101280801.html
+2025-10-05 12:49:20,087 - INFO - [Weather] 预警数据解析成功: [{'id': '10128080120251005091000810760628', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T09:10+08:00', 'title': '顺德区气象台发布雷雨大风橙色预警', 'startTime': '2025-10-05T09:10+08:00', 'endTime': '2025-10-06T09:10+08:00', 'status': 'update', 'level': '橙色', 'severity': 'Severe', 'severityColor': 'Orange', 'type': '1020', 'typeName': '雷雨大风', 'urgency': '', 'certainty': '', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'related': '10128080120251005021800037274571'}, {'id': '10128080120251005084000460423965', 'sender': '顺德区气象台', 'pubTime': '2025-10-05T08:40+08:00', 'title': '顺德区气象台发布暴雨黄色预警', 'startTime': '2025-10-05T08:40+08:00', 'endTime': '2025-10-06T08:40+08:00', 'status': 'active', 'level': '黄色', 'severity': 'Moderate', 'severityColor': 'Yellow', 'type': '1003', 'typeName': '暴雨', 'urgency': '', 'certainty': '', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'related': ''}]
+2025-10-05 12:49:20,088 - INFO - [Weather] 预警更新: [{'certainty': '', 'endTime': '2025-10-06T09:10+08:00', 'id': '10128080120251005091000810760628', 'level': '橙色', 'pubTime': '2025-10-05T09:10+08:00', 'related': '10128080120251005021800037274571', 'sender': '顺德区气象台', 'severity': 'Severe', 'severityColor': 'Orange', 'startTime': '2025-10-05T09:10+08:00', 'status': 'update', 'text': '过去1小时我区均安已出现9级阵风，预计未来1到2小时我区强雷雨持续，并伴有强雷电和10级以上阵风，局地可能有龙卷，顺德区气象台于2025年10月5日09时10分将雷雨大风黄色预警信号升级为橙色，同时我区台风白色和暴雨黄色预警信号正在生效中。区三防办、区气象局提醒，请立即组织防御，尤其是铁皮顶厂房、工棚和防风能力差的其他建筑物的业主应尽快组织人员撤离。', 'title': '顺德区气象台发布雷雨大风橙色预警', 'type': '1020', 'typeName': '雷雨大风', 'urgency': ''}, {'certainty': '', 'endTime': '2025-10-06T08:40+08:00', 'id': '10128080120251005084000460423965', 'level': '黄色', 'pubTime': '2025-10-05T08:40+08:00', 'related': '', 'sender': '顺德区气象台', 'severity': 'Moderate', 'severityColor': 'Yellow', 'startTime': '2025-10-05T08:40+08:00', 'status': 'active', 'text': '受台风“麦德姆”外围环流影响，预计今天白天我区有持续性降雨，累积雨量可达暴雨量级，并伴有8级左右阵风，顺德区气象台于2025年10月5日08时40分发布暴雨黄色预警信号，后续不排除升级预警信号的可能性。区三防办、区气象局提醒，请注意防御短时强降水。', 'title': '顺德区气象台发布暴雨黄色预警', 'type': '1003', 'typeName': '暴雨', 'urgency': ''}]
+2025-10-05 12:49:20,089 - WARNING - [Weather] 系统托盘不可用，无法显示通知
+2025-10-05 12:49:25,240 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:49:25,240 - INFO - [Weather] 线程停止
+2025-10-05 12:49:28,656 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:49:29,625 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 12:49:29,625 - INFO - [Weather] 天气线程启动
+2025-10-05 12:49:29,775 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:49:30,850 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 12:49:30,850 - INFO - [Weather] 线程停止
+2025-10-05 12:49:33,189 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:49:33,229 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:49:33,639 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:49:34,349 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:49:34,350 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:49:34,352 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:49:34,353 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:49:34,404 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 12:52:35,884 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 12:52:35,885 - INFO - [ClassBroom] 进程启动
+2025-10-05 12:52:36,010 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 12:52:37,640 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 12:52:38,425 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 12:52:38,425 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#FFFFFF, 对齐方式=left
+2025-10-05 12:52:38,427 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 12:52:38,427 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 12:52:38,702 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:01:51,099 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:01:51,099 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:01:51,210 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:03:27,160 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:03:28,109 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:03:28,110 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:03:28,112 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:03:28,169 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:03:28,498 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:03:53,865 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:03:53,866 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:03:53,987 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:03:55,016 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:03:55,671 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:03:55,672 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:03:55,673 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:03:55,726 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:03:55,889 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:04:02,237 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:04:02,237 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:04:02,238 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:04:03,192 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:04:03,193 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:04:03,194 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:04:07,662 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:04:07,662 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:04:07,663 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:04:08,036 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:04:08,037 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:04:08,038 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:19,687 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:09:19,687 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:09:19,798 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:09:22,142 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:09:22,991 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:22,992 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:22,994 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:23,048 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:09:23,214 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:09:28,217 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:28,218 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:28,219 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:28,586 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:28,587 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:28,588 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:28,729 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:28,729 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:28,730 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:28,840 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:28,840 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:28,841 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:30,080 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:30,080 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:30,081 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:30,137 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:30,138 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:30,139 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:30,272 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:30,272 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:30,273 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:30,359 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:30,359 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:30,360 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:09:31,491 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:09:31,491 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:09:31,492 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:10:24,822 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:10:28,810 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:11:14,620 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:11:14,621 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:11:14,727 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:11:16,008 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:11:16,680 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:11:16,681 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:11:16,683 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:11:16,735 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:11:17,161 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:13:34,933 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:13:34,934 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:13:35,047 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:13:36,559 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:13:37,498 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:13:37,498 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:13:37,500 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:13:37,552 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:13:37,749 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:45:27,330 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 13:45:27,332 - INFO - [ClassBroom] 进程启动
+2025-10-05 13:45:27,685 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 13:45:32,022 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 13:45:32,945 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:32,946 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:32,949 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:33,064 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 13:45:33,246 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 13:45:36,526 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:36,528 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:36,529 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:37,045 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:37,045 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:37,046 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:38,018 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:38,018 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:38,020 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:39,491 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:39,492 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:39,494 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:41,821 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:41,823 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:41,826 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 13:45:42,185 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 13:45:42,185 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 13:45:42,186 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:06,076 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:50:07,494 - INFO - [Weather] 成功导入天气API模块
+2025-10-05 17:50:07,496 - INFO - [Weather] 配置文件加载成功
+2025-10-05 17:50:07,574 - INFO - [Weather] 天气线程启动
+2025-10-05 17:50:07,609 - INFO - [ClassBroom] Weather 已启动
+2025-10-05 17:50:08,137 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:50:09,059 - INFO - [Weather] 窗口关闭事件触发
+2025-10-05 17:50:09,060 - INFO - [Weather] 线程停止
+2025-10-05 17:50:09,375 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:50:10,096 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:10,096 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:10,098 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:10,120 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:50:10,432 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:50:11,128 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:11,129 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:11,130 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:11,543 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:50:12,192 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:12,193 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:12,195 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:12,221 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:50:12,454 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:50:14,157 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:14,158 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:14,159 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:15,017 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:50:15,600 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:15,601 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:15,602 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:15,624 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:50:15,854 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:50:18,146 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:18,147 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:18,157 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:18,561 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:18,562 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:18,564 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:19,954 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:50:19,954 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:50:19,955 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:50:57,867 - INFO - [ClassBroom] 进程退出
+2025-10-05 17:52:28,546 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 17:52:28,549 - INFO - [ClassBroom] 进程启动
+2025-10-05 17:52:28,822 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 17:52:30,254 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:52:31,452 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:52:31,453 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:52:31,456 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:52:31,544 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:52:31,917 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:52:38,571 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:52:38,572 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=center
+2025-10-05 17:52:38,574 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:52:38,575 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:52:38,576 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=center
+2025-10-05 17:52:38,577 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:53:23,350 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:53:23,487 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:53:31,904 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 17:53:31,904 - INFO - [ClassBroom] 进程启动
+2025-10-05 17:53:32,299 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 17:53:57,214 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:53:57,907 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:53:57,908 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:53:57,909 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:53:57,989 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:53:58,278 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:54:00,814 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:00,815 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:00,816 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:03,664 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:03,666 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:03,667 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:06,330 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:06,330 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=30, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:06,332 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:07,617 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:07,617 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=30, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:07,618 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:11,583 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:11,583 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=30, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=center
+2025-10-05 17:54:11,585 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:11,585 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:11,585 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=30, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=center
+2025-10-05 17:54:11,587 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:20,327 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:20,328 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=30, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=center
+2025-10-05 17:54:20,329 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:20,575 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:54:21,148 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:21,149 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:21,150 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:54:21,176 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:54:21,562 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:54:22,183 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:54:22,183 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:54:22,185 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:18,389 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 17:57:18,390 - INFO - [ClassBroom] 进程启动
+2025-10-05 17:57:18,692 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 17:57:20,946 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:57:21,708 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:21,709 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:21,719 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:21,722 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:21,723 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:21,726 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:21,831 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:57:22,051 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:57:23,824 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:23,825 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:23,827 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:23,978 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:23,979 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:23,980 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:24,119 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:24,120 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:24,122 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:24,351 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:24,352 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:24,353 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:25,250 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:25,251 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:25,252 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:25,538 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:57:26,110 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:26,110 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:26,112 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:26,113 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:26,113 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:26,114 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:26,146 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:57:26,435 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:57:29,634 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:57:30,319 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:30,320 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:30,321 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:30,323 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:30,324 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:30,331 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:30,373 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:57:30,523 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:57:32,025 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:32,025 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:32,027 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:34,006 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:34,006 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:34,007 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:34,204 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:34,204 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:34,206 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:34,371 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:34,373 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:34,376 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:34,792 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:34,793 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:34,794 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:35,016 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:35,016 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:35,019 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:35,212 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:35,213 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:35,217 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:35,363 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:35,364 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:35,366 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:36,882 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:36,883 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:36,884 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:39,298 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:57:39,393 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:57:40,920 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:40,920 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:40,921 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:41,271 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:57:42,119 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:42,120 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:42,123 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:42,124 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:42,125 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:42,127 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:57:42,163 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:57:42,498 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:57:43,083 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:57:43,083 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:57:43,085 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:58:52,955 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 17:58:52,955 - INFO - [ClassBroom] 进程启动
+2025-10-05 17:58:53,107 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 17:58:57,575 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:58:58,489 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:58:58,489 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:58:58,490 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:58:58,559 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:58:58,895 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 17:59:00,224 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:59:00,224 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:59:00,225 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:59:00,377 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:59:00,379 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:59:00,380 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:59:00,503 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:59:00,504 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:59:00,505 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:59:01,072 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:59:01,073 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:59:01,074 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:59:01,382 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 17:59:01,951 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 17:59:01,952 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 17:59:01,953 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 17:59:01,979 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 17:59:02,249 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:15,665 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 18:00:15,666 - INFO - [ClassBroom] 进程启动
+2025-10-05 18:00:15,837 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 18:00:24,752 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:25,373 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:25,374 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:25,378 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:25,431 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:00:25,712 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:27,139 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:27,140 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:27,142 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:27,311 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:27,311 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:27,312 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:27,427 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:27,428 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:27,429 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:27,821 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:27,822 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:27,823 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:28,160 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:28,817 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:28,817 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:28,818 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:28,838 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:00:29,152 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:29,904 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:29,904 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:29,905 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:32,864 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:33,150 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:33,507 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:34,007 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:34,008 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:34,009 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:34,039 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:00:34,221 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:34,694 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:34,695 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:34,697 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:34,953 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:34,954 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:34,956 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:35,110 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:35,111 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:35,113 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:36,139 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:36,140 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:36,141 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:36,594 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:36,594 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:36,595 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:36,882 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:37,508 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:37,509 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:37,510 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:37,536 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:00:37,916 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:51,690 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:00:52,250 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:52,251 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:52,255 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:00:52,281 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:00:52,459 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:00:53,194 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:00:53,195 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:00:53,196 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:02,408 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:01:03,013 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:03,013 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:03,015 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:03,045 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:01:03,253 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:01:05,740 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:05,742 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:05,744 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:06,177 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:06,178 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:06,179 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:06,507 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:06,509 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:06,511 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:06,937 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:01:07,216 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:01:07,389 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:07,391 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:07,392 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:10,928 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:10,930 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:10,933 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:11,394 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:01:11,394 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:01:11,396 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:01:50,641 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:01:51,089 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:02,730 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 18:02:02,730 - INFO - [ClassBroom] 进程启动
+2025-10-05 18:02:02,913 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 18:02:04,080 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:04,183 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:04,447 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:05,133 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:02:05,297 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:07,695 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:02:07,696 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:02:07,697 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:02:07,994 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:08,474 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:02:08,824 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:09,885 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:02:09,886 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:02:09,888 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:02:11,920 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:12,515 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:02:12,681 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:14,922 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:02:14,923 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:02:14,924 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:02:17,729 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:19,383 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:02:19,567 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:41,837 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:41,956 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:51,152 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:51,470 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:02:53,489 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 18:02:53,490 - INFO - [ClassBroom] 进程启动
+2025-10-05 18:02:53,661 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 18:02:54,892 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:02:55,592 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:02:55,774 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:03:13,008 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-05 18:03:13,009 - INFO - [ClassBroom] 进程启动
+2025-10-05 18:03:13,204 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-05 18:03:14,897 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:03:15,616 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-05 18:03:15,771 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:03:24,891 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-05 18:03:24,892 - INFO - [TextDisplay] 保存配置: 字体=Microsoft YaHei, 大小=12, 粗体=False, 斜体=False, 下划线=False, 文字颜色=#000000, 背景颜色=#ffffff, 对齐方式=left
+2025-10-05 18:03:24,894 - INFO - [TextDisplay] 配置已成功保存到主配置文件
+2025-10-05 18:03:26,212 - INFO - [ClassBroom] 窗口已展开
+2025-10-05 18:03:26,904 - INFO - [ClassBroom] 窗口已收起
+2025-10-05 18:03:28,047 - INFO - [ClassBroom] 进程退出

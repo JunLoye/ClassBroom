@@ -3,17 +3,16 @@ import sys
 import time
 import logging
 import json
-import webbrowser
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout,
                              QLabel, QVBoxLayout, QFrame, QPushButton, QDialog, QFormLayout, QLineEdit, QSpinBox, 
                              QDialogButtonBox, QComboBox, QCheckBox, QScrollArea,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
-from PyQt6.QtGui import QFont, QGuiApplication
+from PyQt6.QtGui import QFont
 
 try:
-    from apps.weather.api.get_weather import get_weather, get_weather_warning
+    from apps.Weather.api.get_weather import get_weather, get_weather_warning
     logging.info("[Weather] 成功导入天气API模块")
 except ImportError:
     logging.error("[Weather] 未找到天气API模块，请检查是否已安装")
@@ -31,7 +30,7 @@ default_config = {
 
 try:
     with open('config.json', 'r', encoding='utf-8') as f:
-        CONFIG = json.load(f)['apps']['weather']['config']
+        CONFIG = json.load(f)['apps']['Weather']['config']
     logging.info("[Weather] 配置文件加载成功")
 except Exception as e:
     logging.warning(f"[Weather] 读取配置文件失败: {e}")
@@ -39,7 +38,7 @@ except Exception as e:
 
 # ----------------------- 天气线程 -----------------------
 class WeatherWorker(QThread):
-    weather_data = pyqtSignal(dict)
+    Weather_data = pyqtSignal(dict)
     warning_data = pyqtSignal(list)
     fxLink = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
@@ -57,7 +56,7 @@ class WeatherWorker(QThread):
                 data = get_weather(CONFIG=CONFIG)
                 if data:
                     logging.info(f"[Weather] 天气数据获取成功: {data}")
-                    self.weather_data.emit(data)
+                    self.Weather_data.emit(data)
                     
                 warnings_data = get_weather_warning(CONFIG)
                 logging.info(f"[Weather] 预警数据获取成功: {warnings_data}")
@@ -82,6 +81,9 @@ class WeatherWorker(QThread):
     def stop(self):
         self.running = False
         logging.info("[Weather] 线程停止")
+        # 确保线程立即退出
+        self.terminate()
+        self.wait()
 
 
 # ----------------------- 天气小组件 -----------------------
@@ -167,7 +169,7 @@ class SettingsDialog(QDialog):
 
         try:
             with open('config.json', 'r', encoding='utf-8') as f:
-                current_config = json.load(f)['apps']['weather']['config']
+                current_config = json.load(f)['apps']['Weather']['config']
             logging.info("[Weather] 读取最新配置文件成功")
         except Exception as e:
             logging.warning(f"[Weather] 读取配置文件失败，使用默认配置: {e}")
@@ -215,7 +217,7 @@ class SettingsDialog(QDialog):
         try:
             with open("config.json", "r", encoding="utf-8") as f:
                 full_config = json.load(f)
-            full_config["apps"]["weather"]["config"] = CONFIG
+            full_config["apps"]["Weather"]["config"] = CONFIG
             with open("config.json", "w", encoding="utf-8") as f:
                 json.dump(full_config, f, indent=4, ensure_ascii=False)
             logging.info(f"[Weather] 配置已保存: {CONFIG}")
@@ -239,19 +241,19 @@ class WeatherApp(QMainWindow):
 
     # init_tray_icon方法已移除
         # 系统托盘功能已移除
-            # self.tray_icon = QSystemTrayIcon(self)  # 已移除
-            # self.tray_icon.setIcon(self.style().standardIcon(  # 已移除
-                # getattr(self.style().StandardPixmap, 'SP_MessageBoxInformation',  # 已移除 
-                        # self.style().StandardPixmap.SP_ComputerIcon)  # 已移除
-            # ))  # 已移除
-            # self.tray_icon.setToolTip("天气监测")  # 已移除
+            # self.tray_icon = QSystemTrayIcon(self)
+            # self.tray_icon.setIcon(self.style().standardIcon(
+                # getattr(self.style().StandardPixmap, 'SP_MessageBoxInformation', 
+                        # self.style().StandardPixmap.SP_ComputerIcon)
+            # ))
+            # self.tray_icon.setToolTip("天气监测")
             
             # 连接消息点击信号
-            # self.tray_icon.messageClicked.connect(self.on_notification_clicked)  # 已移除
+            # self.tray_icon.messageClicked.connect(self.on_notification_clicked)
             
-            # self.tray_icon.show()  # 已移除
+            # self.tray_icon.show()
         # else:
-        #     logging.warning("[Weather] 系统托盘不可用，无法显示系统通知")  # 已移除
+        #     logging.warning("[Weather] 系统托盘不可用，无法显示系统通知")
 
     # def on_notification_clicked(self):
     #     """点击系统通知时的处理"""
@@ -337,12 +339,12 @@ class WeatherApp(QMainWindow):
     def init_worker(self):
         self.worker = WeatherWorker(location=CONFIG['location'], update_interval=CONFIG['update_interval'])
         self.worker.fxLink.connect(self.update_fxLink)
-        self.worker.weather_data.connect(self.update_weather)
+        self.worker.Weather_data.connect(self.update_Weather)
         self.worker.warning_data.connect(self.update_warnings)
         self.worker.error_occurred.connect(self.show_error)
         self.worker.start()
 
-    def update_weather(self, data):
+    def update_Weather(self, data):
         try:
             unit = CONFIG.get("temperature_unit", "C")
             temp = data.get("temp")
@@ -450,12 +452,22 @@ class WeatherApp(QMainWindow):
             self.worker.stop()
             self.worker.quit()
             self.worker.wait()
-        QApplication.quit()
+        # 关闭当前窗口
+        self.close()
+        # 确保窗口被销毁
+        self.deleteLater()
 
     def closeEvent(self, event):
-        """重写关闭事件，确保线程正确停止"""
+        """重写关闭事件，确保线程正确停止并退出应用"""
         logging.info("[Weather] 窗口关闭事件触发")
-        self.quit_application()
+        # 先停止线程
+        if hasattr(self, 'worker'):
+            self.worker.stop()
+            self.worker.quit()
+            self.worker.wait()
+        # 确保窗口被销毁
+        self.deleteLater()
+        # 接受关闭事件
         event.accept()
 
     def open_settings(self):
@@ -497,7 +509,7 @@ def main():
     font = QFont("Microsoft YaHei", 11)
     app.setFont(font)
 
-    right_window = RightEdgeWindow()
-    right_window.show()
+    weather_app = WeatherApp()  # 修复：确保实例化正确的主窗口类
+    weather_app.show()
 
     sys.exit(app.exec())

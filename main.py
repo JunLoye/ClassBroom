@@ -3,11 +3,12 @@ import sys
 import os
 import json
 import logging
+
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLabel, QFrame, QScrollArea, QGridLayout,
                              QSystemTrayIcon, QMenu, QStyle)
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QFont, QPixmap, QGuiApplication, QAction, QCursor
+from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor
 
 
 # ----------------------- 嵌套文件 -----------------------
@@ -100,21 +101,14 @@ class AppLauncher(QFrame):
         icon_label.setFixedSize(48, 48)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon_path = self.app_config.get("icon", "")
-        if icon_path and os.path.exists(icon_path):
-            pixmap = QPixmap(icon_path)
-            pixmap = pixmap.scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio,
-                                 Qt.TransformationMode.SmoothTransformation)
-            icon_label.setPixmap(pixmap)
-        else:
-            icon_text = self.app_config.get("emoji", "📱")
-            icon_label.setText(icon_text)
-            icon_label.setStyleSheet("""
-                QLabel {
-                    font-size: 24px;
-                    background: transparent;
-                }
-            """)
+        icon_text = self.app_config.get("icon", "📱")
+        icon_label.setText(icon_text)
+        icon_label.setStyleSheet("""
+            QLabel {
+                font-size: 24px;
+                background: transparent;
+            }
+        """)
 
         name_label = QLabel(self.app_config.get("name", "应用"))
         name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -175,8 +169,7 @@ class EdgeTrayWindow(QMainWindow):
         self.animation = QPropertyAnimation(self, b"geometry")
         self.animation.setDuration(250)
 
-        self.weather_app = None
-        self.notes_app = None
+        self.Weather_app = None
         self.countdown_app = None
         
         self.init_ui()
@@ -426,26 +419,26 @@ class EdgeTrayWindow(QMainWindow):
 
 
     def on_app_clicked(self, app_id):
-        if app_id == "weather":
-            self.launch_weather_app()
-        elif app_id == "notes":
-            self.launch_notes_app()
+        if app_id == "Weather":
+            self.launch_Weather_app()
         elif app_id == "countdown":
             self.launch_countdown_app()
+        elif app_id == "TextDisplay":
+            self.launch_TextDisplay_app()
         else:
             logging.info(f"[ClassBroom] 启动应用 {app_id}")
 
-    def launch_weather_app(self):
+    def launch_Weather_app(self):
         try:
-            from apps.weather.main import WeatherApp
+            from apps.Weather.main import WeatherApp
 
-            self.weather_app = WeatherApp()
+            self.Weather_app = WeatherApp()
 
             screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-            center_x = screen_geometry.center().x() - self.weather_app.width() // 2
-            center_y = screen_geometry.center().y() - self.weather_app.height() // 2
-            self.weather_app.move(center_x, center_y)
-            self.weather_app.show()
+            center_x = screen_geometry.center().x() - self.Weather_app.width() // 2
+            center_y = screen_geometry.center().y() - self.Weather_app.height() // 2
+            self.Weather_app.move(center_x, center_y)
+            self.Weather_app.show()
 
             logging.info("[ClassBroom] Weather 已启动")
 
@@ -468,14 +461,31 @@ class EdgeTrayWindow(QMainWindow):
         self.show()
         self.expand_window()
 
+    def launch_TextDisplay_app(self):
+        try:
+            # 直接创建PyQt6版本的文本显示窗口
+
+            from apps.TextDisplay.main import main as textdisplay_qt_main
+            
+            self.TextDisplay_manager = textdisplay_qt_main()
+            logging.info("[ClassBroom] TextDisplay 已启动")
+            
+        except Exception as e:
+            logging.error(f"[ClassBroom] TextDisplay 启动失败: {e}")
+
     def quit_application(self):
-        logging.info("[ClassBroom] 应用退出")
-        if self.weather_app:
-            self.weather_app.close()
-        if self.notes_app:
-            self.notes_app.close()
-        if self.countdown_app:
+        logging.info("[ClassBroom] 进程退出")
+        # 关闭所有子应用
+        if hasattr(self, 'Weather_app') and self.Weather_app:
+            self.Weather_app.close()
+        if hasattr(self, 'countdown_app') and self.countdown_app:
             self.countdown_app.close()
+        if hasattr(self, 'TextDisplay_manager') and self.TextDisplay_manager:
+            try:
+                self.TextDisplay_manager.close()
+            except:
+                pass
+        # 不使用sys.exit避免GIL问题
         QApplication.quit()
 
 
@@ -491,7 +501,9 @@ def main():
     launcher = EdgeTrayWindow()
     launcher.show()
 
-    sys.exit(app.exec())
+    # 不使用sys.exit避免GIL问题
+    app.exec()
+    # 应用正常退出
 
 if __name__ == '__main__':
     main()
