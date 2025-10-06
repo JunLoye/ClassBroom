@@ -1,7 +1,7 @@
 # ClassBroom（教室的飞天扫帚）
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/LoyeJun/ClassBroom)
 
-[中文说明](README.zh-CN.md) | [English](README.md)
+[中文说明](README.md)
 
 ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用工具，包括天气显示、倒计时、文本显示等功能。
 
