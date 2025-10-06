@@ -12,7 +12,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont
 
 try:
-    from apps.Weather.api.get_weather import get_weather, get_weather_warning
+    from apps.Weather.api.api_weather import get_weather, get_weather_warning
     logging.info("[Weather] 成功导入天气API模块")
 except ImportError:
     logging.error("[Weather] 未找到天气API模块，请检查是否已安装")
@@ -54,12 +54,13 @@ class WeatherWorker(QThread):
         while self.running:
             try:
                 data = get_weather(CONFIG=CONFIG)
-                if data:
-                    logging.info(f"[Weather] 天气数据获取成功: {data}")
-                    self.Weather_data.emit(data)
+                temp_logging = data.copy()
+                temp_logging['location'] = '***'
+                temp_logging['fxLink'] = 'https://www.qweather.com/weather/***.html'
+                logging.info(f"[Weather] 天气数据解析成功: {temp_logging}")
+                self.Weather_data.emit(data)
                     
                 warnings_data = get_weather_warning(CONFIG)
-                logging.info(f"[Weather] 预警数据获取成功: {warnings_data}")
                 
                 if isinstance(warnings_data, dict):
                     warnings = warnings_data.get('warning')
@@ -81,7 +82,6 @@ class WeatherWorker(QThread):
     def stop(self):
         self.running = False
         logging.info("[Weather] 线程停止")
-        # 确保线程立即退出
         self.terminate()
         self.wait()
 
@@ -220,7 +220,10 @@ class SettingsDialog(QDialog):
             full_config["apps"]["Weather"]["config"] = CONFIG
             with open("config.json", "w", encoding="utf-8") as f:
                 json.dump(full_config, f, indent=4, ensure_ascii=False)
-            logging.info(f"[Weather] 配置已保存: {CONFIG}")
+            temp_logging = CONFIG
+            temp_logging['location'] = '***'
+            temp_logging['api_key'] = '***'
+            logging.info(f"[Weather] 配置已保存: {temp_logging}")
         except Exception as e:
             logging.error(f"[Weather] 保存配置失败: {e}")
 
@@ -364,7 +367,7 @@ class WeatherApp(QMainWindow):
                 self.condition_widget.update_value(data['text'])
             current_time = datetime.now().strftime("%H:%M")
             self.update_widget.update_value(current_time, "更新")
-            logging.info(f"[Weather] 天气界面已更新: {data}")
+            # logging.info(f"[Weather] 天气界面已更新: {data}")
         except Exception as e:
             self.show_error(f"[Weather] 更新天气数据时出错: {e}")
 
@@ -465,9 +468,7 @@ class WeatherApp(QMainWindow):
             self.worker.stop()
             self.worker.quit()
             self.worker.wait()
-        # 确保窗口被销毁
-        self.deleteLater()
-        # 接受关闭事件
+        # 接受关闭事件，让Qt自动处理对象生命周期
         event.accept()
 
     def open_settings(self):
@@ -509,7 +510,7 @@ def main():
     font = QFont("Microsoft YaHei", 11)
     app.setFont(font)
 
-    weather_app = WeatherApp()  # 修复：确保实例化正确的主窗口类
+    weather_app = WeatherApp()
     weather_app.show()
 
     sys.exit(app.exec())

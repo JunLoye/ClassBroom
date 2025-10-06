@@ -6,9 +6,9 @@
             "enabled": true,
             "position": 0,
             "config": {
-                "location": "101280801",
+                "location": "***",
                 "update_interval": 300,
-                "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
+                "api_key": "***",
                 "language": "zh",
                 "temperature_unit": "C",
                 "notifications": true
@@ -20,7 +20,7 @@
             "enabled": false,
             "position": 1,
             "config": {
-                "target_date": "2024-12-31",
+                "target_date": "1999-01-01",
                 "title": "目标日"
             }
         },
@@ -30,7 +30,15 @@
             "enabled": true,
             "position": 2,
             "config": {
-                "content": ""
+                "content": "",
+                "font_family": "Microsoft YaHei",
+                "font_size": 12,
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "text_color": "#000000",
+                "bg_color": "#ffffff",
+                "alignment": "left"
             }
         }
     },

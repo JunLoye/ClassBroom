@@ -477,7 +477,10 @@ class EdgeTrayWindow(QMainWindow):
         logging.info("[ClassBroom] 进程退出")
         # 关闭所有子应用
         if hasattr(self, 'Weather_app') and self.Weather_app:
-            self.Weather_app.close()
+            try:
+                self.Weather_app.close()
+            except RuntimeError as e:
+                logging.warning(f"[ClassBroom] WeatherApp关闭错误: {e}")
         if hasattr(self, 'countdown_app') and self.countdown_app:
             self.countdown_app.close()
         if hasattr(self, 'TextDisplay_manager') and self.TextDisplay_manager:
