@@ -37,58 +37,9 @@ ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用
 
 ## 配置文件
 
-项目使用 `config.json` 作为配置文件，包含所有应用的配置信息。配置文件结构如下：
+项目使用 `config.json` 作为配置文件，包含所有应用的配置信息。
 > [!IMPORTANT]
 > 首次运行需要手动配置`config.json`，详细信息请到[最新版本Releases](https://github.com/LoyeJun/ClassBroom/releases/latest)查看
-```json
-{
-    "apps": {
-        "Weather": {
-            "name": "天气",
-            "icon": "***",
-            "enabled": true,
-            "position": 0,
-            "config": {
-                "location": "***",
-                "update_interval": 300,
-                "api_key": "***",
-                "language": "zh",
-                "temperature_unit": "celsius",
-                "notifications": true
-            }
-        },
-        "Countdown": {
-            "name": "倒计时",
-            "icon": "***",
-            "enabled": true,
-            "position": 1,
-            "config": {
-                "target_date": "***",
-                "title": "倒计时"
-            }
-        },
-        "TextDisplay": {
-            "name": "文本显示",
-            "icon": "***",
-            "enabled": true,
-            "position": 2,
-            "config": {
-                "content": "***",
-                "font_family": "Arial",
-                "font_size": 12,
-                "bold": false,
-                "italic": false,
-                "underline": false,
-                "text_color": "#000000",
-                "bg_color": "#FFFFFF",
-                "alignment": "left"
-            }
-        }
-    },
-    "theme": "light",
-    "columns": 3
-}
-```
 
 ---
 
