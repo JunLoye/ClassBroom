@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
+CONFIG_PATH = 'config.json'
 
 class TextDisplayWindow(QMainWindow):
     closed = pyqtSignal()
@@ -355,13 +355,10 @@ class TextDisplayWindow(QMainWindow):
 
     def save_text_to_config(self):
         try:
-            logging.info("[TextDisplay] 开始保存配置到主配置文件")
+            logging.info("[TextDisplay] 开始保存配置")
             
-            if not os.path.exists(CONFIG_PATH):
-                config = {}
-            else:
-                with open(CONFIG_PATH, "r", encoding="utf-8") as file:
-                    config = json.load(file)
+            with open(CONFIG_PATH, "r", encoding="utf-8") as file:
+                config = json.load(file)
 
             text_content = self.text_input.text()
 
@@ -383,13 +380,11 @@ class TextDisplayWindow(QMainWindow):
                 "bg_color": self.bg_color.name(),
                 "alignment": alignment
             }
-            config["apps"]["TextDisplay"]["config"].update(temp_update)
-
-            temp_update['content'] = '***'
-            logging.info(f"[TextDisplay] 保存配置: {temp_update}")
+            
+            config['apps']['TextDisplay']['config'].update(temp_update)
 
             with open(CONFIG_PATH, "w", encoding="utf-8") as file:
-                json.dump(config, file, ensure_ascii=False, indent=4)
+                json.dump(config, file, indent=4)
 
             logging.info("[TextDisplay] 保存配置成功")
             

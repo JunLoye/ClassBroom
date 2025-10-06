@@ -59,10 +59,7 @@ def save_launcher_config(config=None):
         logging.error(f"[ClassBroom] 保存启动器配置失败: {e}")
         return False
 
-# 加载默认配置
-default_launcher_config = load_default_config()
 
-# 尝试加载用户配置
 LAUNCHER_CONFIG = {}
 try:
     if os.path.exists(CONFIG_FILE):
@@ -73,6 +70,7 @@ try:
         raise FileNotFoundError("配置文件不存在")
 except Exception as e:
     logging.info(f"[ClassBroom] 读取启动器配置文件失败，使用默认配置: {e}")
+    default_launcher_config = load_default_config()
     if default_launcher_config:
         LAUNCHER_CONFIG = default_launcher_config.copy()
         save_launcher_config(LAUNCHER_CONFIG)

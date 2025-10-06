@@ -1,8 +1,8 @@
 {
     "apps": {
         "Weather": {
-            "name": "天气监测",
-            "icon": "🌤️",
+            "name": "\u5929\u6c14\u76d1\u6d4b",
+            "icon": "\ud83c\udf24\ufe0f",
             "enabled": true,
             "position": 0,
             "config": {
@@ -15,22 +15,22 @@
             }
         },
         "Countdown": {
-            "name": "倒计日",
-            "icon": "⏰",
+            "name": "\u5012\u8ba1\u65e5",
+            "icon": "\u23f0",
             "enabled": false,
             "position": 1,
             "config": {
                 "target_date": "1999-01-01",
-                "title": "目标日"
+                "title": "\u76ee\u6807\u65e5"
             }
         },
         "TextDisplay": {
-            "name": "大字显示",
-            "icon": "📄",
+            "name": "\u5927\u5b57\u663e\u793a",
+            "icon": "\ud83d\udcc4",
             "enabled": true,
             "position": 2,
             "config": {
-                "content": "",
+                "content": "666666",
                 "font_family": "Microsoft YaHei",
                 "font_size": 12,
                 "bold": false,
