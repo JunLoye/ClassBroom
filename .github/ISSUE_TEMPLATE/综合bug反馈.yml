@@ -54,7 +54,7 @@ body:
   attributes:
     label: "其他信息"
     description: "提供其他有助于解决问题的信息，例如："
-    placeholder: |
+    value: |
       - 操作系统: Windows xx / Linux / macOS
       - ClassBroom 版本: Alpha / Beta / v-x.x.x
       - 其他可能相关的信息
