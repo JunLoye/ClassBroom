@@ -21,15 +21,3 @@ body:
     description: "简要描述你希望添加的功能或改进点。"
   validations:
     required: true
-  
-- type: textarea
-  id: "yml-3"
-  attributes:
-    label: "建议的解决方案或实现方式"
-    description: "- 期望的使用场景或工作流程
-- 需要支持的功能点或操作方式"
-    value: |
-      （示例）
-      我需要这个功能来xxxx。
-  validations:
-    required: true
