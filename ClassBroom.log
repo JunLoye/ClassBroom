@@ -1,0 +1,96 @@
+2025-10-06 10:48:43,221 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 10:48:43,222 - INFO - [ClassBroom] 进程启动
+2025-10-06 10:48:43,434 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 10:48:45,271 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 10:48:45,555 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 10:48:50,510 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 10:48:59,502 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 10:49:42,488 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 10:49:43,582 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:29:21,782 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 17:29:21,785 - INFO - [ClassBroom] 进程启动
+2025-10-06 17:29:22,312 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 17:29:24,708 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:29:25,329 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:29:25,854 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:29:27,608 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 17:29:27,717 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:29:28,685 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-06 17:29:28,686 - INFO - [TextDisplay] 保存配置: {'content': '***', 'font_family': 'Microsoft YaHei', 'font_size': 12, 'bold': False, 'italic': False, 'underline': False, 'text_color': '#000000', 'bg_color': '#ffffff', 'alignment': 'left'}
+2025-10-06 17:29:28,688 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 17:29:30,258 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:29:31,174 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 17:29:31,450 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:29:33,622 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-06 17:29:33,623 - INFO - [TextDisplay] 保存配置: {'content': '***', 'font_family': 'Microsoft YaHei', 'font_size': 12, 'bold': False, 'italic': False, 'underline': False, 'text_color': '#000000', 'bg_color': '#ffffff', 'alignment': 'left'}
+2025-10-06 17:29:33,625 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 17:29:36,176 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:29:37,411 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 17:29:37,645 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:29:40,840 - INFO - [TextDisplay] 开始保存配置到主配置文件
+2025-10-06 17:29:40,841 - INFO - [TextDisplay] 保存配置: {'content': '***', 'font_family': 'Microsoft YaHei', 'font_size': 12, 'bold': False, 'italic': False, 'underline': False, 'text_color': '#000000', 'bg_color': '#ffffff', 'alignment': 'left'}
+2025-10-06 17:29:40,843 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 17:36:10,137 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:36:10,435 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:55:16,559 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 17:55:16,561 - INFO - [ClassBroom] 进程启动
+2025-10-06 17:55:16,812 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 17:55:18,824 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:55:19,680 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 17:55:19,899 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:55:21,798 - INFO - [TextDisplay] 开始保存配置
+2025-10-06 17:55:21,802 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 17:55:22,086 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 17:55:22,805 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 17:55:22,997 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 17:55:23,663 - INFO - [TextDisplay] 开始保存配置
+2025-10-06 17:55:23,665 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 18:01:21,807 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 18:01:21,808 - INFO - [ClassBroom] 进程启动
+2025-10-06 18:01:21,977 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 22:50:34,020 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 22:50:34,030 - INFO - [ClassBroom] 进程启动
+2025-10-06 22:50:34,545 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 22:50:49,365 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:50:50,819 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:50:51,150 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:50:59,626 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:51:00,335 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:51:00,756 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:51:00,913 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:51:01,029 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:54:00,699 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:54:02,634 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:59:31,246 - INFO - [ClassBroom] 成功读取配置文件
+2025-10-06 22:59:31,248 - INFO - [ClassBroom] 进程启动
+2025-10-06 22:59:31,461 - INFO - [ClassBroom] 系统托盘初始化完成
+2025-10-06 22:59:33,923 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:59:34,667 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:59:35,003 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:59:39,305 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:59:39,953 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:59:40,292 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:59:55,113 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:59:56,279 - INFO - [ClassBroom] TextDisplay 已启动
+2025-10-06 22:59:56,629 - INFO - [ClassBroom] 窗口已收起
+2025-10-06 22:59:57,104 - INFO - [TextDisplay] 开始保存配置
+2025-10-06 22:59:57,107 - INFO - [TextDisplay] 保存配置成功
+2025-10-06 22:59:57,309 - INFO - [ClassBroom] 窗口已展开
+2025-10-06 22:59:57,776 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-06 22:59:58,088 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 09:21:05,550 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 09:21:05,585 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:02:46,585 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:02:47,819 - INFO - [ClassBroom] 启动应用 WindowRecorder
+2025-10-07 10:02:49,313 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:04:05,701 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:04:06,978 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:08:58,169 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:08:58,259 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:11:29,075 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:11:30,681 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:11:45,640 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:11:45,714 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:14:30,086 - INFO - [ClassBroom] 窗口已展开
+2025-10-07 10:14:44,577 - INFO - [ClassBroom] 窗口已收起
+2025-10-07 10:14:45,895 - INFO - [ClassBroom] 进程退出
