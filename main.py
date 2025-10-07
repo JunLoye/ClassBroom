@@ -470,10 +470,19 @@ class EdgeTrayWindow(QMainWindow):
             
         except Exception as e:
             logging.error(f"[ClassBroom] TextDisplay 启动失败: {e}")
+            
+    def launch_WindowRecorder_app(self):
+        try:
+            from apps.WindowRecorder.main import main as WindowRecorder
+            
+            self.WindowRecorder = WindowRecorder()
+            logging.info("[ClassBroom] WindowRecorder 已启动")
+            
+        except Exception as e:
+            logging.error(f"[ClassBroom] WindowRecorder 启动失败: {e}")
 
     def quit_application(self):
         logging.info("[ClassBroom] 进程退出")
-        # 关闭所有子应用
         if hasattr(self, 'Weather_app') and self.Weather_app:
             try:
                 self.Weather_app.close()
@@ -486,7 +495,6 @@ class EdgeTrayWindow(QMainWindow):
                 self.TextDisplay_manager.close()
             except:
                 pass
-        # 不使用sys.exit避免GIL问题
         QApplication.quit()
 
 
