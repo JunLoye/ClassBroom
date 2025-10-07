@@ -533,15 +533,9 @@ class EdgeTrayWindow(QMainWindow):
             
     def launch_WindowRecorder_app(self):
         try:
-<<<<<<< HEAD
             from apps.WindowRecorder.main import create_window
             
             self.WindowRecorder = create_window()
-=======
-            from apps.WindowRecorder.main import main as WindowRecorder
-            
-            self.WindowRecorder = WindowRecorder()
->>>>>>> fb79ad24413b96a55fb169f828d2aa06e0f4cc88
             logging.info("[ClassBroom] WindowRecorder 已启动")
             
         except Exception as e:
@@ -561,15 +555,12 @@ class EdgeTrayWindow(QMainWindow):
                 self.TextDisplay_manager.close()
             except:
                 pass
-<<<<<<< HEAD
         if hasattr(self, 'WindowRecorder') and self.WindowRecorder:
             try:
                 self.WindowRecorder.close()
                 logging.info("[ClassBroom] WindowRecorder 已关闭")
             except Exception as e:
                 logging.warning(f"[ClassBroom] WindowRecorder关闭错误: {e}")
-=======
->>>>>>> fb79ad24413b96a55fb169f828d2aa06e0f4cc88
         QApplication.quit()
 
 
