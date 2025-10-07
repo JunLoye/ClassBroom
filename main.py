@@ -177,6 +177,11 @@ class EdgeTrayWindow(QMainWindow):
         self.hover_timer = QTimer(self)
         self.hover_timer.setSingleShot(True)
         self.hover_timer.timeout.connect(self.check_hover)
+        
+        # 添加全屏检测定时器
+        self.fullscreen_check_timer = QTimer(self)
+        self.fullscreen_check_timer.timeout.connect(self.check_fullscreen_apps)
+        self.fullscreen_check_timer.start(1000)  # 每1秒检查一次
 
         self.setMouseTracking(True)
         self.centralWidget().setMouseTracking(True)
@@ -366,7 +371,9 @@ class EdgeTrayWindow(QMainWindow):
             logging.info("[ClassBroom] 窗口已收起")
 
     def enterEvent(self, event):
-        self.hover_timer.start(10)
+        # 如果有全屏应用，不响应鼠标悬停
+        if not self.has_fullscreen_app():
+            self.hover_timer.start(10)
         super().enterEvent(event)
 
     def leaveEvent(self, event):
@@ -374,6 +381,12 @@ class EdgeTrayWindow(QMainWindow):
         super().leaveEvent(event)
 
     def check_hover(self):
+        # 如果有全屏应用，不展开窗口
+        if self.has_fullscreen_app():
+            if self.expanded:
+                self.collapse_window()
+            return
+            
         cursor_pos = QCursor.pos()
 
         if not self.expanded:
@@ -390,6 +403,49 @@ class EdgeTrayWindow(QMainWindow):
 
             if not expanded_rect.contains(cursor_pos):
                 self.collapse_window()
+
+    def check_fullscreen_apps(self):
+        """检查是否有全屏应用运行"""
+        if self.has_fullscreen_app():
+            # 如果有全屏应用，隐藏窗口
+            if self.expanded:
+                self.collapse_window()
+            self.hide()
+        else:
+            # 如果没有全屏应用，显示窗口
+            if not self.isVisible():
+                self.show()
+
+    def has_fullscreen_app(self):
+        """检测是否有全屏应用运行"""
+        try:
+            import win32gui
+            import win32con
+            
+            # 获取前台窗口
+            hwnd = win32gui.GetForegroundWindow()
+            if hwnd:
+                # 检查窗口是否全屏
+                placement = win32gui.GetWindowPlacement(hwnd)
+                if placement[1] == win32con.SW_SHOWMAXIMIZED:
+                    # 检查窗口是否覆盖整个屏幕
+                    screen_rect = QGuiApplication.primaryScreen().availableGeometry()
+                    window_rect = win32gui.GetWindowRect(hwnd)
+                    
+                    # 转换为QRect进行比较
+                    window_qrect = QRect(window_rect[0], window_rect[1], 
+                                       window_rect[2] - window_rect[0], 
+                                       window_rect[3] - window_rect[1])
+                    
+                    # 如果窗口大小接近屏幕大小，认为是全屏应用
+                    if (abs(window_qrect.width() - screen_rect.width()) < 50 and 
+                        abs(window_qrect.height() - screen_rect.height()) < 50):
+                        return True
+                        
+        except Exception as e:
+            logging.debug(f"[ClassBroom] 全屏检测失败: {e}")
+            
+        return False
 
     def load_apps(self):
         for i in reversed(range(self.apps_layout.count())):
@@ -423,6 +479,8 @@ class EdgeTrayWindow(QMainWindow):
             self.launch_countdown_app()
         elif app_id == "TextDisplay":
             self.launch_TextDisplay_app()
+        elif app_id == "WindowRecorder":
+            self.launch_WindowRecorder_app()
         else:
             logging.info(f"[ClassBroom] 启动应用 {app_id}")
 
@@ -456,8 +514,10 @@ class EdgeTrayWindow(QMainWindow):
             logging.error(f"[ClassBroom] countdown 启动失败: {e}")
 
     def show_window(self):
-        self.show()
-        self.expand_window()
+        # 只有在没有全屏应用时才显示
+        if not self.has_fullscreen_app():
+            self.show()
+            self.expand_window()
 
     def launch_TextDisplay_app(self):
         try:
@@ -470,10 +530,19 @@ class EdgeTrayWindow(QMainWindow):
             
         except Exception as e:
             logging.error(f"[ClassBroom] TextDisplay 启动失败: {e}")
+            
+    def launch_WindowRecorder_app(self):
+        try:
+            from apps.WindowRecorder.main import create_window
+            
+            self.WindowRecorder = create_window()
+            logging.info("[ClassBroom] WindowRecorder 已启动")
+            
+        except Exception as e:
+            logging.error(f"[ClassBroom] WindowRecorder 启动失败: {e}")
 
     def quit_application(self):
         logging.info("[ClassBroom] 进程退出")
-        # 关闭所有子应用
         if hasattr(self, 'Weather_app') and self.Weather_app:
             try:
                 self.Weather_app.close()
@@ -486,7 +555,12 @@ class EdgeTrayWindow(QMainWindow):
                 self.TextDisplay_manager.close()
             except:
                 pass
-        # 不使用sys.exit避免GIL问题
+        if hasattr(self, 'WindowRecorder') and self.WindowRecorder:
+            try:
+                self.WindowRecorder.close()
+                logging.info("[ClassBroom] WindowRecorder 已关闭")
+            except Exception as e:
+                logging.warning(f"[ClassBroom] WindowRecorder关闭错误: {e}")
         QApplication.quit()
 
 
