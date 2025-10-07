@@ -3,11 +3,9 @@
 [![Static Badge](https://img.shields.io/badge/GitHub-JunLoye-orange)](https://github.com/JunLoye)
 [![哔哩哔哩](https://img.shields.io/badge/BiliBili-主页-00A4DB?style=flat&labelColor=444444&logo=bilibili)](https://space.bilibili.com/1106294102/) 
 [![爱发电](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.swo.moe%2Fstats%2Fafdian%2Fspencerwoo&query=count&color=282c34&label=%E7%88%B1%E5%8F%91%E7%94%B5&labelColor=946ce6&suffix=+%E5%8F%91%E7%94%B5%E4%BA%BA%E6%AC%A1+%2F+%E6%9C%88&cacheSeconds=3600)](https://afdian.com/a/LoyeJun)
-
 [![Stars](https://img.shields.io/github/stars/JunLoye/ClassBroom?style=flat&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHBhdGggZD0iTTggLjI1YS43NS43NSAwIDAgMSAuNjczLjQxOGwxLjg4MiAzLjgxNSA0LjIxLjYxMmEuNzUuNzUgMCAwIDEgLjQxNiAxLjI3OWwtMy4wNDYgMi45Ny43MTkgNC4xOTJhLjc1MS43NTEgMCAwIDEtMS4wODguNzkxTDggMTIuMzQ3bC0zLjc2NiAxLjk4YS43NS43NSAwIDAgMS0xLjA4OC0uNzlsLjcyLTQuMTk0TC44MTggNi4zNzRhLjc1Ljc1IDAgMCAxIC40MTYtMS4yOGw0LjIxLS42MTFMNy4zMjcuNjY4QS43NS43NSAwIDAgMSA4IC4yNVoiIGZpbGw9IiNlYWM1NGYiLz48L3N2Zz4=&logoSize=auto&label=Stars&labelColor=444444&color=eac54f)](https://github.com/JunLoye/ClassBroom/)
 [![GitHub Release](https://img.shields.io/github/v/release/JunLoye/ClassBroom?label=Release&logo=github)](https://github.com/JunLoye/ClassBroom/releases/latest)
 [![Issues](https://img.shields.io/github/issues/JunLoye/ClassBroom?style=flat&label=Issues&labelColor=444444&color=1F883D&logo=github)](https://github.com/JunLoye/ClassBroom/issues)
-[![Pull requests](https://img.shields.io/github/issues-pr/JunLoye/ClassBroom?style=flat&label=Pull%20requests&labelColor=444444&color=1F883D&logo=github)](https://github.com/JunLoye/ClassBroom/pulls)
 
 ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用工具，包括天气显示、倒计时、文本显示等功能。
 
