@@ -1,11 +1,12 @@
 # ClassBroom（教室的飞天扫帚）
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/LoyeJun/ClassBroom)
-[![Static Badge](https://img.shields.io/badge/GitHub-JunLoye-orange)](https://github.com/JunLoye)
-[![哔哩哔哩](https://img.shields.io/badge/BiliBili-主页-00A4DB?style=flat&labelColor=444444&logo=bilibili)](https://space.bilibili.com/1106294102/) 
-[![爱发电](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.swo.moe%2Fstats%2Fafdian%2Fspencerwoo&query=count&color=282c34&label=%E7%88%B1%E5%8F%91%E7%94%B5&labelColor=946ce6&suffix=+%E5%8F%91%E7%94%B5%E4%BA%BA%E6%AC%A1+%2F+%E6%9C%88&cacheSeconds=3600)](https://afdian.com/a/LoyeJun)
 [![Stars](https://img.shields.io/github/stars/JunLoye/ClassBroom?style=flat&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHBhdGggZD0iTTggLjI1YS43NS43NSAwIDAgMSAuNjczLjQxOGwxLjg4MiAzLjgxNSA0LjIxLjYxMmEuNzUuNzUgMCAwIDEgLjQxNiAxLjI3OWwtMy4wNDYgMi45Ny43MTkgNC4xOTJhLjc1MS43NTEgMCAwIDEtMS4wODguNzkxTDggMTIuMzQ3bC0zLjc2NiAxLjk4YS43NS43NSAwIDAgMS0xLjA4OC0uNzlsLjcyLTQuMTk0TC44MTggNi4zNzRhLjc1Ljc1IDAgMCAxIC40MTYtMS4yOGw0LjIxLS42MTFMNy4zMjcuNjY4QS43NS43NSAwIDAgMSA4IC4yNVoiIGZpbGw9IiNlYWM1NGYiLz48L3N2Zz4=&logoSize=auto&label=Stars&labelColor=444444&color=eac54f)](https://github.com/JunLoye/ClassBroom/)
 [![GitHub Release](https://img.shields.io/github/v/release/JunLoye/ClassBroom?label=Release&logo=github)](https://github.com/JunLoye/ClassBroom/releases/latest)
 [![Issues](https://img.shields.io/github/issues/JunLoye/ClassBroom?style=flat&label=Issues&labelColor=444444&color=1F883D&logo=github)](https://github.com/JunLoye/ClassBroom/issues)
+
+[![Static Badge](https://img.shields.io/badge/GitHub-JunLoye-orange)](https://github.com/JunLoye)
+[![哔哩哔哩](https://img.shields.io/badge/BiliBili-主页-00A4DB?style=flat&labelColor=444444&logo=bilibili)](https://space.bilibili.com/1106294102/) 
+[![爱发电](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.swo.moe%2Fstats%2Fafdian%2Fspencerwoo&query=count&color=282c34&label=%E7%88%B1%E5%8F%91%E7%94%B5&labelColor=946ce6&suffix=+%E5%8F%91%E7%94%B5%E4%BA%BA%E6%AC%A1+%2F+%E6%9C%88&cacheSeconds=3600)](https://afdian.com/a/LoyeJun)
 
 ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用工具，包括天气显示、倒计时、文本显示等功能。
 
@@ -14,7 +15,6 @@ ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用
 ## 功能特点
 
 - **天气应用**：实时天气信息显示，支持天气预警
-- **倒记日**：紧凑型倒记日显示器，可自定义目标日期
 - **文本显示**：可自定义样式的文本显示工具，方便在大屏上显示通知等文本
 
 ---
@@ -24,14 +24,7 @@ ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用
 
 ---
 
-## 安装要求
-
-- Python 3.x
-- PyQt6 或 以上
-
----
-
-## 系统要求
+## 系统兼容性
 
 | 操作系统 | 测试版本 | 架构 | 适配情况 |
 |---------|------|----------|----------|
@@ -63,11 +56,9 @@ ClassBroom 是一个功能丰富的桌面应用启动器，集成了多个实用
 ```
 ClassBroom/
 ├── apps/
-│   ├── Countdown/      # 倒计时应用
 │   ├── TextDisplay/    # 文本显示应用
 │   └── Weather/        # 天气应用
 ├── config.json         # 主配置文件
-├── default/            # 默认配置
 ├── main.py            # 主程序入口
 └── quote/             # 引用资源
 ```
@@ -76,12 +67,12 @@ ClassBroom/
 
 ## 运行
 
-- **软件运行**
+### 软件运行
 1. 下载[最新版本Releases](https://github.com/LoyeJun/ClassBroom/releases/latest)
 2. 按照`Release`要求配置`config.json`
 3. 双击运行
 
-- **开发运行**
+### 开发运行
 1. 使用`命令行`运行`git clone https://github.com/LoyeJun/ClassBroom.git` [→详细教程](https://docs.github.com/zh/get-started/git-basics/about-remote-repositories)
 2. 配置对应`库`及`虚拟环境`
 
