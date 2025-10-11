@@ -38,16 +38,64 @@ logger.addHandler(file_handler)
 
 APP_CONFIG_PATH = get_path('apps/config.json')
 
-CONFIG = {}
+APP_CONFIG = {}
 try:
     if os.path.exists(APP_CONFIG_PATH):
         with open(APP_CONFIG_PATH, 'r', encoding='utf-8') as f:
-            CONFIG = json.load(f)
+            APP_CONFIG = json.load(f)
         logging.info("[ClassBroom] 成功读取配置文件")
     else:
         logging.warning("[ClassBroom] 配置文件不存在")
 except Exception as e:
     logging.info(f"[ClassBroom] 读取启动器配置文件失败: {e}")
+    
+try:
+    with open('config.json', 'r', encoding='utf-8') as f:
+        CONFIG = json.load(f)
+except Exception as e:
+    logging.info(f"[ClassBroom] 读取用户配置文件失败: {e}")
+    CONFIG = {
+        "apps": {
+            "Weather": {
+                "location": "***",
+                "update_interval": 300,
+                "api_key": "***",
+                "language": "zh",
+                "temperature_unit": "C",
+                "notifications": False
+            },
+            "TextDisplay": {
+                "content": "",
+                "font_family": "Microsoft YaHei",
+                "font_size": 12,
+                "bold": False,
+                "italic": False,
+                "underline": False,
+                "text_color": "#000000",
+                "bg_color": "#ffffff",
+                "alignment": "left"
+            },
+            "WindowRecorder": {
+                "interval": 60,
+                "screenshots_dir": "screenshots",
+                "db_file": "window_records.db",
+                "thumb_size": [
+                    240,
+                    140
+                ],
+                "min_hit_dist": 30,
+                "tick_target": 6,
+                "drag_threshold": 6,
+                "inertia_friction": 0.92,
+                "inertia_min_v": 10,
+                "inertia_timer_ms": 16,
+                "log_item_height": 20
+            }
+        }
+    }
+    with open('config.json', 'w', encoding='utf-8') as f:
+        json.dump(CONFIG, f, ensure_ascii=False, indent=4)
+    logging.info("[ClassBroom] 已创建默认用户配置文件")
 
 
 class AppLauncher(QFrame):
@@ -96,35 +144,6 @@ class AppLauncher(QFrame):
         layout.addWidget(icon_label)
         layout.addWidget(name_label)
         self.setLayout(layout)
-
-        self.update_style()
-
-    def update_style(self):
-        theme = CONFIG.get("theme", "light")
-        if theme == "dark":
-            self.setStyleSheet("""
-                AppLauncher {
-                    background: rgba(45, 55, 72, 200);
-                    border-radius: 8px;
-                    margin: 3px;
-                }
-                AppLauncher:hover {
-                    background: rgba(55, 65, 82, 240);
-                    border: 1px solid rgba(74, 144, 226, 0.5);
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                AppLauncher {
-                    background: rgba(255, 255, 255, 200);
-                    border-radius: 8px;
-                    margin: 3px;
-                }
-                AppLauncher:hover {
-                    background: rgba(255, 255, 255, 240);
-                    border: 1px solid rgba(52, 152, 219, 0.5);
-                }
-            """)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -413,7 +432,7 @@ class EdgeTrayWindow(QMainWindow):
             if widget:
                 widget.deleteLater()
 
-        apps_config = CONFIG.get("apps", {})
+        apps_config = APP_CONFIG.get("apps", {})
         enabled_apps = []
 
         for app_id, config in apps_config.items():
@@ -422,7 +441,7 @@ class EdgeTrayWindow(QMainWindow):
 
         enabled_apps.sort(key=lambda x: x[1].get("position", 0))
 
-        columns = CONFIG.get("columns", 3)
+        columns = APP_CONFIG.get("columns", 3)
         for index, (app_id, config) in enumerate(enabled_apps):
             app_launcher = AppLauncher(app_id, config)
             app_launcher.appClicked.connect(self.on_app_clicked)
