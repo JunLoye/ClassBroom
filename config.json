@@ -27,7 +27,10 @@
             "interval": 60,
             "screenshots_dir": "screenshots",
             "db_file": "window_records.db",
-            "thumb_size": [240, 140],
+            "thumb_size": [
+                240,
+                140
+            ],
             "min_hit_dist": 30,
             "tick_target": 6,
             "drag_threshold": 6,

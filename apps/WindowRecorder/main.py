@@ -2,7 +2,6 @@ import sys
 import os
 import time
 import logging
-import logging.handlers # 导入日志处理器
 import sqlite3
 from datetime import datetime, timedelta
 from collections import deque
@@ -789,7 +788,7 @@ class WindowRecorderApp(QMainWindow):
         super().closeEvent(event)
 
 
-def create_window(parent=None):
+def WindowRecorder_main(parent=None):
     get_config()
     
     logging.info("[WindowRecorder] 创建窗口")

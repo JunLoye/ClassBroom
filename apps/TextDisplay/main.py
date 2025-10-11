@@ -345,13 +345,13 @@ class TextDisplayWindow(QMainWindow):
                 with open(CONFIG_PATH, "r", encoding="utf-8") as file:
                     config = json.load(file)
 
-                text_content = config["apps"]["TextDisplay"]["config"].get("content", "")
+                text_content = config["apps"]["TextDisplay"].get("content", "")
 
                 if text_content:
                     self.text_input.setText(text_content)
                     self.update_display()
         except Exception as e:
-            logging.error(f"加载配置失败: {e}")
+            logging.error(f"[TextDisplay] 加载配置失败: {e}")
 
     def save_text_to_config(self):
         try:

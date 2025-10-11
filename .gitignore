@@ -1,6 +1,11 @@
 *__pycache__/
+*.pyc
 *.log
 *build/
 *.vscode/
 *dist/
 *screenshots/
+*venv/
+*.bat
+*.spec
+*.db

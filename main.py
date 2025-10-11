@@ -9,13 +9,9 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor
 
-try:
-    import win32gui
-    import win32con
-    import win32api
-    IS_WINDOWS = True
-except ImportError:
-    IS_WINDOWS = False
+import win32gui
+import win32con
+import win32api
 
 
 def get_path(relative_path):
@@ -40,53 +36,27 @@ file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
 
-CONFIG_FILE = "apps/config.json"
-DEFAULT_CONFIG_FILE = get_path("default/config.json")
+APP_CONFIG_PATH = get_path('apps/config.json')
 
-def load_default_config():
-    try:
-        with open(DEFAULT_CONFIG_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        logging.error(f"[ClassBroom] 读取默认配置文件失败: {e}")
-        return {}
-
-def save_launcher_config(config=None):
-    if config is None:
-        config = LAUNCHER_CONFIG
-    try:
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=4, ensure_ascii=False)
-        logging.info("[ClassBroom] 启动器配置已保存")
-        return True
-    except Exception as e:
-        logging.error(f"[ClassBroom] 保存启动器配置失败: {e}")
-        return False
-
-
-LAUNCHER_CONFIG = {}
+CONFIG = {}
 try:
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-            LAUNCHER_CONFIG = json.load(f)
+    if os.path.exists(APP_CONFIG_PATH):
+        with open(APP_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            CONFIG = json.load(f)
         logging.info("[ClassBroom] 成功读取配置文件")
     else:
-        raise FileNotFoundError("配置文件不存在")
+        logging.warning("[ClassBroom] 配置文件不存在")
 except Exception as e:
-    logging.info(f"[ClassBroom] 读取启动器配置文件失败，使用默认配置: {e}")
-    default_launcher_config = load_default_config()
-    if default_launcher_config:
-        LAUNCHER_CONFIG = default_launcher_config.copy()
-        save_launcher_config(LAUNCHER_CONFIG)
+    logging.info(f"[ClassBroom] 读取启动器配置文件失败: {e}")
 
 
 class AppLauncher(QFrame):
     appClicked = pyqtSignal(str)
 
-    def __init__(self, app_id, app_config, parent=None):
+    def __init__(self, app_id, app_config_PATH, parent=None):
         super().__init__(parent)
         self.app_id = app_id
-        self.app_config = app_config
+        self.app_config_PATH = app_config_PATH
         self.init_ui()
 
     def init_ui(self):
@@ -102,7 +72,7 @@ class AppLauncher(QFrame):
         icon_label.setFixedSize(48, 48)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        icon_text = self.app_config.get("icon", "📱")
+        icon_text = self.app_config_PATH.get("icon", "📱")
         icon_label.setText(icon_text)
         icon_label.setStyleSheet("""
             QLabel {
@@ -111,7 +81,7 @@ class AppLauncher(QFrame):
             }
         """)
 
-        name_label = QLabel(self.app_config.get("name", "应用"))
+        name_label = QLabel(self.app_config_PATH.get("name", "应用"))
         name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name_label.setStyleSheet("""
             font-size: 11px; 
@@ -130,7 +100,7 @@ class AppLauncher(QFrame):
         self.update_style()
 
     def update_style(self):
-        theme = LAUNCHER_CONFIG.get("theme", "light")
+        theme = CONFIG.get("theme", "light")
         if theme == "dark":
             self.setStyleSheet("""
                 AppLauncher {
@@ -273,7 +243,7 @@ class EdgeTrayWindow(QMainWindow):
         title_label.hide()
 
     def update_theme_style(self):
-        theme = LAUNCHER_CONFIG.get("theme", "light")
+        theme = CONFIG.get("theme", "light")
         bg_color = "rgba(255, 255, 255, 220)" if theme == "light" else "rgba(45, 55, 72, 220)"
         text_color = "#333" if theme == "light" else "#e2e8f0"
 
@@ -358,7 +328,7 @@ class EdgeTrayWindow(QMainWindow):
             self.apps_container.hide()
             self.centralWidget().findChild(QLabel).hide()
 
-            theme = LAUNCHER_CONFIG.get("theme", "light")
+            theme = CONFIG.get("theme", "light")
             bg_color = "rgba(255, 255, 255, 220)" if theme == "light" else "rgba(45, 55, 72, 220)"
             self.centralWidget().setStyleSheet(f"""
                 QWidget {{
@@ -415,9 +385,6 @@ class EdgeTrayWindow(QMainWindow):
                 self.show()
 
     def has_fullscreen_app(self):
-        if not IS_WINDOWS:
-            return False
-        
         try:
             hwnd = win32gui.GetForegroundWindow()
             if not hwnd:
@@ -446,7 +413,7 @@ class EdgeTrayWindow(QMainWindow):
             if widget:
                 widget.deleteLater()
 
-        apps_config = LAUNCHER_CONFIG.get("apps", {})
+        apps_config = CONFIG.get("apps", {})
         enabled_apps = []
 
         for app_id, config in apps_config.items():
@@ -455,7 +422,7 @@ class EdgeTrayWindow(QMainWindow):
 
         enabled_apps.sort(key=lambda x: x[1].get("position", 0))
 
-        columns = LAUNCHER_CONFIG.get("columns", 3)
+        columns = CONFIG.get("columns", 3)
         for index, (app_id, config) in enumerate(enabled_apps):
             app_launcher = AppLauncher(app_id, config)
             app_launcher.appClicked.connect(self.on_app_clicked)
@@ -496,7 +463,7 @@ class EdgeTrayWindow(QMainWindow):
 
     def launch_countdown_app(self):
         try:
-            from apps.countdown.main import CountdownManager
+            from apps.Countdown.main import CountdownManager
             
             self.countdown_manager = CountdownManager()
             self.countdown_manager.show()
@@ -507,15 +474,12 @@ class EdgeTrayWindow(QMainWindow):
             logging.error(f"[ClassBroom] countdown 启动失败: {e}")
 
     def show_window(self):
-        # 只有在没有全屏应用时才显示
         if not self.has_fullscreen_app():
             self.show()
             self.expand_window()
 
     def launch_TextDisplay_app(self):
         try:
-            # 直接创建PyQt6版本的文本显示窗口
-
             from apps.TextDisplay.main import main as textdisplay_qt_main
             
             self.TextDisplay_manager = textdisplay_qt_main()
@@ -526,9 +490,9 @@ class EdgeTrayWindow(QMainWindow):
             
     def launch_WindowRecorder_app(self):
         try:
-            from apps.WindowRecorder.main import create_window
+            from apps.WindowRecorder.main import WindowRecorder_main
             
-            self.WindowRecorder = create_window()
+            self.WindowRecorder = WindowRecorder_main()
             logging.info("[ClassBroom] WindowRecorder 已启动")
             
         except Exception as e:
