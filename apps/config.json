@@ -1,0 +1,28 @@
+{
+    "apps": {
+        "Weather": {
+            "name": "天气检测",
+            "icon": "🌤️",
+            "enabled": true,
+            "position": 0
+        },
+        "Countdown": {
+            "name": "倒记日",
+            "icon": "📆",
+            "enabled": false,
+            "position": 1
+        },
+        "TextDisplay": {
+            "name": "大字显示",
+            "icon": "📄",
+            "enabled": true,
+            "position": 2
+        },
+        "WindowRecorder": {
+            "name": "窗口记录",
+            "icon": "🪟",
+            "enabled": true,
+            "position": 3
+        }
+    }
+}

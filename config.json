@@ -1,54 +1,40 @@
 {
     "apps": {
         "Weather": {
-            "name": "\u5929\u6c14\u76d1\u6d4b",
-            "icon": "\ud83c\udf24\ufe0f",
-            "enabled": true,
-            "position": 0,
-            "config": {
-                "location": "***",
-                "update_interval": 300,
-                "api_key": "***",
-                "language": "zh",
-                "temperature_unit": "C",
-                "notifications": true
-            }
+            "location": "101280801",
+            "update_interval": 300,
+            "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
+            "language": "zh",
+            "temperature_unit": "C",
+            "notifications": true
         },
         "Countdown": {
-            "name": "\u5012\u8ba1\u65e5",
-            "icon": "\u23f0",
-            "enabled": false,
-            "position": 1,
-            "config": {
-                "target_date": "1999-01-01",
-                "title": "\u76ee\u6807\u65e5"
-            }
+            "target_date": "1999-01-01",
+            "title": "目标日"
         },
         "TextDisplay": {
-            "name": "\u5927\u5b57\u663e\u793a",
-            "icon": "\ud83d\udcc4",
-            "enabled": true,
-            "position": 2,
-            "config": {
-                "content": "666666",
-                "font_family": "Microsoft YaHei",
-                "font_size": 12,
-                "bold": false,
-                "italic": false,
-                "underline": false,
-                "text_color": "#000000",
-                "bg_color": "#ffffff",
-                "alignment": "left"
-            }
+            "content": "",
+            "font_family": "Microsoft YaHei",
+            "font_size": 12,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "text_color": "#000000",
+            "bg_color": "#ffffff",
+            "alignment": "left"
         },
         "WindowRecorder": {
-            "name": "\u7a97\u53e3\u8bb0\u5f55",
-            "icon": "\ud83e\ude9f",
-            "enabled": true,
-            "position": 3,
-            "config": {}
+            "interval": 60,
+            "screenshots_dir": "screenshots",
+            "db_file": "window_records.db",
+            "thumb_size": [240, 140],
+            "min_hit_dist": 30,
+            "tick_target": 6,
+            "drag_threshold": 6,
+            "inertia_friction": 0.92,
+            "inertia_min_v": 10,
+            "inertia_timer_ms": 16,
+            "log_item_height": 20
         }
-    },
-    "theme": "light",
-    "columns": 3
+    }
 }

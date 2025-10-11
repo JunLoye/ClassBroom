@@ -1,4 +1,3 @@
-# ----------------------- 导入模块 -----------------------
 import sys
 import os
 import json
@@ -10,8 +9,15 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve
 from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor
 
+try:
+    import win32gui
+    import win32con
+    import win32api
+    IS_WINDOWS = True
+except ImportError:
+    IS_WINDOWS = False
 
-# ----------------------- 嵌套文件 -----------------------
+
 def get_path(relative_path):
     try:
         base_path = getattr(sys, '_MEIPASS', None) or os.path.abspath(".")
@@ -21,7 +27,6 @@ def get_path(relative_path):
     return os.path.normpath(os.path.join(base_path, relative_path))
 
 
-# ----------------------- 日志输出配置 -----------------------
 log_file = "ClassBroom.log"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -35,8 +40,7 @@ file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
 
-# ----------------------- 配置文件 -----------------------
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "apps/config.json"
 DEFAULT_CONFIG_FILE = get_path("default/config.json")
 
 def load_default_config():
@@ -76,7 +80,6 @@ except Exception as e:
         save_launcher_config(LAUNCHER_CONFIG)
 
 
-# ----------------------- 应用启动 -----------------------
 class AppLauncher(QFrame):
     appClicked = pyqtSignal(str)
 
@@ -159,7 +162,6 @@ class AppLauncher(QFrame):
         event.accept()
 
 
-# ----------------------- 屏幕边缘托盘窗体 -----------------------
 class EdgeTrayWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -168,7 +170,6 @@ class EdgeTrayWindow(QMainWindow):
         self.animation.setDuration(250)
 
         self.Weather_app = None
-        self.countdown_app = None
         
         self.init_ui()
         self.init_tray()
@@ -178,10 +179,9 @@ class EdgeTrayWindow(QMainWindow):
         self.hover_timer.setSingleShot(True)
         self.hover_timer.timeout.connect(self.check_hover)
         
-        # 添加全屏检测定时器
         self.fullscreen_check_timer = QTimer(self)
         self.fullscreen_check_timer.timeout.connect(self.check_fullscreen_apps)
-        self.fullscreen_check_timer.start(1000)  # 每1秒检查一次
+        self.fullscreen_check_timer.start(2000)
 
         self.setMouseTracking(True)
         self.centralWidget().setMouseTracking(True)
@@ -318,6 +318,7 @@ class EdgeTrayWindow(QMainWindow):
 
     def expand_window(self):
         if not self.expanded:
+            self.update_theme_style()
             screen = QGuiApplication.primaryScreen().availableGeometry()
 
             start_geometry = QRect(screen.right() - self.collapsed_width, 
@@ -357,21 +358,22 @@ class EdgeTrayWindow(QMainWindow):
             self.apps_container.hide()
             self.centralWidget().findChild(QLabel).hide()
 
-            self.centralWidget().setStyleSheet("""
-                QWidget {
-                    background: rgba(255, 255, 255, 220);
+            theme = LAUNCHER_CONFIG.get("theme", "light")
+            bg_color = "rgba(255, 255, 255, 220)" if theme == "light" else "rgba(45, 55, 72, 220)"
+            self.centralWidget().setStyleSheet(f"""
+                QWidget {{
+                    background: {bg_color};
                     border-top-left-radius: 12px;
                     border-bottom-left-radius: 12px;
                     border-top-right-radius: 0px;
                     border-bottom-right-radius: 0px;
-                }
+                }}
             """)
 
             self.expanded = False
             logging.info("[ClassBroom] 窗口已收起")
 
     def enterEvent(self, event):
-        # 如果有全屏应用，不响应鼠标悬停
         if not self.has_fullscreen_app():
             self.hover_timer.start(10)
         super().enterEvent(event)
@@ -381,7 +383,6 @@ class EdgeTrayWindow(QMainWindow):
         super().leaveEvent(event)
 
     def check_hover(self):
-        # 如果有全屏应用，不展开窗口
         if self.has_fullscreen_app():
             if self.expanded:
                 self.collapse_window()
@@ -405,42 +406,34 @@ class EdgeTrayWindow(QMainWindow):
                 self.collapse_window()
 
     def check_fullscreen_apps(self):
-        """检查是否有全屏应用运行"""
         if self.has_fullscreen_app():
-            # 如果有全屏应用，隐藏窗口
             if self.expanded:
                 self.collapse_window()
             self.hide()
         else:
-            # 如果没有全屏应用，显示窗口
             if not self.isVisible():
                 self.show()
 
     def has_fullscreen_app(self):
-        """检测是否有全屏应用运行"""
+        if not IS_WINDOWS:
+            return False
+        
         try:
-            import win32gui
-            import win32con
-            
-            # 获取前台窗口
             hwnd = win32gui.GetForegroundWindow()
-            if hwnd:
-                # 检查窗口是否全屏
-                placement = win32gui.GetWindowPlacement(hwnd)
-                if placement[1] == win32con.SW_SHOWMAXIMIZED:
-                    # 检查窗口是否覆盖整个屏幕
-                    screen_rect = QGuiApplication.primaryScreen().availableGeometry()
-                    window_rect = win32gui.GetWindowRect(hwnd)
-                    
-                    # 转换为QRect进行比较
-                    window_qrect = QRect(window_rect[0], window_rect[1], 
-                                       window_rect[2] - window_rect[0], 
-                                       window_rect[3] - window_rect[1])
-                    
-                    # 如果窗口大小接近屏幕大小，认为是全屏应用
-                    if (abs(window_qrect.width() - screen_rect.width()) < 50 and 
-                        abs(window_qrect.height() - screen_rect.height()) < 50):
-                        return True
+            if not hwnd:
+                return False
+
+            placement = win32gui.GetWindowPlacement(hwnd)
+            if placement[1] == win32con.SW_SHOWMAXIMIZED:
+                return True
+
+            window_rect = win32gui.GetWindowRect(hwnd)
+            monitor_handle = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
+            monitor_info = win32api.GetMonitorInfo(monitor_handle)
+            monitor_rect = monitor_info['Monitor']
+            
+            if window_rect == monitor_rect:
+                return True
                         
         except Exception as e:
             logging.debug(f"[ClassBroom] 全屏检测失败: {e}")
@@ -548,8 +541,8 @@ class EdgeTrayWindow(QMainWindow):
                 self.Weather_app.close()
             except RuntimeError as e:
                 logging.warning(f"[ClassBroom] WeatherApp关闭错误: {e}")
-        if hasattr(self, 'countdown_app') and self.countdown_app:
-            self.countdown_app.close()
+        if hasattr(self, 'countdown_manager') and self.countdown_manager:
+            self.countdown_manager.close()
         if hasattr(self, 'TextDisplay_manager') and self.TextDisplay_manager:
             try:
                 self.TextDisplay_manager.close()
@@ -564,7 +557,6 @@ class EdgeTrayWindow(QMainWindow):
         QApplication.quit()
 
 
-# ----------------------- 主函数 -----------------------
 def main():
     logging.info("[ClassBroom] 进程启动")
     app = QApplication(sys.argv)
@@ -576,9 +568,7 @@ def main():
     launcher = EdgeTrayWindow()
     launcher.show()
 
-    # 不使用sys.exit避免GIL问题
     app.exec()
-    # 应用正常退出
 
 if __name__ == '__main__':
     main()

@@ -1,5 +1,6 @@
-__pycache__/,
-*.log,
-dist/,
-build/,
-.vscode/
+*__pycache__/
+*.log
+*build/
+*.vscode/
+*dist/
+*screenshots/

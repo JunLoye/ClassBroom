@@ -20,7 +20,7 @@ except ImportError:
 
 
 # ----------------------- 配置文件 -----------------------
-default_config = {
+CONFIG = {
     "location": "101010100",
     "update_interval": 300,
     "api_key": "your_apiKey",
@@ -29,12 +29,14 @@ default_config = {
     "notifications": True,
 }
 
-try:
-    with open('config.json', 'r', encoding='utf-8') as f:
-        CONFIG = json.load(f)['apps']['Weather']['config']
-    logging.info("[Weather] 配置文件加载成功")
-except Exception as e:
-    logging.warning(f"[Weather] 读取配置文件失败: {e}")
+def get_config():
+    global CONFIG
+    try:
+        with open('config.json', 'r', encoding='utf-8') as f:
+            CONFIG = json.load(f)['apps']['Weather']
+        logging.info("[Weather] 配置文件加载成功")
+    except Exception as e:
+        logging.warning(f"[Weather] 读取配置文件失败: {e}")
 
 
 # ----------------------- 天气线程 -----------------------
@@ -163,36 +165,32 @@ class WarningDetailDialog(QDialog):
 # ----------------------- 设置窗口 -----------------------
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):
+        global CONFIG
+        
         super().__init__(parent)
         self.setWindowTitle("设置")
         self.setFixedSize(400, 350)
         layout = QVBoxLayout(self)
 
-        try:
-            with open('config.json', 'r', encoding='utf-8') as f:
-                current_config = json.load(f)['apps']['Weather']['config']
-            logging.info("[Weather] 读取最新配置文件成功")
-        except Exception as e:
-            logging.warning(f"[Weather] 读取配置文件失败，使用默认配置: {e}")
-            current_config = default_config
+        get_config()
 
         form_layout = QFormLayout()
-        self.location_input = QLineEdit(current_config.get("location", "101010100"))
-        self.api_key_input = QLineEdit(current_config.get("api_key", "your_apiKey"))
+        self.location_input = QLineEdit(CONFIG.get("location", "101010100"))
+        self.api_key_input = QLineEdit(CONFIG.get("api_key", "your_apiKey"))
         self.update_interval_input = QSpinBox()
         self.update_interval_input.setRange(60, 3600)
-        self.update_interval_input.setValue(current_config.get("update_interval", 300))
+        self.update_interval_input.setValue(CONFIG.get("update_interval", 300))
 
         self.language_select = QComboBox()
         self.language_select.addItems(["zh", "en"])
-        self.language_select.setCurrentText(current_config.get("language", "zh"))
+        self.language_select.setCurrentText(CONFIG.get("language", "zh"))
 
         self.temp_unit_select = QComboBox()
         self.temp_unit_select.addItems(["C", "F"])
-        self.temp_unit_select.setCurrentText(current_config.get("temperature_unit", "C"))
+        self.temp_unit_select.setCurrentText(CONFIG.get("temperature_unit", "C"))
 
         self.notifications_check = QCheckBox("启用系统通知")
-        self.notifications_check.setChecked(current_config.get("notifications", True))
+        self.notifications_check.setChecked(CONFIG.get("notifications", True))
 
         form_layout.addRow("位置代码:", self.location_input)
         form_layout.addRow("API Key:", self.api_key_input)
@@ -218,7 +216,7 @@ class SettingsDialog(QDialog):
         try:
             with open("config.json", "r", encoding="utf-8") as f:
                 full_config = json.load(f)
-            full_config["apps"]["Weather"]["config"] = CONFIG
+            full_config["apps"]["Weather"] = CONFIG
             with open("config.json", "w", encoding="utf-8") as f:
                 json.dump(full_config, f, indent=4, ensure_ascii=False)
             temp_logging = CONFIG
@@ -235,6 +233,9 @@ class SettingsDialog(QDialog):
 # ----------------------- 主窗口 -----------------------
 class WeatherApp(QMainWindow):
     def __init__(self):
+        global CONFIG
+        get_config()
+        
         super().__init__()
         self.warning_count = 0
         self.previous_warning_ids = set()
@@ -368,7 +369,6 @@ class WeatherApp(QMainWindow):
                 self.condition_widget.update_value(data['text'])
             current_time = datetime.now().strftime("%H:%M")
             self.update_widget.update_value(current_time, "更新")
-            # logging.info(f"[Weather] 天气界面已更新: {data}")
         except Exception as e:
             self.show_error(f"[Weather] 更新天气数据时出错: {e}")
 
@@ -456,20 +456,15 @@ class WeatherApp(QMainWindow):
             self.worker.stop()
             self.worker.quit()
             self.worker.wait()
-        # 关闭当前窗口
         self.close()
-        # 确保窗口被销毁
         self.deleteLater()
 
     def closeEvent(self, event):
-        """重写关闭事件，确保线程正确停止并退出应用"""
         logging.info("[Weather] 窗口关闭事件触发")
-        # 先停止线程
         if hasattr(self, 'worker'):
             self.worker.stop()
             self.worker.quit()
             self.worker.wait()
-        # 接受关闭事件，让Qt自动处理对象生命周期
         event.accept()
 
     def open_settings(self):
@@ -501,7 +496,7 @@ class WeatherApp(QMainWindow):
             new_pos = event.globalPosition().toPoint() - self.drag_start_position + self.window_start_position
             self.move(new_pos)
             event.accept()
-            
+
 
 # ----------------------- 主函数 -----------------------
 def main():
