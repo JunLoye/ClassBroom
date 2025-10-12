@@ -33,14 +33,6 @@ body:
     required: true
 
 - type: textarea
-  id: "yml-4"
-  attributes:
-    label: "预期行为"
-    description: "说明在正常情况下应该发生什么。"
-  validations:
-    required: true
-
-- type: textarea
   id: "yml-5"
   attributes:
     label: "日志与附件"
