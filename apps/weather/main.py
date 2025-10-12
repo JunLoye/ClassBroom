@@ -7,7 +7,7 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout,
                              QLabel, QVBoxLayout, QFrame, QPushButton, QDialog, QFormLayout, QLineEdit, QSpinBox, 
-                             QDialogButtonBox, QComboBox, QCheckBox, QScrollArea,
+                             QDialogButtonBox, QComboBox, QCheckBox, QScrollArea, QSystemTrayIcon, QStyle,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont
@@ -80,12 +80,16 @@ class WeatherWorker(QThread):
             except Exception as e:
                 logging.error(f"[Weather] 天气更新线程出错: {e}")
                 self.error_occurred.emit(str(e))
-            time.sleep(self.update_interval)
+            
+            # 使用非阻塞等待，以便快速响应停止信号
+            for _ in range(self.update_interval):
+                if not self.running:
+                    break
+                time.sleep(1)
 
     def stop(self):
         self.running = False
-        logging.info("[Weather] 线程停止")
-        self.terminate()
+        logging.info("[Weather] 请求线程停止")
         self.wait()
 
 
@@ -243,22 +247,17 @@ class WeatherApp(QMainWindow):
         self.current_fxLink = ""
         self.init_ui()
         self.init_worker()
+        self.init_tray_icon()
 
-    # init_tray_icon方法已移除
-        # 系统托盘功能已移除
-            # self.tray_icon = QSystemTrayIcon(self)
-            # self.tray_icon.setIcon(self.style().standardIcon(
-                # getattr(self.style().StandardPixmap, 'SP_MessageBoxInformation', 
-                        # self.style().StandardPixmap.SP_ComputerIcon)
-            # ))
-            # self.tray_icon.setToolTip("天气监测")
-            
-            # 连接消息点击信号
-            # self.tray_icon.messageClicked.connect(self.on_notification_clicked)
-            
-            # self.tray_icon.show()
-        # else:
-        #     logging.warning("[Weather] 系统托盘不可用，无法显示系统通知")
+    def init_tray_icon(self):
+        """初始化系统托盘图标以用于通知。"""
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_icon = QSystemTrayIcon(self)
+            self.tray_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
+            self.tray_icon.setToolTip("天气监测")
+        else:
+            self.tray_icon = None
+            logging.warning("[Weather] 系统托盘不可用，无法显示系统通知")
 
     # def on_notification_clicked(self):
     #     """点击系统通知时的处理"""
@@ -406,8 +405,8 @@ class WeatherApp(QMainWindow):
         if not CONFIG.get("notifications", True):
             return
             
-        if not hasattr(self, 'tray_icon') or not self.tray_icon.isSystemTrayAvailable():
-            logging.warning("[Weather] 系统托盘不可用，无法显示通知")
+        if not self.tray_icon:
+            logging.warning("[Weather] 系统托盘对象未初始化或不可用，无法显示通知")
             return
 
         severity_info = {
@@ -450,21 +449,10 @@ class WeatherApp(QMainWindow):
     def show_error(self, error_msg):
         logging.error(f"[Weather] 程序错误: {error_msg}")
 
-    def quit_application(self):
-        logging.info("[Weather] 应用退出")
-        if hasattr(self, 'worker'):
-            self.worker.stop()
-            self.worker.quit()
-            self.worker.wait()
-        self.close()
-        self.deleteLater()
-
     def closeEvent(self, event):
         logging.info("[Weather] 窗口关闭事件触发")
-        if hasattr(self, 'worker'):
+        if hasattr(self, 'worker') and self.worker.isRunning():
             self.worker.stop()
-            self.worker.quit()
-            self.worker.wait()
         event.accept()
 
     def open_settings(self):

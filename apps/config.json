@@ -1,4 +1,5 @@
 {
+    "version": "Alpha-2.3.2",
     "apps": {
         "Weather": {
             "name": "天气检测",

@@ -13,9 +13,10 @@ import json
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QScrollArea, QDialog, QFrame, QLineEdit,
-    QDialogButtonBox, QListWidget, QListWidgetItem
+    QDialogButtonBox, QListWidget, QListWidgetItem, QSystemTrayIcon, QMenu,
+    QGraphicsDropShadowEffect
 )
-from PyQt6.QtGui import QFont, QPixmap, QPainter, QPen, QColor, QDesktopServices
+from PyQt6.QtGui import QFont, QPixmap, QPainter, QPen, QColor, QDesktopServices, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QUrl, QPoint, QTimer, QSize
 
 
@@ -23,6 +24,7 @@ CONFIG = {
     "interval": 60,
     "screenshots_dir": "screenshots",
     "db_file": "window_records.db",
+    "days_to_keep": 3, # 自动清理3天前的截图
     "thumb_size": [240, 140],
     "min_hit_dist": 30,
     "tick_target": 6,
@@ -51,6 +53,7 @@ class DatabaseManager:
     def __init__(self, path=CONFIG["db_file"]):
         self.path = path
         self._init_db()
+        logging.info(f"数据库管理器已初始化，路径: {self.path}")
 
     def _init_db(self):
         conn = sqlite3.connect(self.path)
@@ -65,6 +68,7 @@ class DatabaseManager:
         """)
         conn.commit()
         conn.close()
+        logging.info("[WindowRecorder] 数据库表结构已确认")
 
     def insert(self, ts, win, fname):
         try:
@@ -74,16 +78,53 @@ class DatabaseManager:
                       (ts, win, fname))
             conn.commit()
             conn.close()
+            logging.debug(f"成功插入记录: {ts}, {win}, {fname}")
         except Exception as e:
             logging.exception("插入数据库失败: %s", e)
 
+    def cleanup_old_records(self, days_to_keep=3, screenshots_dir="screenshots"):
+        cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+        cutoff_ts = cutoff_date.strftime("%Y-%m-%d %H:%M:%S")
+        logging.info(f"开始清理 {cutoff_ts} 之前的旧记录...")
+
+        conn = sqlite3.connect(self.path)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT DISTINCT screenshot_name FROM records WHERE timestamp < ?", (cutoff_ts,))
+            files_to_delete = [row[0] for row in c.fetchall()]
+            
+            c.execute("DELETE FROM records WHERE timestamp < ?", (cutoff_ts,))
+            deleted_rows = c.rowcount
+            conn.commit()
+            if deleted_rows > 0:
+                logging.info(f"从数据库中删除了 {deleted_rows} 条旧记录。")
+
+            deleted_files_count = 0
+            for fname in files_to_delete:
+                fpath = os.path.join(screenshots_dir, fname)
+                if os.path.exists(fpath):
+                    try:
+                        os.remove(fpath)
+                        deleted_files_count += 1
+                    except Exception as e:
+                        logging.error(f"删除截图失败 {fpath}: {e}")
+            if deleted_files_count > 0:
+                logging.info(f"删除了 {deleted_files_count} 个旧截图文件。")
+        except Exception as e:
+            logging.exception(f"清理旧记录时出错: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
     def fetch_all(self):
+        logging.info("[WindowRecorder] 正在从数据库获取所有记录")
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row # 方便按列名访问
         c = conn.cursor()
         c.execute("SELECT timestamp, window_name, screenshot_name FROM records ORDER BY timestamp ASC")
         rows = c.fetchall()
         conn.close()
+        logging.info(f"成功获取 {len(rows)} 条记录")
         return rows
 
 
@@ -97,22 +138,34 @@ class ScreenshotThread(QThread):
         self.db = db or DatabaseManager()
         self.running = False
         os.makedirs(self.output_dir, exist_ok=True)
+        logging.info(f"截图线程已初始化，间隔: {self.interval}s, 输出目录: {self.output_dir}")
 
     def run(self):
         self.running = True
+        logging.info(f"截图线程开始运行，间隔: {self.interval}s")
         self.log_signal.emit(f"开始截图，每 {self.interval}s")
         while self.running:
             try:
                 self.capture_screen()
-                time.sleep(self.interval)
+                # 使用非阻塞等待，以便快速响应停止信号
+                for _ in range(self.interval):
+                    if not self.running:
+                        break
+                    time.sleep(1)
             except Exception as e:
                 logging.exception("截图线程异常：%s", e)
                 self.log_signal.emit(f"[错误] {e}")
-                time.sleep(self.interval)
+                # 在异常情况下也进行非阻塞等待，防止快速循环
+                for _ in range(self.interval):
+                    if not self.running:
+                        break
+                    time.sleep(1)
 
     def stop(self):
         self.running = False
+        logging.info("[WindowRecorder] 正在停止截图线程...")
         self.wait()
+        logging.info("[WindowRecorder] 截图线程已停止")
         self.log_signal.emit("截图线程已停止")
 
     def timestamp(self):
@@ -122,13 +175,15 @@ class ScreenshotThread(QThread):
         ts = self.timestamp()
         safe_ts = ts.replace(":", "-")
         fname = os.path.join(self.output_dir, f"screen_{safe_ts}.png")
+        logging.info(f"[WindowRecorder] 准备截图: {fname}")
 
         try:
             img = pyautogui.screenshot()
             img.save(fname)
+            logging.info(f"[WindowRecorder] 截图成功保存至: {fname}")
             self.log_signal.emit(f"[✓] 截图: {fname}")
         except Exception as e:
-            logging.exception("保存截图失败: %s", e)
+            logging.exception("[WindowRecorder] 保存截图失败: %s", e)
             self.log_signal.emit(f"[错误] 截图保存失败：{e}")
             return
 
@@ -136,6 +191,7 @@ class ScreenshotThread(QThread):
             my_hwnd = win32gui.GetForegroundWindow()
             current_pid = os.getpid()
             wins = []
+            logging.info("[WindowRecorder] 开始枚举窗口")
 
             def enum_callback(hwnd, _):
                 try:
@@ -152,6 +208,7 @@ class ScreenshotThread(QThread):
                 return True
 
             win32gui.EnumWindows(enum_callback, None)
+            logging.info(f"[WindowRecorder] 枚举到 {len(wins)} 个窗口")
 
             for w in wins:
                 self.db.insert(ts, w, os.path.basename(fname))
@@ -161,7 +218,7 @@ class ScreenshotThread(QThread):
                 self.log_signal.emit("[警告] 未检测到可见窗口（可能被全部最小化或权限不足）")
 
         except Exception as e:
-            logging.exception("枚举窗口失败: %s", e)
+            logging.error("[WindowRecorder] 枚举窗口失败: %s", e)
             self.log_signal.emit(f"[错误] 枚举窗口失败：{e}")
 
 
@@ -171,6 +228,7 @@ class DetailDialog(QDialog):
         self.setWindowTitle("时间点详情")
         self.resize(600, 700) # 增大窗口尺寸
         layout = QVBoxLayout(self)
+        logging.info(f"[WindowRecorder] 打开详情对话框，截图: {filename}, 关联记录数: {len(records)}")
 
         img_path = os.path.join(CONFIG["screenshots_dir"], filename)
         img_label = QLabel()
@@ -181,8 +239,10 @@ class DetailDialog(QDialog):
                 img_label.setPixmap(pix.scaled(560, 360, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
             else:
                 img_label.setText("[无法显示图像]")
+                logging.warning(f"[WindowRecorder] 无法加载图像: {img_path}")
         else:
             img_label.setText("[截图丢失]")
+            logging.warning(f"[WindowRecorder] 截图文件丢失: {img_path}")
 
         layout.addWidget(img_label)
 
@@ -210,12 +270,16 @@ class DetailDialog(QDialog):
         def open_image():
             path = os.path.join(CONFIG["screenshots_dir"], filename)
             if os.path.exists(path):
+                logging.info(f"[WindowRecorder] 正在打开图片: {path}")
                 QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(path)))
+            else:
+                logging.warning(f"[WindowRecorder] 尝试打开但图片不存在: {path}")
 
         def copy_info():
             clipboard = QApplication.clipboard()
             text = "\n".join([f"{ts} | {wn}" for ts, wn, _ in records])
             clipboard.setText(text)
+            logging.info(f"[WindowRecorder] 已复制 {len(records)} 条窗口信息到剪贴板")
 
         open_btn.clicked.connect(open_image)
         copy_btn.clicked.connect(copy_info)
@@ -231,7 +295,13 @@ class PreviewPopup(QFrame):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet("""
+        self.setStyleSheet("background: transparent;")
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+
+        content_frame = QFrame()
+        content_frame.setStyleSheet("""
             QFrame {
                 background-color: #1f1f1f;
                 color: #eee;
@@ -244,6 +314,18 @@ class PreviewPopup(QFrame):
                 background-color: transparent;
             }
         """)
+        main_layout.addWidget(content_frame)
+
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 160))
+        shadow.setOffset(0, 4)
+        content_frame.setGraphicsEffect(shadow)
+
+        v = QVBoxLayout(content_frame)
+        v.setContentsMargins(6, 6, 6, 6)
+        v.setSpacing(6)
+
         self.img_label = QLabel()
         self.img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.img_label.setMinimumSize(CONFIG["thumb_size"][0], CONFIG["thumb_size"][1])
@@ -255,14 +337,12 @@ class PreviewPopup(QFrame):
 
         self.time_label = QLabel()
 
-        v = QVBoxLayout(self)
-        v.setContentsMargins(6, 6, 6, 6)
-        v.setSpacing(6)
         v.addWidget(self.img_label)
         v.addWidget(self.title_label)
         v.addWidget(self.time_label)
         self.setVisible(False)
         self._last_file = None
+        logging.info("[WindowRecorder] 预览弹出窗口已创建")
 
     def show_preview(self, img_path, window_name, timestamp, global_pos: QPoint):
         if img_path and os.path.exists(img_path) and img_path != self._last_file:
@@ -278,6 +358,7 @@ class PreviewPopup(QFrame):
                     self._last_file = img_path
                 else:
                     self.img_label.setText("[无法加载图像]")
+                    logging.warning(f"[WindowRecorder] 预览无法加载图像: {img_path}")
                     self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
             except Exception as e:
                 logging.exception(f"预览加载失败: {e}")
@@ -285,6 +366,7 @@ class PreviewPopup(QFrame):
                 self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
         elif not img_path or not os.path.exists(img_path):
             self.img_label.setText("[图像丢失]")
+            logging.warning(f"[WindowRecorder] 预览图像丢失: {img_path}")
             self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
 
         display_name = window_name
@@ -306,25 +388,27 @@ class PreviewPopup(QFrame):
         self.adjustSize()
         self.setVisible(True)
         self.raise_()
+        logging.debug(f"[WindowRecorder] 显示预览: {img_path}")
 
     def hide_preview(self):
         self.setVisible(False)
+        logging.debug("[WindowRecorder] 隐藏预览")
 
 
 class TimelineTrack(QFrame):
     def __init__(self, date_str, items, parent=None):
         super().__init__(parent)
         self.date = date_str
-        # 将时间戳字符串转换为 datetime 对象，并存储原始字符串
         self.items_parsed = []
         for ts_str, wn, fn in items:
             try:
                 dt_obj = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
                 self.items_parsed.append((dt_obj, wn, fn, ts_str))
             except ValueError:
-                logging.warning(f"无法解析时间戳: {ts_str}")
+                logging.warning(f"[WindowRecorder] 无法解析时间戳: {ts_str}")
                 continue
         self.items_parsed.sort(key=lambda x: x[0])
+        logging.info(f"[WindowRecorder] 创建时间轴轨迹: {date_str}, {len(self.items_parsed)} 个项目")
 
         self.setMinimumHeight(220)
         self.setMouseTracking(True)
@@ -349,7 +433,12 @@ class TimelineTrack(QFrame):
         self._inertia_vx = 0.0
         self._prepare_positions_and_ticks()
 
+    def leaveEvent(self, event):
+        self.preview.hide_preview()
+        super().leaveEvent(event)
+
     def _prepare_positions_and_ticks(self):
+        logging.debug("[WindowRecorder] 准备时间轴位置和刻度")
         self._positions = []
         self._ticks = []
         if not self.items_parsed:
@@ -360,7 +449,7 @@ class TimelineTrack(QFrame):
 
         center = real_min + (real_max - real_min) / 2
         total_span = max((real_max - real_min).total_seconds(), 1.0)
-        zoom_span = total_span / self._zoom_factor
+        zoom_span = total_span / self._zoom_factor;
 
         center = center + timedelta(seconds=self._pan_offset_seconds)
         tmin = center - timedelta(seconds=zoom_span / 2)
@@ -392,6 +481,7 @@ class TimelineTrack(QFrame):
             self._ticks.append((x, label))
 
     def resizeEvent(self, e):
+        logging.debug(f"[WindowRecorder] 时间轴轨迹大小调整为: {e.size()}")
         self._prepare_positions_and_ticks()
         super().resizeEvent(e)
 
@@ -511,6 +601,7 @@ class TimelineTrack(QFrame):
             self._pan_offset_seconds = new_pan_offset
             self._prepare_positions_and_ticks()
             self.update()
+            logging.debug(f"[WindowRecorder] 时间轴缩放至: {self._zoom_factor:.2f}x")
 
         event.accept()
 
@@ -527,6 +618,7 @@ class TimelineTrack(QFrame):
             if self._inertia_timer.isActive():
                 self._inertia_timer.stop()
                 self._inertia_vx = 0.0
+                logging.debug("[WindowRecorder] 惯性滚动已停止")
         super().mousePressEvent(e)
 
     def mouseMoveEvent(self, e):
@@ -539,8 +631,9 @@ class TimelineTrack(QFrame):
             dx = e.position().x() - self._drag_start_x
             if not self._is_dragging and abs(dx) >= CONFIG["drag_threshold"]:
                 self._is_dragging = True
+                logging.debug("[WindowRecorder] 开始拖拽时间轴")
             if self._is_dragging:
-                if not self.items_parsed: # 避免在没有数据时计算
+                if not self.items_parsed:
                     return
                 times = [dt_obj for dt_obj, _, _, _ in self.items_parsed]
                 real_min, real_max = min(times), max(times)
@@ -590,13 +683,15 @@ class TimelineTrack(QFrame):
                     self._inertia_vx = 0.0
 
                 self._is_dragging = False
+                logging.debug("[WindowRecorder] 结束拖拽时间轴")
                 self._drag_start_x = None
                 self._press_x = None
                 self.setCursor(Qt.CursorShape.ArrowCursor)
                 if abs(self._inertia_vx) >= CONFIG['inertia_min_v']:
                     if not self._inertia_timer.isActive():
                         self._inertia_timer.start()
-                return # 拖拽结束后不触发点击事件
+                        logging.debug(f"[WindowRecorder] 开始惯性滚动，初速度: {self._inertia_vx:.2f}")
+                return
 
             mx = e.position().x()
             for x, (ts, win, fn) in self._positions:
@@ -607,6 +702,7 @@ class TimelineTrack(QFrame):
                                for _, original_wn, original_fn, original_ts_str in self.items_parsed 
                                if original_fn == fn]
                     dlg = DetailDialog(fn, related, parent=self.window())
+                    logging.info(f"[WindowRecorder] 在时间轴上点击，打开详情: {fn}")
                     dlg.exec()
                     break
 
@@ -620,6 +716,7 @@ class TimelineTrack(QFrame):
         if abs(self._inertia_vx) < CONFIG["inertia_min_v"]:
             self._inertia_timer.stop()
             self._inertia_vx = 0.0
+            logging.debug("[WindowRecorder] 惯性滚动结束")
             return
 
         if not self.items_parsed:
@@ -643,6 +740,7 @@ class TimelineTrack(QFrame):
         if abs(self._inertia_vx) < CONFIG["inertia_min_v"]:
             self._inertia_timer.stop()
             self._inertia_vx = 0.0
+            logging.debug("[WindowRecorder] 惯性滚动结束")
             
 
 class TimelineViewer(QDialog):
@@ -652,14 +750,35 @@ class TimelineViewer(QDialog):
         self.resize(1000, 700)
         self.db = db
         self.output_dir = CONFIG['screenshots_dir']
+        
+        self.grouped_by_day = {}
+        self.available_dates = []
+        self.current_date_index = -1
+        
         self.init_ui()
+        logging.info("[WindowRecorder] 时间轴查看器已创建")
 
     def init_ui(self):
         main_v = QVBoxLayout(self)
 
+        nav_layout = QHBoxLayout()
+        self.prev_day_btn = QPushButton("◀ 前一天")
+        self.current_day_label = QLabel("...")
+        self.current_day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.current_day_label.setFont(QFont("Microsoft YaHei", 12, QFont.Weight.Bold))
+        self.current_day_label.setStyleSheet("color:#8fd8ff;")
+        self.next_day_btn = QPushButton("后一天 ▶")
+        nav_layout.addWidget(self.prev_day_btn)
+        nav_layout.addWidget(self.current_day_label, 1)
+        nav_layout.addWidget(self.next_day_btn)
+        main_v.addLayout(nav_layout)
+
+        self.prev_day_btn.clicked.connect(self.show_prev_day)
+        self.next_day_btn.clicked.connect(self.show_next_day)
+
         search_layout = QHBoxLayout()
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("🔍 搜索窗口名或截图名（支持模糊搜索）")
+        self.search_edit.setPlaceholderText("🔍 搜索窗口名（支持模糊搜索）")
         self.search_edit.textChanged.connect(self.load_data)
         search_layout.addWidget(self.search_edit)
         hint = QLabel("🖱️")
@@ -676,39 +795,70 @@ class TimelineViewer(QDialog):
         main_v.addWidget(self.scroll)
 
         self.load_data()
+        logging.info("[WindowRecorder] 时间轴查看器UI已初始化")
 
     def load_data(self):
-        while self.vlayout.count():
-            it = self.vlayout.takeAt(0)
-            if it.widget():
-                it.widget().deleteLater()
-
         keyword = self.search_edit.text().strip().lower()
+        logging.info(f"[WindowRecorder] 加载时间轴数据，搜索关键词: '{keyword}'")
         rows = self.db.fetch_all()
         if keyword:
-            rows = [r for r in rows if keyword in r['window_name'].lower() or keyword in r['screenshot_name'].lower()]
+            rows = [r for r in rows if keyword in r['window_name'].lower()]
 
-        if not rows:
-            label = QLabel("暂无记录")
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.vlayout.addWidget(label)
-            return
-
-        grouped = {}
+        self.grouped_by_day.clear()
         for row in rows:
             ts, wn, fn = row['timestamp'], row['window_name'], row['screenshot_name']
             d = ts.split(" ")[0]
-            grouped.setdefault(d, []).append((ts, wn, fn))
+            self.grouped_by_day.setdefault(d, []).append((ts, wn, fn))
 
-        for d in sorted(grouped.keys()):
-            items = sorted(grouped[d], key=lambda x: x[0])
-            title = QLabel(f"📅 {d}")
-            title.setFont(QFont("Microsoft YaHei", 12, QFont.Weight.Bold))
-            title.setStyleSheet("color:#8fd8ff; margin-top:8px;")
-            self.vlayout.addWidget(title)
+        self.available_dates = sorted(self.grouped_by_day.keys(), reverse=True)
 
-            track = TimelineTrack(d, items, parent=self)
-            self.vlayout.addWidget(track)
+        if self.available_dates:
+            if not (0 <= self.current_date_index < len(self.available_dates)):
+                self.current_date_index = 0
+            self.display_current_day()
+        else:
+            self.clear_view()
+            label = QLabel("暂无记录")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.vlayout.addWidget(label)
+            self.current_day_label.setText("无记录")
+            self.prev_day_btn.setEnabled(False)
+            self.next_day_btn.setEnabled(False)
+            logging.info("[WindowRecorder] 没有找到匹配的记录")
+
+    def display_current_day(self):
+        if not (0 <= self.current_date_index < len(self.available_dates)):
+            return
+
+        self.clear_view()
+        
+        current_date = self.available_dates[self.current_date_index]
+        items = sorted(self.grouped_by_day[current_date], key=lambda x: x[0])
+        
+        self.current_day_label.setText(f"📅 {current_date}")
+        
+        track = TimelineTrack(current_date, items, parent=self)
+        self.vlayout.addWidget(track)
+
+        self.prev_day_btn.setEnabled(self.current_date_index < len(self.available_dates) - 1)
+        self.next_day_btn.setEnabled(self.current_date_index > 0)
+        logging.info(f"[WindowRecorder] 显示日期: {current_date}")
+
+    def clear_view(self):
+        while self.vlayout.count():
+            child = self.vlayout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+    def show_prev_day(self):
+        if self.current_date_index < len(self.available_dates) - 1:
+            self.current_date_index += 1
+            self.display_current_day()
+
+    def show_next_day(self):
+        if self.current_date_index > 0:
+            self.current_date_index -= 1
+            self.display_current_day()
 
 
 class WindowRecorderApp(QMainWindow):
@@ -716,11 +866,26 @@ class WindowRecorderApp(QMainWindow):
         super().__init__(parent)
         self.db = DatabaseManager()
         self.thread = None
+        self._is_quitting = False
         
         self.interval = CONFIG['interval']
         self.output_dir = CONFIG['screenshots_dir']
         
+        self.cleanup_old_data()
         self.init_ui()
+        self.init_tray_icon()
+        logging.info("[WindowRecorder] 主应用窗口已创建")
+
+    def cleanup_old_data(self):
+        logging.info("[WindowRecorder] 开始清理旧数据...")
+        try:
+            self.db.cleanup_old_records(
+                days_to_keep=CONFIG['days_to_keep'], 
+                screenshots_dir=self.output_dir
+            )
+            logging.info("[WindowRecorder] 清理完成。")
+        except Exception as e:
+            logging.error(f"[WindowRecorder] 清理数据时出错: {e}")
 
     def init_ui(self):
         self.setWindowTitle('窗口记录')
@@ -750,12 +915,62 @@ class WindowRecorderApp(QMainWindow):
         h.addWidget(self.start_btn)
         h.addWidget(self.stop_btn)
         h.addWidget(self.view_btn)
+
+        background_btn = QPushButton("后台运行")
+        background_btn.clicked.connect(self.hide)
+        h.addWidget(background_btn)
+        
         v.addLayout(h)
 
         self.start_btn.clicked.connect(self.start_record)
         self.stop_btn.clicked.connect(self.stop_record)
         self.view_btn.clicked.connect(self.open_timeline)
         self.stop_btn.setEnabled(False)
+        logging.info("[WindowRecorder] 主应用窗口UI已初始化")
+
+    def init_tray_icon(self):
+        self.tray_icon = QSystemTrayIcon(self)
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor("#4fc1ff"), 4))
+        painter.drawRect(4, 4, 24, 24)
+        painter.setBrush(QColor("#ff6b6b"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(QPoint(16, 16), 6, 6)
+        painter.end()
+        self.tray_icon.setIcon(QIcon(pixmap))
+        self.tray_icon.setToolTip("窗口记录")
+
+        menu = QMenu(self)
+        show_action = menu.addAction("显示")
+        show_action.triggered.connect(self.show_window)
+        
+        menu.addSeparator()
+
+        quit_action = menu.addAction("退出")
+        quit_action.triggered.connect(self.quit_app)
+
+        self.tray_icon.setContextMenu(menu)
+        self.tray_icon.show()
+
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+    def show_window(self):
+        self.show()
+        self.activateWindow()
+
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger: # Left click
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show_window()
+
+    def quit_app(self):
+        logging.info("[WindowRecorder] 从托盘退出应用...")
+        self._is_quitting = True
+        self.close()
 
     def add_log(self, msg):
         item = QListWidgetItem(msg)
@@ -765,6 +980,7 @@ class WindowRecorderApp(QMainWindow):
 
     def start_record(self):
         if not self.thread or not self.thread.isRunning():
+            logging.info("[WindowRecorder] 开始记录...")
             self.thread = ScreenshotThread(self.interval, self.output_dir, self.db)
             self.thread.log_signal.connect(self.add_log)
             self.thread.start()
@@ -774,18 +990,26 @@ class WindowRecorderApp(QMainWindow):
 
     def stop_record(self):
         if self.thread and self.thread.isRunning():
+            logging.info("[WindowRecorder] 停止记录...")
             self.thread.stop()
             self.status_label.setText("状态：已停止")
             self.start_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
 
     def open_timeline(self):
-        viewer = TimelineViewer(self.db, parent=self) # 移除未使用的 output_dir 参数
+        logging.info("[WindowRecorder] 打开时间轴查看器")
+        viewer = TimelineViewer(self.db, parent=self)
         viewer.exec()
     
     def closeEvent(self, event):
-        self.stop_record() # 确保线程在关闭主窗口时停止
-        super().closeEvent(event)
+        if self._is_quitting:
+            logging.info("[WindowRecorder] 关闭主窗口，停止记录...")
+            self.stop_record()
+            self.tray_icon.hide()
+            super().closeEvent(event)
+        else:
+            event.ignore()
+            self.hide()
 
 
 def WindowRecorder_main(parent=None):
@@ -802,6 +1026,7 @@ def main():
     
     logging.info("[WindowRecorder] 进程启动")
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     app.setFont(QFont("Microsoft YaHei", 10))
     win = WindowRecorderApp()
     win.show()
