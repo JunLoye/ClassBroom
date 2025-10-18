@@ -2,16 +2,14 @@ import sys
 import os
 import json
 import logging
+import re
+import urllib.request
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLabel, QFrame, QScrollArea, QGridLayout,
                              QSystemTrayIcon, QMenu, QStyle)
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve
-from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor
-
-import win32gui
-import win32con
-import win32api
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve, QUrl
+from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor, QDesktopServices
 
 
 def get_path(relative_path):
@@ -47,7 +45,7 @@ try:
     else:
         logging.warning("[ClassBroom] 配置文件不存在")
 except Exception as e:
-    logging.info(f"[ClassBroom] 读取启动器配置文件失败: {e}")
+    logging.exception("[ClassBroom] 读取启动器配置文件失败")
 
 
 class AppLauncher(QFrame):
@@ -138,9 +136,13 @@ class EdgeTrayWindow(QMainWindow):
         self.expanded = False
         self.animation = QPropertyAnimation(self, b"geometry")
         self.animation.setDuration(250)
-
-        self.Weather_app = None
-        self.WindowRecorder = None
+        
+        self.app_map = {
+            "Weather": {"module": "apps.Weather.main", "function": "start_app", "instance_attr": "Weather_app", "takes_parent": False},
+            "countdown": {"module": "apps.Countdown.main", "class": "CountdownManager", "instance_attr": "countdown_manager", "takes_parent": True},
+            "TextDisplay": {"module": "apps.TextDisplay.main", "function": "start_app", "instance_attr": "TextDisplay_manager", "takes_parent": True},
+            "WindowRecorder": {"module": "apps.WindowRecorder.main", "function": "start_app", "instance_attr": "WindowRecorder", "takes_parent": True},
+        }
         
         self.init_ui()
         self.init_tray()
@@ -150,14 +152,17 @@ class EdgeTrayWindow(QMainWindow):
         self.hover_timer.setSingleShot(True)
         self.hover_timer.timeout.connect(self.check_hover)
         
-        self.fullscreen_check_timer = QTimer(self)
-        self.fullscreen_check_timer.timeout.connect(self.check_fullscreen_apps)
-        self.fullscreen_check_timer.start(2000)
+        # 移除全屏检测定时器
+        # self.fullscreen_check_timer = QTimer(self)
+        # self.fullscreen_check_timer.timeout.connect(self.check_fullscreen_apps)
+        # self.fullscreen_check_timer.start(2000)
 
         self.setMouseTracking(True)
         self.centralWidget().setMouseTracking(True)
         for child in self.centralWidget().findChildren(QWidget):
             child.setMouseTracking(True)
+
+        QTimer.singleShot(2000, self.check_for_updates)
 
     def init_ui(self):
         self.setWindowTitle("ClassBroom")
@@ -285,6 +290,10 @@ class EdgeTrayWindow(QMainWindow):
             show_action = QAction("显示", self)
             show_action.triggered.connect(self.show_window)
             tray_menu.addAction(show_action)
+
+            update_action = QAction("检查更新", self)
+            update_action.triggered.connect(self.check_for_updates)
+            tray_menu.addAction(update_action)
                 
             quit_action = QAction("退出", self)
             quit_action.triggered.connect(self.quit_application)
@@ -292,8 +301,50 @@ class EdgeTrayWindow(QMainWindow):
 
             self.tray_icon.setContextMenu(tray_menu)
             self.tray_icon.setToolTip("ClassBroom")
+            self.tray_icon.activated.connect(self.on_tray_icon_activated)
+            self.tray_icon.messageClicked.connect(self.open_releases_page)
             self.tray_icon.show()
             logging.info("[ClassBroom] 系统托盘初始化完成")
+
+    def check_for_updates(self):
+        try:
+            url = "https://github.com/LoyeJun/ClassBroom/releases/latest"
+            
+            with urllib.request.urlopen(url) as response:
+                final_url = response.geturl()
+            
+            if not final_url or "tag" not in final_url:
+                self.show_update_notification("检查更新失败", "无法获取最新版本信息。")
+                logging.warning("[ClassBroom] 无法获取最新版本URL。")
+                return
+
+            latest_version_tag = final_url.split('/')[-1]
+            local_version = CONFIG.get("version", "0.0.0")
+
+            latest_version_numbers = tuple(map(int, (re.findall(r'\d+', latest_version_tag) or ['0'])))
+            local_version_numbers = tuple(map(int, (re.findall(r'\d+', local_version) or ['0'])))
+
+            if latest_version_numbers > local_version_numbers:
+                title = "发现新版本！"
+                message = f"新版本 {latest_version_tag} 可用\n当前版本 {local_version}"
+            else:
+                title = "已是最新版本"
+                message = f"您当前已是最新版本 {local_version}"
+            
+            self.show_update_notification(title, message)
+            logging.info(f"[ClassBroom] 检查更新完成: 本地版本 {local_version}, 最新版本 {latest_version_tag}")
+
+        except Exception as e:
+            logging.error(f"[ClassBroom] 检查更新失败: {e}")
+            self.show_update_notification("检查更新失败", "请检查您的网络连接。")
+
+    def show_update_notification(self, title, message):
+        self.tray_icon.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information, 5000)
+
+    def open_releases_page(self):
+        url = "https://github.com/LoyeJun/ClassBroom/releases/latest"
+        QDesktopServices.openUrl(QUrl(url))
+        logging.info(f"[ClassBroom] 打开更新页面: {url}")
 
     def setup_animation(self):
         self.animation.setEasingCurve(QEasingCurve.Type.OutQuad)
@@ -364,8 +415,7 @@ class EdgeTrayWindow(QMainWindow):
             logging.info("[ClassBroom] 窗口已收起")
 
     def enterEvent(self, event):
-        if not self.has_fullscreen_app():
-            self.hover_timer.start(10)
+        self.hover_timer.start(10)
         super().enterEvent(event)
 
     def leaveEvent(self, event):
@@ -373,11 +423,6 @@ class EdgeTrayWindow(QMainWindow):
         super().leaveEvent(event)
 
     def check_hover(self):
-        if self.has_fullscreen_app():
-            if self.expanded:
-                self.collapse_window()
-            return
-            
         cursor_pos = QCursor.pos()
 
         if not self.expanded:
@@ -394,38 +439,6 @@ class EdgeTrayWindow(QMainWindow):
 
             if not expanded_rect.contains(cursor_pos):
                 self.collapse_window()
-
-    def check_fullscreen_apps(self):
-        if self.has_fullscreen_app():
-            if self.expanded:
-                self.collapse_window()
-            self.hide()
-        else:
-            if not self.isVisible():
-                self.show()
-
-    def has_fullscreen_app(self):
-        try:
-            hwnd = win32gui.GetForegroundWindow()
-            if not hwnd:
-                return False
-
-            placement = win32gui.GetWindowPlacement(hwnd)
-            if placement[1] == win32con.SW_SHOWMAXIMIZED:
-                return True
-
-            window_rect = win32gui.GetWindowRect(hwnd)
-            monitor_handle = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
-            monitor_info = win32api.GetMonitorInfo(monitor_handle)
-            monitor_rect = monitor_info['Monitor']
-            
-            if window_rect == monitor_rect:
-                return True
-                        
-        except Exception as e:
-            logging.debug(f"[ClassBroom] 全屏检测失败: {e}")
-            
-        return False
 
     def load_apps(self):
         for i in reversed(range(self.apps_layout.count())):
@@ -453,101 +466,94 @@ class EdgeTrayWindow(QMainWindow):
 
 
     def on_app_clicked(self, app_id):
-        if app_id == "Weather":
-            self.launch_Weather_app()
-        elif app_id == "countdown":
-            self.launch_countdown_app()
-        elif app_id == "TextDisplay":
-            self.launch_TextDisplay_app()
-        elif app_id == "WindowRecorder":
-            self.launch_WindowRecorder_app()
-        else:
-            logging.info(f"[ClassBroom] 启动应用 {app_id}")
+        # 调用统一的启动函数
+        self.launch_app(app_id)
 
-    def launch_Weather_app(self):
-        try:
-            from apps.Weather.main import WeatherApp
+    def launch_app(self, app_id):
+        """
+        统一的应用启动函数。
+        根据 app_id 动态导入并启动相应的应用。
+        """
+        app_info = self.app_map.get(app_id)
+        if not app_info:
+            logging.warning(f"[ClassBroom] 未知应用ID: {app_id}")
+            return
 
-            self.Weather_app = WeatherApp()
+        instance_attr = app_info.get("instance_attr")
+        current_instance = getattr(self, instance_attr, None)
 
-            screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-            center_x = screen_geometry.center().x() - self.Weather_app.width() // 2
-            center_y = screen_geometry.center().y() - self.Weather_app.height() // 2
-            self.Weather_app.move(center_x, center_y)
-            self.Weather_app.show()
+        if current_instance:
+            setattr(self, instance_attr, None)
+            current_instance = None
+            logging.info(f"[ClassBroom] {app_id} 实例已被删除，将重新创建。")
 
-            logging.info("[ClassBroom] Weather 已启动")
+        # 如果实例不存在，则创建并启动
+        if current_instance is None:
+            try:
+                module_path = app_info["module"]
+                
+                # 动态导入模块
+                module = __import__(module_path, fromlist=['']) # fromlist 必须是非空字符串，否则只返回顶层包
+                
+                instance = None
+                takes_parent = app_info.get("takes_parent", False)
 
-        except Exception as e:
-            logging.error(f"[ClassBroom] Weather 启动失败: {e}")
+                if "class" in app_info: # 对于 CountdownManager 这样的类
+                    AppClass = getattr(module, app_info["class"])
+                    instance = AppClass(parent=self) if takes_parent else AppClass()
+                    instance.show()
+                elif "function" in app_info: # 对于统一的 start_app 函数
+                    AppFunction = getattr(module, app_info["function"])
+                    instance = AppFunction(parent=self) if takes_parent else AppFunction()
+                
+                if instance:
+                    setattr(self, instance_attr, instance)
+                    # WeatherApp 的特殊定位
+                    if app_id == "Weather":
+                        screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
+                        center_x = screen_geometry.center().x() - instance.width() // 2
+                        center_y = screen_geometry.center().y() - instance.height() // 2
+                        instance.move(center_x, center_y)
+                    
+                    # 确保所有新创建的窗口都显示
+                    if hasattr(instance, 'show') and not instance.isVisible():
+                        instance.show()
 
-    def launch_countdown_app(self):
-        try:
-            from apps.Countdown.main import CountdownManager
-            
-            self.countdown_manager = CountdownManager()
-            self.countdown_manager.show()
-            
-            logging.info("[ClassBroom] countdown 已启动")
-            
-        except Exception as e:
-            logging.error(f"[ClassBroom] countdown 启动失败: {e}")
+                    logging.info(f"[ClassBroom] {app_id} 已启动")
+
+            except Exception as e:
+                logging.exception(f"[ClassBroom] {app_id} 启动失败")
+
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            if self.expanded:
+                self.collapse_window()
+            else:
+                self.show_window()
 
     def show_window(self):
-        if not self.has_fullscreen_app():
-            self.show()
-            self.expand_window()
-
-    def launch_TextDisplay_app(self):
-        try:
-            from apps.TextDisplay.main import main as textdisplay_qt_main
-            
-            self.TextDisplay_manager = textdisplay_qt_main()
-            logging.info("[ClassBroom] TextDisplay 已启动")
-            
-        except Exception as e:
-            logging.error(f"[ClassBroom] TextDisplay 启动失败: {e}")
-            
-    def launch_WindowRecorder_app(self):
-        try:
-            if self.WindowRecorder:
-                self.WindowRecorder.show_window()
-                logging.info("[ClassBroom] WindowRecorder 已存在，正在显示。")
-                return
-        except RuntimeError:
-            self.WindowRecorder = None
-            logging.info("[ClassBroom] WindowRecorder 实例已被删除，将重新创建。")
-
-        if self.WindowRecorder is None:
-            try:
-                from apps.WindowRecorder.main import WindowRecorder_main
-                
-                self.WindowRecorder = WindowRecorder_main()
-                logging.info("[ClassBroom] WindowRecorder 已启动")
-                
-            except Exception as e:
-                logging.error(f"[ClassBroom] WindowRecorder 启动失败: {e}")
+        self.show()
+        self.expand_window()
 
     def quit_application(self):
         logging.info("[ClassBroom] 进程退出")
-        if hasattr(self, 'Weather_app') and self.Weather_app:
-            try:
-                self.Weather_app.close()
-            except RuntimeError as e:
-                logging.warning(f"[ClassBroom] WeatherApp关闭错误: {e}")
-        if hasattr(self, 'countdown_manager') and self.countdown_manager:
-            self.countdown_manager.close()
-        if hasattr(self, 'TextDisplay_manager') and self.TextDisplay_manager:
-            try:
-                self.TextDisplay_manager.close()
-            except:
-                pass
-        if hasattr(self, 'WindowRecorder') and self.WindowRecorder:
-            try:
-                self.WindowRecorder.quit_app()
-                logging.info("[ClassBroom] WindowRecorder 已关闭")
-            except Exception as e:
-                logging.warning(f"[ClassBroom] WindowRecorder关闭错误: {e}")
+        
+        for app_id, info in self.app_map.items():
+            instance_attr = info["instance_attr"]
+            if hasattr(self, instance_attr): # 检查实例是否存在
+                app_instance = getattr(self, instance_attr)
+                if app_instance: # 检查实例是否为 None
+                    try:
+                        if app_id == "WindowRecorder":
+                            app_instance.quit_app() # WindowRecorder 有特殊的退出方法
+                        else:
+                            app_instance.close()
+                        logging.info(f"[ClassBroom] {app_id} 已关闭")
+                    except RuntimeError as e:
+                        logging.exception(f"[ClassBroom] {app_id} 关闭错误")
+                    except Exception as e:
+                        logging.exception(f"[ClassBroom] {app_id} 关闭时发生未知错误")
+            
         QApplication.quit()
 
 

@@ -487,8 +487,21 @@ class WeatherApp(QMainWindow):
 
 
 # ----------------------- 主函数 -----------------------
-def main():
+def start_app(): # 重命名为 start_app
     logging.info("[Weather] 启动成功")
+    # 检查 QApplication 实例是否存在，避免重复创建
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+        app.setQuitOnLastWindowClosed(False) # 确保应用不会因为此窗口关闭而退出
+        font = QFont("Microsoft YaHei", 11)
+        app.setFont(font)
+
+    weather_app = WeatherApp()
+    # weather_app.show() # 由主启动器负责显示
+    return weather_app
+
+if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     font = QFont("Microsoft YaHei", 11)

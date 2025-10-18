@@ -2,7 +2,7 @@
     "apps": {
         "Weather": {
             "location": "101280801",
-            "update_interval": 300,
+            "update_interval": 5,
             "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
             "language": "zh",
             "temperature_unit": "C",
@@ -10,7 +10,7 @@
         },
         "Countdown": {
             "target_date": "1999-01-01",
-            "title": "\u76ee\u6807\u65e5"
+            "title": "目标日"
         },
         "TextDisplay": {
             "content": "",

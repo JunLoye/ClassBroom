@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import sys
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
@@ -345,11 +346,35 @@ class TextDisplayWindow(QMainWindow):
                 with open(CONFIG_PATH, "r", encoding="utf-8") as file:
                     config = json.load(file)
 
-                text_content = config["apps"]["TextDisplay"].get("content", "")
+                td_config = config.get("apps", {}).get("TextDisplay", {})
 
-                if text_content:
-                    self.text_input.setText(text_content)
-                    self.update_display()
+                self.text_input.setText(td_config.get("content", ""))
+
+                if "font_family" in td_config:
+                    self.font_family.setCurrentFont(QFont(td_config["font_family"]))
+                if "font_size" in td_config:
+                    self.font_size.setValue(td_config["font_size"])
+                if "bold" in td_config:
+                    self.bold_check.setChecked(td_config["bold"])
+                if "italic" in td_config:
+                    self.italic_check.setChecked(td_config["italic"])
+                if "underline" in td_config:
+                    self.underline_check.setChecked(td_config["underline"])
+
+                if "text_color" in td_config:
+                    self.text_color = QColor(td_config["text_color"])
+                if "bg_color" in td_config:
+                    self.bg_color = QColor(td_config["bg_color"])
+
+                alignment = td_config.get("alignment")
+                if alignment == "center":
+                    self.center_radio.setChecked(True)
+                elif alignment == "right":
+                    self.right_radio.setChecked(True)
+                else:
+                    self.left_radio.setChecked(True)
+
+                self.update_display()
         except Exception as e:
             logging.error(f"[TextDisplay] 加载配置失败: {e}")
 
@@ -357,8 +382,12 @@ class TextDisplayWindow(QMainWindow):
         try:
             logging.info("[TextDisplay] 开始保存配置")
             
-            with open(CONFIG_PATH, "r", encoding="utf-8") as file:
-                config = json.load(file)
+            config = {}
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, "r", encoding="utf-8") as file:
+                    config = json.load(file)
+
+            text_display_config = config.setdefault("apps", {}).setdefault("TextDisplay", {})
 
             text_content = self.text_input.text()
 
@@ -381,10 +410,10 @@ class TextDisplayWindow(QMainWindow):
                 "alignment": alignment
             }
             
-            config['apps']['TextDisplay']['config'].update(temp_update)
+            text_display_config.update(temp_update)
 
             with open(CONFIG_PATH, "w", encoding="utf-8") as file:
-                json.dump(config, file, indent=4)
+                json.dump(config, file, indent=4, ensure_ascii=False)
 
             logging.info("[TextDisplay] 保存配置成功")
             
@@ -397,12 +426,21 @@ class TextDisplayWindow(QMainWindow):
         event.accept()
 
 
-def main():
+def start_app(parent=None): # 重命名为 start_app，并接受 parent 参数
     app = QApplication.instance()
     if app is None:
-        app = QApplication([])
+        app = QApplication(sys.argv)
+        app.setQuitOnLastWindowClosed(False) # 确保应用不会因为此窗口关闭而退出
 
     window = TextDisplayWindow()
-    window.show()
 
     return window
+
+if __name__ == '__main__':
+    # For standalone execution
+    window = start_app()
+    app = QApplication.instance()
+    # In standalone mode, the application should exit when the last window is closed.
+    app.setQuitOnLastWindowClosed(True)
+    window.show()
+    sys.exit(app.exec())
