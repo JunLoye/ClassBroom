@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import urllib.request
+import importlib
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLabel, QFrame, QScrollArea, QGridLayout,
@@ -34,7 +35,7 @@ file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
 
 
-APP_CONFIG_PATH = get_path('apps/config.json')
+APP_CONFIG_PATH = get_path('config.json')
 
 CONFIG = {}
 try:
@@ -138,10 +139,26 @@ class EdgeTrayWindow(QMainWindow):
         self.animation.setDuration(250)
         
         self.app_map = {
-            "Weather": {"module": "apps.Weather.main", "function": "start_app", "instance_attr": "Weather_app", "takes_parent": False},
-            "countdown": {"module": "apps.Countdown.main", "class": "CountdownManager", "instance_attr": "countdown_manager", "takes_parent": True},
-            "TextDisplay": {"module": "apps.TextDisplay.main", "function": "start_app", "instance_attr": "TextDisplay_manager", "takes_parent": True},
-            "WindowRecorder": {"module": "apps.WindowRecorder.main", "function": "start_app", "instance_attr": "WindowRecorder", "takes_parent": True},
+            "Weather": {
+                "module": "apps.Weather.main", "function": "start_app", "instance_attr": "Weather_app", "takes_parent": False,
+                "name": "天气", "icon": "☀️"
+            },
+            "Countdown": {
+                "module": "apps.Countdown.main", "class": "CountdownManager", "instance_attr": "countdown_manager", "takes_parent": True,
+                "name": "倒计时", "icon": "⏳"
+            },
+            "TextDisplay": {
+                "module": "apps.TextDisplay.main", "function": "start_app", "instance_attr": "TextDisplay_manager", "takes_parent": True,
+                "name": "文本", "icon": "📄"
+            },
+            "WindowRecorder": {
+                "module": "apps.WindowRecorder.main", "function": "start_app", "instance_attr": "WindowRecorder", "takes_parent": True,
+                "name": "窗口记录", "icon": "📹"
+            },
+            "Settings": {
+                "module": "apps.Settings.main", "function": "start_app", "instance_attr": "Settings_window", "takes_parent": True,
+                "name": "设置", "icon": "⚙️"
+            },
         }
         
         self.init_ui()
@@ -175,14 +192,18 @@ class EdgeTrayWindow(QMainWindow):
             }
         """)
 
-        screen = QGuiApplication.primaryScreen().availableGeometry()
+        screen = QGuiApplication.primaryScreen()
+        if not screen:
+            logging.error("[ClassBroom] 无法获取屏幕信息")
+            return
+        screen_geometry = screen.availableGeometry()
         self.collapsed_width = 10
         self.expanded_width = 280
-        self.height = 500
+        self.window_height = 500
 
-        self.setGeometry(screen.right() - self.collapsed_width, 
-                         (screen.height() - self.height) // 2,
-                         self.collapsed_width, self.height)
+        self.setGeometry(screen_geometry.right() - self.collapsed_width, 
+                         (screen_geometry.height() - self.window_height) // 2,
+                         self.collapsed_width, self.window_height)
 
         central_widget = QWidget()
         central_widget.setStyleSheet("""
@@ -265,13 +286,15 @@ class EdgeTrayWindow(QMainWindow):
         text_color = "#333" if theme == "light" else "#e2e8f0"
         link_color = "#3498db" if theme == "light" else "#5dade2"
 
-        self.centralWidget().setStyleSheet(f"""
-            QWidget {{
-                background: {bg_color};
-                border-radius: 12px;
-                color: {text_color};
-            }}
-        """)
+        central_widget = self.centralWidget()
+        if central_widget:
+            central_widget.setStyleSheet(f"""
+                QWidget {{
+                    background: {bg_color};
+                    border-radius: 12px;
+                    color: {text_color};
+                }}
+            """)
 
         copyright_text = (f"<p style='color:{text_color};'>© 2025 Jun_Loye<br/>"
                           f"<a style='color:{link_color}; text-decoration:none;' href='https://github.com/JunLoye/ClassBroom'>"
@@ -282,8 +305,10 @@ class EdgeTrayWindow(QMainWindow):
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray_icon = QSystemTrayIcon(self)
 
-            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
-            self.tray_icon.setIcon(icon)
+            style = self.style()
+            if style:
+                icon = style.standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+                self.tray_icon.setIcon(icon)
 
             tray_menu = QMenu()
 
@@ -358,22 +383,25 @@ class EdgeTrayWindow(QMainWindow):
     def expand_window(self):
         if not self.expanded:
             self.update_theme_style()
-            screen = QGuiApplication.primaryScreen().availableGeometry()
+            screen = QGuiApplication.primaryScreen()
+            if not screen: return
+            screen_geometry = screen.availableGeometry()
 
-            start_geometry = QRect(screen.right() - self.collapsed_width, 
-                                  (screen.height() - self.height) // 2,
-                                  self.collapsed_width, self.height)
+            start_geometry = QRect(screen_geometry.right() - self.collapsed_width, 
+                                  (screen_geometry.height() - self.window_height) // 2,
+                                  self.collapsed_width, self.window_height)
 
-            end_geometry = QRect(screen.right() - self.expanded_width, 
-                                (screen.height() - self.height) // 2,
-                                self.expanded_width, self.height)
+            end_geometry = QRect(screen_geometry.right() - self.expanded_width, 
+                                (screen_geometry.height() - self.window_height) // 2,
+                                self.expanded_width, self.window_height)
 
             self.animation.setStartValue(start_geometry)
             self.animation.setEndValue(end_geometry)
             self.animation.start()
 
             self.apps_container.show()
-            self.centralWidget().findChild(QLabel).show()
+            title_label = self.centralWidget().findChild(QLabel)
+            if title_label: title_label.show()
             self.copyright_label.show()
 
             self.expanded = True
@@ -381,15 +409,17 @@ class EdgeTrayWindow(QMainWindow):
 
     def collapse_window(self):
         if self.expanded:
-            screen = QGuiApplication.primaryScreen().availableGeometry()
+            screen = QGuiApplication.primaryScreen()
+            if not screen: return
+            screen_geometry = screen.availableGeometry()
 
-            start_geometry = QRect(screen.right() - self.expanded_width, 
-                                  (screen.height() - self.height) // 2,
-                                  self.expanded_width, self.height)
+            start_geometry = QRect(screen_geometry.right() - self.expanded_width, 
+                                  (screen_geometry.height() - self.window_height) // 2,
+                                  self.expanded_width, self.window_height)
 
-            end_geometry = QRect(screen.right() - self.collapsed_width, 
-                                (screen.height() - self.height) // 2,
-                                self.collapsed_width, self.height)
+            end_geometry = QRect(screen_geometry.right() - self.collapsed_width, 
+                                (screen_geometry.height() - self.window_height) // 2,
+                                self.collapsed_width, self.window_height)
 
             self.animation.setStartValue(start_geometry)
             self.animation.setEndValue(end_geometry)
@@ -426,8 +456,10 @@ class EdgeTrayWindow(QMainWindow):
         cursor_pos = QCursor.pos()
 
         if not self.expanded:
-            screen = QGuiApplication.primaryScreen().availableGeometry()
-            edge_rect = QRect(screen.right() - 10, screen.top(), 20, screen.height())
+            screen = QGuiApplication.primaryScreen()
+            if not screen: return
+            screen_geometry = screen.availableGeometry()
+            edge_rect = QRect(screen_geometry.right() - 10, screen_geometry.top(), 20, screen_geometry.height())
 
             if edge_rect.contains(cursor_pos):
                 self.expand_window()
@@ -446,16 +478,20 @@ class EdgeTrayWindow(QMainWindow):
             if widget:
                 widget.deleteLater()
 
-        apps_config = CONFIG.get("apps", {})
+        user_apps_config = CONFIG.get("apps", {})
         enabled_apps = []
 
-        for app_id, config in apps_config.items():
-            if config.get("enabled", False):
-                enabled_apps.append((app_id, config))
+        for app_id, app_info in self.app_map.items():
+            user_config = user_apps_config.get(app_id, {})
+            if user_config.get("enabled", False):
+                # 合并应用基本信息和用户配置
+                full_config = app_info.copy()
+                full_config.update(user_config)
+                enabled_apps.append((app_id, full_config))
 
         enabled_apps.sort(key=lambda x: x[1].get("position", 0))
 
-        columns = CONFIG.get("columns", 3)
+        columns = 3
         for index, (app_id, config) in enumerate(enabled_apps):
             app_launcher = AppLauncher(app_id, config)
             app_launcher.appClicked.connect(self.on_app_clicked)
@@ -493,7 +529,7 @@ class EdgeTrayWindow(QMainWindow):
                 module_path = app_info["module"]
                 
                 # 动态导入模块
-                module = __import__(module_path, fromlist=['']) # fromlist 必须是非空字符串，否则只返回顶层包
+                module = importlib.import_module(module_path)
                 
                 instance = None
                 takes_parent = app_info.get("takes_parent", False)
@@ -510,13 +546,15 @@ class EdgeTrayWindow(QMainWindow):
                     setattr(self, instance_attr, instance)
                     # WeatherApp 的特殊定位
                     if app_id == "Weather":
-                        screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-                        center_x = screen_geometry.center().x() - instance.width() // 2
-                        center_y = screen_geometry.center().y() - instance.height() // 2
-                        instance.move(center_x, center_y)
+                        screen = QGuiApplication.primaryScreen()
+                        if screen:
+                            screen_geometry = screen.availableGeometry()
+                            center_x = screen_geometry.center().x() - instance.width() // 2
+                            center_y = screen_geometry.center().y() - instance.height() // 2
+                            instance.move(center_x, center_y)
                     
                     # 确保所有新创建的窗口都显示
-                    if hasattr(instance, 'show') and not instance.isVisible():
+                    if app_id != "Settings" and hasattr(instance, 'show') and not instance.isVisible():
                         instance.show()
 
                     logging.info(f"[ClassBroom] {app_id} 已启动")

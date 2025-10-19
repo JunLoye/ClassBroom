@@ -25,7 +25,7 @@ CONFIG = {
     "screenshots_dir": "screenshots",
     "db_file": "window_records.db",
     "days_to_keep": 3,
-    "thumb_size": [240, 140],
+    "thumb_size": [240, 140], # 重新添加缩略图尺寸配置
     "min_hit_dist": 30,
     "tick_target": 6,
     "drag_threshold": 6,
@@ -324,18 +324,12 @@ class PreviewPopup(QFrame):
         v.setContentsMargins(6, 6, 6, 6)
         v.setSpacing(6)
 
-        self.img_label = QLabel()
-        self.img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.img_label.setMinimumSize(CONFIG["thumb_size"][0], CONFIG["thumb_size"][1])
-        self.img_label.setStyleSheet("background-color: #2a2a2a; border-radius: 4px;")
-
         self.title_label = QLabel()
         self.title_label.setWordWrap(True)
-        self.title_label.setMaximumWidth(CONFIG["thumb_size"][0] + 20)
+        self.title_label.setMaximumWidth(260) # Fixed width for text-only popup
 
         self.time_label = QLabel()
 
-        v.addWidget(self.img_label)
         v.addWidget(self.title_label)
         v.addWidget(self.time_label)
         self.setVisible(False)
@@ -343,30 +337,7 @@ class PreviewPopup(QFrame):
         logging.info("[WindowRecorder] 预览弹出窗口已创建")
 
     def show_preview(self, img_path, window_name, timestamp, global_pos: QPoint):
-        if img_path and os.path.exists(img_path) and img_path != self._last_file:
-            try:
-                pix = QPixmap(img_path)
-                if not pix.isNull():
-                    scaled_pix = pix.scaled(
-                        CONFIG["thumb_size"][0], CONFIG["thumb_size"][1],
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
-                    )
-                    self.img_label.setPixmap(scaled_pix)
-                    self._last_file = img_path
-                else:
-                    self.img_label.setText("[无法加载图像]")
-                    logging.warning(f"[WindowRecorder] 预览无法加载图像: {img_path}")
-                    self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
-            except Exception as e:
-                logging.exception("预览加载失败")
-                self.img_label.setText(f"[预览错误]")
-                self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
-        elif not img_path or not os.path.exists(img_path):
-            self.img_label.setText("[图像丢失]")
-            logging.warning(f"[WindowRecorder] 预览图像丢失: {img_path}")
-            self.img_label.setStyleSheet("background-color: #2a2a2a; color: #ff6b6b; border-radius: 4px;")
-
+        # 移除图片加载和显示逻辑，只显示文本
         display_name = window_name
         if len(display_name) > 40:
             display_name = display_name[:37] + "..."
@@ -377,16 +348,16 @@ class PreviewPopup(QFrame):
         x = global_pos.x() + 16
         y = global_pos.y() + 16
 
+        self.adjustSize() # Adjust size based on text content
         if x + self.width() > screen_rect.right():
             x = global_pos.x() - self.width() - 16
         if y + self.height() > screen_rect.bottom():
             y = global_pos.y() - self.height() - 16
 
         self.move(x, y)
-        self.adjustSize()
         self.setVisible(True)
         self.raise_()
-        logging.debug(f"[WindowRecorder] 显示预览: {img_path}")
+        logging.debug(f"[WindowRecorder] 显示预览: {window_name} @ {timestamp}")
 
     def hide_preview(self):
         self.setVisible(False)
@@ -431,8 +402,8 @@ class TimelineTrack(QFrame):
         self._inertia_vx = 0.0
         self._center_time = None
         self._center_item_info = None
-        self._center_pixmap = None
-        self._center_pixmap_path = None
+        self._center_pixmap = None # 重新添加
+        self._center_pixmap_path = None # 重新添加
         self._prepare_positions_and_ticks()
 
     def leaveEvent(self, event):
@@ -464,6 +435,7 @@ class TimelineTrack(QFrame):
         closest_item = min(self.items_parsed, key=lambda item: abs((item[0] - self._center_time).total_seconds()))
         self._center_item_info = closest_item
         
+        # 重新添加中心图片预览的加载逻辑
         if self._center_item_info:
             fn = self._center_item_info[2]
             if self._center_pixmap_path != fn:
@@ -586,20 +558,17 @@ class TimelineTrack(QFrame):
         if self._center_item_info:
             dt_obj, wn, fn, ts_str = self._center_item_info
             
+            # 重新添加中心图片预览的绘制逻辑
             thumb_h = 60
             thumb_w = int(thumb_h * 16/9)
-
             preview_y = int(line_y + (self.height() - line_y - thumb_h) / 2 - 10)
-
             if self._center_pixmap and not self._center_pixmap.isNull():
                 scaled_pix = self._center_pixmap.scaled(
                     thumb_w, thumb_h, 
                     Qt.AspectRatioMode.KeepAspectRatio, 
                     Qt.TransformationMode.SmoothTransformation
                 )
-                
                 thumb_x = self.width() // 2 - scaled_pix.width() - 10
-                
                 painter.setPen(QPen(QColor("#555")))
                 painter.drawRect(thumb_x -1, preview_y -1, scaled_pix.width() + 2, scaled_pix.height() + 2)
                 painter.drawPixmap(thumb_x, preview_y, scaled_pix)
@@ -610,7 +579,8 @@ class TimelineTrack(QFrame):
             painter.setFont(font)
             
             display_text = f"{ts_str.split(' ')[1]}\n{wn}"
-            text_rect = QRect(self.width() // 2 + 10, preview_y, self.width() // 2 - 20, thumb_h)
+            # 调整文本位置，使其居中或更合理
+            text_rect = QRect(self.width() // 2 + 10, preview_y, self.width() // 2 - 20, thumb_h) # 调整位置和大小
             painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap, display_text)
 
         elif self._center_time:

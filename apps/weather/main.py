@@ -4,6 +4,7 @@ import time
 import logging
 import json
 from datetime import datetime
+import webbrowser
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout,
                              QLabel, QVBoxLayout, QFrame, QPushButton, QDialog, QFormLayout, QLineEdit, QSpinBox, 
@@ -233,7 +234,6 @@ class SettingsDialog(QDialog):
         self.accept()
 
         
-
 # ----------------------- 主窗口 -----------------------
 class WeatherApp(QMainWindow):
     def __init__(self):
@@ -255,17 +255,19 @@ class WeatherApp(QMainWindow):
             self.tray_icon = QSystemTrayIcon(self)
             self.tray_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon))
             self.tray_icon.setToolTip("天气监测")
+            self.tray_icon.messageClicked.connect(self.on_notification_clicked)
+            self.tray_icon.show()
         else:
             self.tray_icon = None
             logging.warning("[Weather] 系统托盘不可用，无法显示系统通知")
 
-    # def on_notification_clicked(self):
-    #     """点击系统通知时的处理"""
-    #     if self.current_fxLink:
-    #         logging.info(f"[Weather] 点击通知，打开链接: {self.current_fxLink}")
-    #         webbrowser.open(self.current_fxLink)
-    #     else:
-    #         logging.warning("[Weather] 点击通知，但当前没有有效的链接")
+    def on_notification_clicked(self):
+        """点击系统通知时的处理"""
+        if self.current_fxLink:
+            logging.info(f"[Weather] 点击通知，打开链接: {self.current_fxLink}")
+            webbrowser.open(self.current_fxLink)
+        else:
+            logging.warning("[Weather] 点击通知，但当前没有有效的链接")
 
     def eventFilter(self, obj, event):
         if obj == self.warning_widget and event.type() == event.Type.MouseButtonPress:
@@ -453,6 +455,8 @@ class WeatherApp(QMainWindow):
         logging.info("[Weather] 窗口关闭事件触发")
         if hasattr(self, 'worker') and self.worker.isRunning():
             self.worker.stop()
+        if hasattr(self, 'tray_icon') and self.tray_icon:
+            self.tray_icon.hide()
         event.accept()
 
     def open_settings(self):
@@ -503,7 +507,7 @@ def start_app(): # 重命名为 start_app
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
+    app.setQuitOnLastWindowClosed(True)
     font = QFont("Microsoft YaHei", 11)
     app.setFont(font)
 

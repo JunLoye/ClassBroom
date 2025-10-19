@@ -1,6 +1,8 @@
 {
     "apps": {
         "Weather": {
+            "enabled": true,
+            "position": 0,
             "location": "101280801",
             "update_interval": 5,
             "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
@@ -9,10 +11,14 @@
             "notifications": true
         },
         "Countdown": {
+            "enabled": false,
+            "position": 1,
             "target_date": "1999-01-01",
             "title": "目标日"
         },
         "TextDisplay": {
+            "enabled": true,
+            "position": 2,
             "content": "",
             "font_family": "Microsoft YaHei",
             "font_size": 12,
@@ -24,6 +30,8 @@
             "alignment": "left"
         },
         "WindowRecorder": {
+            "enabled": true,
+            "position": 3,
             "interval": 60,
             "screenshots_dir": "screenshots",
             "db_file": "window_records.db",
@@ -38,6 +46,10 @@
             "inertia_min_v": 10,
             "inertia_timer_ms": 16,
             "log_item_height": 20
+        },
+        "Settings": {
+            "enabled": true,
+            "position": 4
         }
     }
 }
