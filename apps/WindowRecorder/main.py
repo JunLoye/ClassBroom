@@ -715,7 +715,9 @@ class TimelineTrack(QFrame):
         if e.button() == Qt.MouseButton.LeftButton:
             if self._is_dragging:
                 if len(self._pos_samples) >= 2:
-                    x0, t0 = self._pos_samples[0]
+                    # 使用最近的几个点来计算速度，使得“甩动”操作更灵敏
+                    start_idx = max(0, len(self._pos_samples) - 4) # 使用最后最多4个样本来计算速度
+                    x0, t0 = self._pos_samples[start_idx]
                     x1, t1 = self._pos_samples[-1]
                     dt = t1 - t0
                     if dt > 0:
@@ -736,6 +738,12 @@ class TimelineTrack(QFrame):
                         self._inertia_timer.start()
                         logging.debug(f"[WindowRecorder] 开始惯性滚动，初速度: {self._inertia_vx:.2f}")
                 return
+
+            # 如果不是拖拽，而是点击，确保惯性停止
+            if self._inertia_timer.isActive():
+                self._inertia_timer.stop()
+                self._inertia_vx = 0.0
+                logging.debug("[WindowRecorder] 点击事件发生，停止惯性滚动。")
 
             mx = e.position().x()
             for x, (ts, win, fn) in self._positions:

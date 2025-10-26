@@ -27,15 +27,17 @@
             "enabled": true,
             "position": 2,
             "text": "Hello, ClassBroom!",
-            "content": "666",
+            "content": "添加更详细的日志输出；修复日志输出级别的错误",
             "font_family": "Microsoft YaHei",
-            "font_size": 12,
+            "font_size": 72,
             "bold": false,
             "italic": false,
             "underline": false,
             "text_color": "#000000",
             "bg_color": "#ffffff",
-            "alignment": "center"
+            "alignment": "center",
+            "horizontal_alignment": "left",
+            "vertical_alignment": "center"
         },
         "WindowRecorder": {
             "name": "窗口记录",
