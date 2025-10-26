@@ -16,10 +16,13 @@ class TextDisplayWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.is_fullscreen = False
         self.is_window_fullscreen = False
         self.is_text_fullscreen = False
         self.original_geometry = None
+        self.original_margins = {}
+        self.display_label_parent_layout = None
         self.init_ui()
         self.default_settings()
         self.load_text_from_config()
@@ -40,10 +43,10 @@ class TextDisplayWindow(QMainWindow):
         self.setup_shortcuts()
 
     def create_text_input_area(self, parent_layout):
-        input_group = QGroupBox("文本输入")
-        parent_layout.addWidget(input_group)
+        self.input_group = QGroupBox("文本输入")
+        parent_layout.addWidget(self.input_group)
 
-        input_layout = QVBoxLayout(input_group)
+        input_layout = QVBoxLayout(self.input_group)
 
         self.text_input = QLineEdit()
         self.text_input.setPlaceholderText("在这里输入要显示的文本")
@@ -52,10 +55,10 @@ class TextDisplayWindow(QMainWindow):
         self.text_input.textChanged.connect(lambda: QTimer.singleShot(100, self.update_display))
 
     def create_control_panel(self, parent_layout):
-        control_group = QGroupBox("显示设置")
-        parent_layout.addWidget(control_group)
+        self.control_group = QGroupBox("显示设置")
+        parent_layout.addWidget(self.control_group)
 
-        control_layout = QVBoxLayout(control_group)
+        control_layout = QVBoxLayout(self.control_group)
 
         font_layout = QHBoxLayout()
         control_layout.addLayout(font_layout)
@@ -96,10 +99,11 @@ class TextDisplayWindow(QMainWindow):
         self.bg_color_btn.clicked.connect(self.choose_bg_color)
         color_layout.addWidget(self.bg_color_btn)
 
+        # Horizontal Alignment
         align_layout = QHBoxLayout()
         control_layout.addLayout(align_layout)
 
-        align_layout.addWidget(QLabel("对齐方式:"))
+        align_layout.addWidget(QLabel("水平对齐方式:")) # Changed label text
 
         self.alignment_group = QButtonGroup()
         self.left_radio = QRadioButton("左对齐")
@@ -115,18 +119,39 @@ class TextDisplayWindow(QMainWindow):
         self.alignment_group.addButton(self.right_radio, 2)
         align_layout.addWidget(self.right_radio)
 
+        # Vertical Alignment
+        vertical_align_layout = QHBoxLayout()
+        control_layout.addLayout(vertical_align_layout)
+
+        vertical_align_layout.addWidget(QLabel("垂直对齐方式:"))
+
+        self.vertical_alignment_group = QButtonGroup()
+        self.v_top_radio = QRadioButton("顶部对齐")
+        self.vertical_alignment_group.addButton(self.v_top_radio, 0)
+        vertical_align_layout.addWidget(self.v_top_radio)
+        
+        self.v_center_radio = QRadioButton("居中对齐")
+        self.v_center_radio.setChecked(True) # Default vertical alignment
+        self.vertical_alignment_group.addButton(self.v_center_radio, 1)
+        vertical_align_layout.addWidget(self.v_center_radio)
+
+        self.v_bottom_radio = QRadioButton("底部对齐")
+        self.vertical_alignment_group.addButton(self.v_bottom_radio, 2)
+        vertical_align_layout.addWidget(self.v_bottom_radio)
+
         self.font_family.currentFontChanged.connect(lambda: QTimer.singleShot(100, self.update_display))
         self.font_size.valueChanged.connect(lambda: QTimer.singleShot(100, self.update_display))
         self.bold_check.toggled.connect(lambda: QTimer.singleShot(100, self.update_display))
         self.italic_check.toggled.connect(lambda: QTimer.singleShot(100, self.update_display))
         self.underline_check.toggled.connect(lambda: QTimer.singleShot(100, self.update_display))
         self.alignment_group.buttonToggled.connect(lambda: QTimer.singleShot(100, self.update_display))
+        self.vertical_alignment_group.buttonToggled.connect(lambda: QTimer.singleShot(100, self.update_display)) # Connect new group
 
     def create_display_area(self, parent_layout):
-        display_group = QGroupBox("文本显示")
-        parent_layout.addWidget(display_group)
+        self.display_group = QGroupBox("文本显示")
+        parent_layout.addWidget(self.display_group)
 
-        display_layout = QVBoxLayout(display_group)
+        display_layout = QVBoxLayout(self.display_group)
 
         self.display_label = QLabel("在这里显示文本")
         self.display_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -134,17 +159,30 @@ class TextDisplayWindow(QMainWindow):
         self.display_label.setStyleSheet("background-color: white; color: black; padding: 10px; border: 1px solid #ccc;")
         display_layout.addWidget(self.display_label)
         
-        text_fullscreen_btn = QPushButton("文本全屏")
+        # 添加一个用于全屏按钮的布局
+        self.fullscreen_buttons_layout = QHBoxLayout() # 保存布局的引用
+        display_layout.addLayout(self.fullscreen_buttons_layout)
+
+        # 添加窗口内全屏按钮
+        window_fullscreen_btn = QPushButton("窗口内全屏 (F11)")
+        window_fullscreen_btn.clicked.connect(self.toggle_window_fullscreen)
+        self.fullscreen_buttons_layout.addWidget(window_fullscreen_btn)
+
+        # 修改文本全屏按钮的文本以显示新的快捷键
+        text_fullscreen_btn = QPushButton("文本全屏 (F12)")
         text_fullscreen_btn.clicked.connect(self.toggle_text_fullscreen)
-        display_layout.addWidget(text_fullscreen_btn)
+        self.fullscreen_buttons_layout.addWidget(text_fullscreen_btn)
 
     def setup_shortcuts(self):
         self.shortcut_exit = Qt.Key.Key_Escape
+        # F11 和 F12 快捷键将在 keyPressEvent 中直接处理
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self.exit_fullscreen()
-        elif event.key() == Qt.Key.Key_F11:
+        elif event.key() == Qt.Key.Key_F11: # F11 用于窗口内全屏
+            self.toggle_window_fullscreen()
+        elif event.key() == Qt.Key.Key_F12: # F12 用于文本全屏
             self.toggle_text_fullscreen()
 
     def default_settings(self):
@@ -156,6 +194,7 @@ class TextDisplayWindow(QMainWindow):
         self.text_color = QColor(Qt.GlobalColor.black)
         self.bg_color = QColor(Qt.GlobalColor.white)
         self.left_radio.setChecked(True)
+        self.v_center_radio.setChecked(True) # Set default for new vertical alignment
         self.update_display()
 
     def update_display(self):
@@ -169,17 +208,34 @@ class TextDisplayWindow(QMainWindow):
         font.setItalic(self.italic_check.isChecked())
         font.setUnderline(self.underline_check.isChecked())
 
+        # Determine horizontal alignment
+        h_alignment = Qt.AlignmentFlag.AlignLeft
         if self.left_radio.isChecked():
-            alignment = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            h_alignment = Qt.AlignmentFlag.AlignLeft
         elif self.center_radio.isChecked():
-            alignment = Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
-        else:
-            alignment = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            h_alignment = Qt.AlignmentFlag.AlignCenter
+        else: # right_radio.isChecked()
+            h_alignment = Qt.AlignmentFlag.AlignRight
+
+        # Determine vertical alignment
+        v_alignment = Qt.AlignmentFlag.AlignVCenter
+        if self.v_top_radio.isChecked():
+            v_alignment = Qt.AlignmentFlag.AlignTop
+        elif self.v_center_radio.isChecked():
+            v_alignment = Qt.AlignmentFlag.AlignVCenter
+        else: # v_bottom_radio.isChecked()
+            v_alignment = Qt.AlignmentFlag.AlignBottom
 
         self.display_label.setText(text)
         self.display_label.setFont(font)
-        self.display_label.setAlignment(alignment)
-        self.display_label.setStyleSheet(f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; padding: 10px; border: 1px solid #ccc;")
+        self.display_label.setAlignment(h_alignment | v_alignment) # Combine horizontal and vertical
+        
+        # 根据窗口内全屏状态应用不同的样式表
+        if self.is_window_fullscreen:
+            style_sheet = f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; padding: 0px; border: none;"
+        else:
+            style_sheet = f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; padding: 10px; border: 1px solid #ccc;"
+        self.display_label.setStyleSheet(style_sheet)
 
 
     def choose_text_color(self):
@@ -201,16 +257,13 @@ class TextDisplayWindow(QMainWindow):
             self.showFullScreen()
             self.is_fullscreen = True
 
-            input_group = self.findChild(QGroupBox, "文本输入")
-            if input_group:
-                input_group.hide()
-            control_group = self.findChild(QGroupBox, "显示设置")
-            if control_group:
-                control_group.hide()
+            if self.input_group:
+                self.input_group.hide()
+            if self.control_group:
+                self.control_group.hide()
 
-            display_group = self.findChild(QGroupBox, "文本显示")
-            if display_group:
-                display_group.setTitle("")
+            if self.display_group:
+                self.display_group.setTitle("")
 
             self.exit_btn = QPushButton("退出全屏 (ESC)")
             self.exit_btn.clicked.connect(self.exit_fullscreen)
@@ -226,24 +279,30 @@ class TextDisplayWindow(QMainWindow):
         if not self.is_window_fullscreen:
             self.is_window_fullscreen = True
 
-            input_group = self.findChild(QGroupBox, "文本输入")
-            if input_group:
-                input_group.hide()
-            control_group = self.findChild(QGroupBox, "显示设置")
-            if control_group:
-                control_group.hide()
+            main_layout = self.main_widget.layout()
+            self.original_margins['main_layout'] = main_layout.contentsMargins()
+            main_layout.setContentsMargins(0, 0, 0, 0)
 
-            display_group = self.findChild(QGroupBox, "文本显示")
-            if display_group:
-                display_group.setTitle("")
+            if self.input_group:
+                self.input_group.hide()
+            if self.control_group:
+                self.control_group.hide()
 
-            self.exit_btn = QPushButton("退出全屏 (ESC)")
-            self.exit_btn.clicked.connect(self.exit_window_fullscreen)
-            self.exit_btn.setParent(self.centralWidget())
-            self.exit_btn.move(self.centralWidget().width() - self.exit_btn.width() - 10, 10)
-            self.exit_btn.show()
+            if self.display_group:
+                self.display_group.hide()
+                self.display_label_parent_layout = self.display_group.layout()
+                main_layout.addWidget(self.display_label)
 
             self.update_display()
+
+            self.exit_btn = QPushButton("退出窗口内全屏 (ESC/F11)")
+            self.exit_btn.clicked.connect(self.exit_window_fullscreen)
+            self.exit_btn.setParent(self.centralWidget())
+            self.exit_btn.setStyleSheet("padding: 5px 10px;")
+            self.exit_btn.adjustSize()
+            self.exit_btn.move(self.centralWidget().width() - self.exit_btn.width() - 20, 20)
+            self.exit_btn.show()
+
         else:
             self.exit_window_fullscreen()
 
@@ -261,11 +320,6 @@ class TextDisplayWindow(QMainWindow):
                 self.exit_btn.hide()
                 self.exit_btn.deleteLater()
 
-        elif self.is_window_fullscreen:
-            self.exit_window_fullscreen()
-        elif self.is_text_fullscreen:
-            self.exit_text_fullscreen()
-
     def exit_window_fullscreen(self):
         if self.is_window_fullscreen:
             self.is_window_fullscreen = False
@@ -277,29 +331,32 @@ class TextDisplayWindow(QMainWindow):
                 self.exit_btn.deleteLater()
 
     def restore_ui(self):
-        input_group = self.findChild(QGroupBox, "文本输入")
-        if input_group:
-            input_group.show()
-        control_group = self.findChild(QGroupBox, "显示设置")
-        if control_group:
-            control_group.show()
+        main_layout = self.main_widget.layout()
+        if 'main_layout' in self.original_margins:
+            main_layout.setContentsMargins(self.original_margins['main_layout'])
 
-        display_group = self.findChild(QGroupBox, "文本显示")
-        if display_group:
-            display_group.setTitle("文本显示")
+        if self.display_label_parent_layout:
+            main_layout.removeWidget(self.display_label)
+            self.display_label_parent_layout.insertWidget(0, self.display_label)
+            self.display_label_parent_layout = None
+
+        if self.input_group:
+            self.input_group.show()
+        if self.control_group:
+            self.control_group.show()
+
+        if self.display_group:
+            self.display_group.show()
 
         self.update_display()
         
     def toggle_text_fullscreen(self):
         if not self.is_text_fullscreen:
-            # 保存当前状态
             self.is_text_fullscreen = True
             
-            # 创建一个全屏窗口
             self.text_fullscreen_window = QMainWindow()
             self.text_fullscreen_window.showFullScreen()
             
-            # 创建文本标签
             text_label = QLabel(self.display_label.text())
             text_label.setFont(self.display_label.font())
             text_label.setAlignment(self.display_label.alignment())
@@ -308,7 +365,7 @@ class TextDisplayWindow(QMainWindow):
             
             self.text_fullscreen_window.setCentralWidget(text_label)
             
-            exit_btn = QPushButton("退出文本全屏 (ESC/F11)")
+            exit_btn = QPushButton("退出文本全屏 (ESC/F12)")
             exit_btn.clicked.connect(self.exit_text_fullscreen)
             exit_btn.setParent(self.text_fullscreen_window)
             exit_btn.setStyleSheet("padding: 5px 10px;")
@@ -366,13 +423,21 @@ class TextDisplayWindow(QMainWindow):
                 if "bg_color" in td_config:
                     self.bg_color = QColor(td_config["bg_color"])
 
-                alignment = td_config.get("alignment")
-                if alignment == "center":
+                h_alignment = td_config.get("horizontal_alignment")
+                if h_alignment == "center":
                     self.center_radio.setChecked(True)
-                elif alignment == "right":
+                elif h_alignment == "right":
                     self.right_radio.setChecked(True)
                 else:
                     self.left_radio.setChecked(True)
+
+                v_alignment = td_config.get("vertical_alignment")
+                if v_alignment == "top":
+                    self.v_top_radio.setChecked(True)
+                elif v_alignment == "bottom":
+                    self.v_bottom_radio.setChecked(True)
+                else:
+                    self.v_center_radio.setChecked(True)
 
                 self.update_display()
         except Exception as e:
@@ -391,12 +456,23 @@ class TextDisplayWindow(QMainWindow):
 
             text_content = self.text_input.text()
 
+            # Save horizontal alignment
+            h_alignment_str = "left"
             if self.left_radio.isChecked():
-                alignment = "left"
+                h_alignment_str = "left"
             elif self.center_radio.isChecked():
-                alignment = "center"
-            else:
-                alignment = "right"
+                h_alignment_str = "center"
+            else: # right_radio.isChecked()
+                h_alignment_str = "right"
+            
+            # Save vertical alignment
+            v_alignment_str = "center"
+            if self.v_top_radio.isChecked():
+                v_alignment_str = "top"
+            elif self.v_center_radio.isChecked():
+                v_alignment_str = "center"
+            else: # v_bottom_radio.isChecked()
+                v_alignment_str = "bottom"
                 
             temp_update = {
                 "content": text_content,
@@ -407,7 +483,8 @@ class TextDisplayWindow(QMainWindow):
                 "underline": self.underline_check.isChecked(),
                 "text_color": self.text_color.name(),
                 "bg_color": self.bg_color.name(),
-                "alignment": alignment
+                "horizontal_alignment": h_alignment_str, # Changed key name
+                "vertical_alignment": v_alignment_str # Added vertical alignment
             }
             
             text_display_config.update(temp_update)
@@ -425,22 +502,23 @@ class TextDisplayWindow(QMainWindow):
         self.closed.emit()
         event.accept()
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.is_window_fullscreen and hasattr(self, 'exit_btn') and self.exit_btn.isVisible():
+            self.exit_btn.move(self.centralWidget().width() - self.exit_btn.width() - 20, 20)
 
-def start_app(parent=None): # 重命名为 start_app，并接受 parent 参数
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
-        app.setQuitOnLastWindowClosed(False) # 确保应用不会因为此窗口关闭而退出
-
+def start_app(parent=None):
     window = TextDisplayWindow()
-
     return window
 
 if __name__ == '__main__':
     # For standalone execution
-    window = start_app()
     app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
     # In standalone mode, the application should exit when the last window is closed.
     app.setQuitOnLastWindowClosed(True)
+    
+    window = start_app() # 现在 start_app 只返回窗口实例
     window.show()
     sys.exit(app.exec())

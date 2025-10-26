@@ -379,7 +379,7 @@ class TimelineTrack(QFrame):
         self.items_parsed.sort(key=lambda x: x[0])
         logging.info(f"[WindowRecorder] 创建时间轴轨迹: {date_str}, {len(self.items_parsed)} 个项目")
 
-        self.setMinimumHeight(220)
+        self.setMinimumHeight(280)
         self.setMouseTracking(True)
         self.preview = PreviewPopup(self)
         self.setStyleSheet("background-color: #0f0f0f; border-radius:6px; margin-bottom:8px;")
@@ -483,7 +483,11 @@ class TimelineTrack(QFrame):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
+        # --- Timeline Area ---
+        timeline_area_height = 100
         top_y = 28
+        line_y = 60
+
         painter.setPen(QPen(QColor("#4fc1ff"), 2))
         painter.drawLine(self._left_margin, top_y, self.width() - self._right_margin, top_y)
         painter.setPen(QPen(QColor("#88cfff"), 1))
@@ -491,7 +495,6 @@ class TimelineTrack(QFrame):
             painter.drawLine(x, top_y - 6, x, top_y + 6)
             painter.drawText(x - 25, top_y - 18, 50, 14, Qt.AlignmentFlag.AlignCenter, label)
 
-        line_y = self.height() // 2
         pen_line = QPen(QColor("#2f9cff"))
         pen_line.setWidth(3)
         painter.setPen(pen_line)
@@ -536,7 +539,7 @@ class TimelineTrack(QFrame):
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(QPoint(x, line_y), point_size, point_size)
 
-        legend_y = self.height() - 25
+        legend_y = timeline_area_height - 15
         legend_x = self._left_margin
         painter.setPen(QPen(QColor("#ff6b6b")))
         painter.setBrush(QColor("#ff6b6b"))
@@ -555,38 +558,57 @@ class TimelineTrack(QFrame):
         painter.setPen(QPen(QColor("#88cfff")))
         painter.drawText(legend_x, legend_y - 8, 140, 16, Qt.AlignmentFlag.AlignLeft, f"缩放: {self._zoom_factor:.1f}x")
 
+        # --- Separator ---
+        painter.setPen(QPen(QColor("#333333")))
+        painter.drawLine(20, timeline_area_height, self.width() - 20, timeline_area_height)
+
+        # --- Preview Area ---
         if self._center_item_info:
             dt_obj, wn, fn, ts_str = self._center_item_info
             
-            # 重新添加中心图片预览的绘制逻辑
-            thumb_h = 60
+            preview_top_y = timeline_area_height + 20
+            thumb_h = 140
             thumb_w = int(thumb_h * 16/9)
-            preview_y = int(line_y + (self.height() - line_y - thumb_h) / 2 - 10)
+            
             if self._center_pixmap and not self._center_pixmap.isNull():
                 scaled_pix = self._center_pixmap.scaled(
                     thumb_w, thumb_h, 
                     Qt.AspectRatioMode.KeepAspectRatio, 
                     Qt.TransformationMode.SmoothTransformation
                 )
-                thumb_x = self.width() // 2 - scaled_pix.width() - 10
+                thumb_x = self._left_margin
                 painter.setPen(QPen(QColor("#555")))
-                painter.drawRect(thumb_x -1, preview_y -1, scaled_pix.width() + 2, scaled_pix.height() + 2)
-                painter.drawPixmap(thumb_x, preview_y, scaled_pix)
+                painter.drawRect(thumb_x -1, preview_top_y -1, scaled_pix.width() + 2, scaled_pix.height() + 2)
+                painter.drawPixmap(thumb_x, preview_top_y, scaled_pix)
 
-            painter.setPen(QPen(QColor("#ddd")))
-            font = painter.font()
-            font.setPointSize(9)
-            painter.setFont(font)
-            
-            display_text = f"{ts_str.split(' ')[1]}\n{wn}"
-            # 调整文本位置，使其居中或更合理
-            text_rect = QRect(self.width() // 2 + 10, preview_y, self.width() // 2 - 20, thumb_h) # 调整位置和大小
-            painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap, display_text)
+                text_x = thumb_x + scaled_pix.width() + 20
+                text_rect = QRect(text_x, preview_top_y, self.width() - text_x - self._right_margin, thumb_h)
+                
+                painter.setPen(QPen(QColor("#ddd")))
+                font = painter.font()
+                font.setPointSize(11)
+                font.setBold(True)
+                painter.setFont(font)
+                
+                ts_rect = QRect(text_rect.x(), text_rect.y(), text_rect.width(), 25)
+                painter.drawText(ts_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, f"时间: {ts_str}")
+
+                font.setPointSize(10)
+                font.setBold(False)
+                painter.setFont(font)
+
+                wn_rect = QRect(text_rect.x(), text_rect.y() + 30, text_rect.width(), text_rect.height() - 60)
+                painter.drawText(wn_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap, f"窗口: {wn}")
+
+                painter.setPen(QPen(QColor("#888")))
+                fn_rect = QRect(text_rect.x(), text_rect.y() + text_rect.height() - 25, text_rect.width(), 25)
+                painter.drawText(fn_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom, f"文件: {fn}")
 
         elif self._center_time:
-            center_time_str = self._center_time.strftime("%H:%M:%S")
+            center_time_str = self._center_time.strftime("%Y-%m-%d %H:%M:%S")
             painter.setPen(QPen(QColor("#999999")))
-            painter.drawText(self.rect().adjusted(0, 0, 0, -5), Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom, center_time_str)
+            preview_rect = self.rect().adjusted(0, timeline_area_height, 0, 0)
+            painter.drawText(preview_rect, Qt.AlignmentFlag.AlignCenter, f"时间轴中心: {center_time_str}")
 
         painter.end()
 

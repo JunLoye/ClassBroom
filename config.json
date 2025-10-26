@@ -1,25 +1,33 @@
 {
+    "version": "Beta-2.5.0",
     "apps": {
         "Weather": {
+            "name": "天气检测",
+            "icon": "🌤️",
             "enabled": true,
             "position": 0,
             "location": "101280801",
-            "update_interval": 5,
             "api_key": "7ab1cc2363ba4f5aa546f9961bb277cf",
+            "update_interval": 300,
             "language": "zh",
             "temperature_unit": "C",
             "notifications": true
         },
         "Countdown": {
+            "name": "倒记日",
+            "icon": "📆",
             "enabled": false,
             "position": 1,
-            "target_date": "1999-01-01",
-            "title": "目标日"
+            "title": "",
+            "target_date": ""
         },
         "TextDisplay": {
+            "name": "大字显示",
+            "icon": "📄",
             "enabled": true,
             "position": 2,
-            "content": "",
+            "text": "Hello, ClassBroom!",
+            "content": "666",
             "font_family": "Microsoft YaHei",
             "font_size": 12,
             "bold": false,
@@ -27,9 +35,11 @@
             "underline": false,
             "text_color": "#000000",
             "bg_color": "#ffffff",
-            "alignment": "left"
+            "alignment": "center"
         },
         "WindowRecorder": {
+            "name": "窗口记录",
+            "icon": "🪟",
             "enabled": true,
             "position": 3,
             "interval": 60,
@@ -39,15 +49,11 @@
                 240,
                 140
             ],
-            "min_hit_dist": 30,
-            "tick_target": 6,
-            "drag_threshold": 6,
-            "inertia_friction": 0.92,
-            "inertia_min_v": 10,
-            "inertia_timer_ms": 16,
             "log_item_height": 20
         },
         "Settings": {
+            "name": "全局设置",
+            "icon": "⚙️",
             "enabled": true,
             "position": 4
         }

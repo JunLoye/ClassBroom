@@ -1,0 +1,27 @@
+{
+    "apps": {
+        "WindowRecorder": {
+            "interval": 60,
+            "days_to_keep": 4,
+            "enabled": false,
+            "position": 0
+        },
+        "Weather": {
+            "enabled": false,
+            "position": 0
+        },
+        "Countdown": {
+            "enabled": false,
+            "position": 0
+        },
+        "TextDisplay": {
+            "enabled": false,
+            "position": 0
+        },
+        "Settings": {
+            "enabled": true
+        }
+    },
+    "theme": "light",
+    "columns": 3
+}

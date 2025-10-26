@@ -1,16 +1,66 @@
 import sys
 import os
-import json
 import logging
 import re
 import urllib.request
 import importlib
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-                             QLabel, QFrame, QScrollArea, QGridLayout,
-                             QSystemTrayIcon, QMenu, QStyle)
+                             QLabel, QFrame, QScrollArea, QSystemTrayIcon, QMenu, QStyle, QHBoxLayout)
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve, QUrl
 from PyQt6.QtGui import QFont, QGuiApplication, QAction, QCursor, QDesktopServices
+
+
+CONFIG = {
+    "version": "Beta-2.5.0",
+    "apps": {
+        "Weather": {
+            "name": "天气检测",
+            "icon": "🌤️",
+            "enabled": True,
+            "position": 0,
+            "location": "",
+            "api_key": ""
+        },
+        "Countdown": {
+            "name": "倒记日",
+            "icon": "📆",
+            "enabled": False,
+            "position": 1,
+            "title": "",
+            "target_date": ""
+        },
+        "TextDisplay": {
+            "name": "大字显示",
+            "icon": "📄",
+            "enabled": True,
+            "position": 2,
+            "text": "Hello, ClassBroom!"
+        },
+        "WindowRecorder": {
+            "name": "窗口记录",
+            "icon": "🪟",
+            "enabled": True,
+            "position": 3,
+            "interval": 60,
+            "screenshots_dir": "screenshots",
+            "db_file": "window_records.db",
+            "thumb_size": [
+                240,
+                140
+            ],
+            "log_item_height": 20,
+            "days_to_keep": 3
+        },
+        "Settings": {
+            "name": "全局设置",
+            "icon": "⚙️",
+            "enabled": True,
+            "position": 4
+        }
+    },
+    "columns": 3
+}
 
 
 def get_path(relative_path):
@@ -33,20 +83,6 @@ file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
 file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(file_formatter)
 logger.addHandler(file_handler)
-
-
-APP_CONFIG_PATH = get_path('config.json')
-
-CONFIG = {}
-try:
-    if os.path.exists(APP_CONFIG_PATH):
-        with open(APP_CONFIG_PATH, 'r', encoding='utf-8') as f:
-            CONFIG = json.load(f)
-        logging.info("[ClassBroom] 成功读取配置文件")
-    else:
-        logging.warning("[ClassBroom] 配置文件不存在")
-except Exception as e:
-    logging.exception("[ClassBroom] 读取启动器配置文件失败")
 
 
 class AppLauncher(QFrame):
@@ -99,31 +135,17 @@ class AppLauncher(QFrame):
         self.update_style()
 
     def update_style(self):
-        theme = CONFIG.get("theme", "light")
-        if theme == "dark":
-            self.setStyleSheet("""
-                AppLauncher {
-                    background: rgba(45, 55, 72, 200);
-                    border-radius: 8px;
-                    margin: 3px;
-                }
-                AppLauncher:hover {
-                    background: rgba(55, 65, 82, 240);
-                    border: 1px solid rgba(74, 144, 226, 0.5);
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                AppLauncher {
-                    background: rgba(255, 255, 255, 200);
-                    border-radius: 8px;
-                    margin: 3px;
-                }
-                AppLauncher:hover {
-                    background: rgba(255, 255, 255, 240);
-                    border: 1px solid rgba(52, 152, 219, 0.5);
-                }
-            """)
+        self.setStyleSheet("""
+            AppLauncher {
+                background: rgba(255, 255, 255, 200);
+                border-radius: 8px;
+                margin: 3px;
+            }
+            AppLauncher:hover {
+                background: rgba(255, 255, 255, 240);
+                border: 1px solid rgba(52, 152, 219, 0.5);
+            }
+        """)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -256,7 +278,7 @@ class EdgeTrayWindow(QMainWindow):
         main_layout.addWidget(scroll_area)
 
         self.apps_container = QWidget()
-        self.apps_layout = QGridLayout(self.apps_container)
+        self.apps_layout = QVBoxLayout(self.apps_container)
         self.apps_layout.setSpacing(5)
         self.apps_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.apps_layout.setContentsMargins(5, 5, 5, 5)
@@ -333,7 +355,7 @@ class EdgeTrayWindow(QMainWindow):
 
     def check_for_updates(self):
         try:
-            url = "https://github.com/LoyeJun/ClassBroom/releases/latest"
+            url = "https://github.com/JunLoye/ClassBroom/releases/latest"
             
             with urllib.request.urlopen(url) as response:
                 final_url = response.geturl()
@@ -473,9 +495,20 @@ class EdgeTrayWindow(QMainWindow):
                 self.collapse_window()
 
     def load_apps(self):
-        for i in reversed(range(self.apps_layout.count())):
-            widget = self.apps_layout.itemAt(i).widget()
-            if widget:
+        while self.apps_layout.count():
+            item = self.apps_layout.takeAt(0)
+            if item is None:
+                continue
+            
+            layout = item.layout()
+            if layout is not None:
+                while layout.count():
+                    child_item = layout.takeAt(0)
+                    if child_item.widget():
+                        child_item.widget().deleteLater()
+            
+            widget = item.widget()
+            if widget is not None:
                 widget.deleteLater()
 
         user_apps_config = CONFIG.get("apps", {})
@@ -491,14 +524,35 @@ class EdgeTrayWindow(QMainWindow):
 
         enabled_apps.sort(key=lambda x: x[1].get("position", 0))
 
-        columns = 3
+        columns = CONFIG.get("columns", 3)
+        if not isinstance(columns, int) or columns <= 0:
+            columns = 3
+        
+        num_apps = len(enabled_apps)
+        if num_apps == 0:
+            return
+
+        num_rows = (num_apps + columns - 1) // columns
+        row_layouts = []
+        for _ in range(num_rows):
+            h_layout = QHBoxLayout()
+            h_layout.setSpacing(5)
+            h_layout.setContentsMargins(0, 0, 0, 0)
+            row_layouts.append(h_layout)
+            self.apps_layout.addLayout(h_layout)
+
         for index, (app_id, config) in enumerate(enabled_apps):
             app_launcher = AppLauncher(app_id, config)
             app_launcher.appClicked.connect(self.on_app_clicked)
             
             row = index // columns
-            col = index % columns
-            self.apps_layout.addWidget(app_launcher, row, col, Qt.AlignmentFlag.AlignCenter)
+            row_layouts[row].addWidget(app_launcher)
+
+        for layout in row_layouts:
+            layout.insertStretch(0, 1)
+            layout.addStretch(1)
+        
+        self.apps_layout.addStretch(1)
 
 
     def on_app_clicked(self, app_id):
@@ -518,49 +572,56 @@ class EdgeTrayWindow(QMainWindow):
         instance_attr = app_info.get("instance_attr")
         current_instance = getattr(self, instance_attr, None)
 
+        # 如果实例已存在，则显示它
         if current_instance:
-            setattr(self, instance_attr, None)
-            current_instance = None
-            logging.info(f"[ClassBroom] {app_id} 实例已被删除，将重新创建。")
+            if hasattr(current_instance, 'show_window'):
+                current_instance.show_window()
+            else:
+                current_instance.show()
+            
+            if hasattr(current_instance, 'activateWindow'):
+                current_instance.activateWindow()
+            
+            logging.info(f"[ClassBroom] 显示已存在的 {app_id} 实例。")
+            return
 
         # 如果实例不存在，则创建并启动
-        if current_instance is None:
-            try:
-                module_path = app_info["module"]
-                
-                # 动态导入模块
-                module = importlib.import_module(module_path)
-                
-                instance = None
-                takes_parent = app_info.get("takes_parent", False)
+        try:
+            module_path = app_info["module"]
+            
+            # 动态导入模块
+            module = importlib.import_module(module_path)
+            
+            instance = None
+            takes_parent = app_info.get("takes_parent", False)
 
-                if "class" in app_info: # 对于 CountdownManager 这样的类
-                    AppClass = getattr(module, app_info["class"])
-                    instance = AppClass(parent=self) if takes_parent else AppClass()
+            if "class" in app_info: # 对于 CountdownManager 这样的类
+                AppClass = getattr(module, app_info["class"])
+                instance = AppClass(parent=self) if takes_parent else AppClass()
+                instance.show()
+            elif "function" in app_info: # 对于统一的 start_app 函数
+                AppFunction = getattr(module, app_info["function"])
+                instance = AppFunction(parent=self) if takes_parent else AppFunction()
+            
+            if instance:
+                setattr(self, instance_attr, instance)
+                # WeatherApp 的特殊定位
+                if app_id == "Weather":
+                    screen = QGuiApplication.primaryScreen()
+                    if screen:
+                        screen_geometry = screen.availableGeometry()
+                        center_x = screen_geometry.center().x() - instance.width() // 2
+                        center_y = screen_geometry.center().y() - instance.height() // 2
+                        instance.move(center_x, center_y)
+                
+                # 确保所有新创建的窗口都显示
+                if app_id != "Settings" and hasattr(instance, 'show') and not instance.isVisible():
                     instance.show()
-                elif "function" in app_info: # 对于统一的 start_app 函数
-                    AppFunction = getattr(module, app_info["function"])
-                    instance = AppFunction(parent=self) if takes_parent else AppFunction()
-                
-                if instance:
-                    setattr(self, instance_attr, instance)
-                    # WeatherApp 的特殊定位
-                    if app_id == "Weather":
-                        screen = QGuiApplication.primaryScreen()
-                        if screen:
-                            screen_geometry = screen.availableGeometry()
-                            center_x = screen_geometry.center().x() - instance.width() // 2
-                            center_y = screen_geometry.center().y() - instance.height() // 2
-                            instance.move(center_x, center_y)
-                    
-                    # 确保所有新创建的窗口都显示
-                    if app_id != "Settings" and hasattr(instance, 'show') and not instance.isVisible():
-                        instance.show()
 
-                    logging.info(f"[ClassBroom] {app_id} 已启动")
+                logging.info(f"[ClassBroom] {app_id} 已启动")
 
-            except Exception as e:
-                logging.exception(f"[ClassBroom] {app_id} 启动失败")
+        except Exception as e:
+            logging.exception(f"[ClassBroom] {app_id} 启动失败")
 
     def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
