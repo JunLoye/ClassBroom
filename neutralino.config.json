@@ -1,0 +1,42 @@
+{
+  "applicationId": "com.junloye.classbroom",
+  "version": "1.1.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/www/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "nativeAllowList": [
+    "app.*",
+    "os.execCommand",
+    "os.*",
+    "filesystem.*",
+    "window.*"
+  ],
+  "modes": {
+    "window": {
+      "title": "ClassBroom",
+      "icon": "www/app.ico",
+      "width": 1200,
+      "height": 85,
+      "minWidth": 400,
+      "minHeight": 50,
+      "resizable": true,
+      "fullScreen": false,
+      "alwaysOnTop": false,
+      "borderless": true,
+      "transparent": true,
+      "skipTaskbar": true,
+      "enableInspector": false 
+    }
+  },
+  "cli": {
+    "binaryName": "classbroom",
+    "resourcesPath": "/www/",
+    "clientLibrary": "/www/js/neutralino.js",
+    "binaryVersion": "6.10.0",
+    "clientVersion": "6.10.0"
+  }
+}

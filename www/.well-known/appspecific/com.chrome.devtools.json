@@ -1,0 +1,2 @@
+mkdir -p www/.well-known/appspecific
+touch www/.well-known/appspecific/com.chrome.devtools.json

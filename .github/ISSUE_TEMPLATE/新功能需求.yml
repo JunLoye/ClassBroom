@@ -1,0 +1,54 @@
+name: "新功能需求"
+description: "提出一个新功能或改进建议"
+title: "[功能] "
+labels: [新功能]
+
+body:
+- type: checkboxes
+  id: checklist
+  attributes:
+    label: "提交前检查"
+    description: "请逐个检查下列项目，并勾选确认"
+    options:
+    - label: "我已在 [Issue 页面](https://github.com/JunLoye/Todo-List/issues)中搜索，确认了这一提案未被提交过"
+      required: true
+
+- type: textarea
+  id: overview
+  attributes:
+    label: "功能概述"
+    description: "清晰简洁地描述你希望添加的功能"
+    placeholder: "我希望 Todo-List 能够..."
+  validations:
+    required: true
+
+- type: textarea
+  id: usecase
+  attributes:
+    label: "使用场景"
+    description: "描述该功能解决什么实际问题，在什么场景下使用"
+    placeholder: "当我在 ... 的时候，我希望能够 ...，因为这样可以 ..."
+  validations:
+    required: true
+
+- type: textarea
+  id: implementation
+  attributes:
+    label: "实现思路（可选）"
+    description: "如果你有关于如何实现的想法，请描述在这里"
+    placeholder: "可以考虑通过 ... 的方式来实现，参考了 ... 的实现"
+  validations:
+    required: false
+
+- type: dropdown
+  id: priority
+  attributes:
+    label: "优先级"
+    description: "你认为这个功能的重要程度"
+    options:
+      - "低（锦上添花）"
+      - "中（提升体验）"
+      - "高（急需功能）"
+    default: 1
+  validations:
+    required: true

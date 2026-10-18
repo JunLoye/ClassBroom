@@ -1,0 +1,56 @@
+name: "优化建议"
+description: "对已有功能的小幅度优化或改进建议"
+title: "[优化] "
+labels: [优化]
+
+body:
+- type: checkboxes
+  id: checklist
+  attributes:
+    label: "提交前检查"
+    description: "请逐个检查下列项目，并勾选确认"
+    options:
+    - label: "我已在 [Issues 页面](https://github.com/JunLoye/Todo-List/issues)中搜索，确认了这一建议未被提交过"
+      required: true
+
+- type: textarea
+  id: current
+  attributes:
+    label: "当前问题"
+    description: "描述当前实现中你认为可以优化的地方"
+    placeholder: "当前的 ... 在 ... 方面做得不够好，具体表现是 ..."
+  validations:
+    required: true
+
+- type: textarea
+  id: suggestion
+  attributes:
+    label: "优化方案"
+    description: "详细描述你期望的改进方案"
+    placeholder: "希望改成 ... 这样，因为 ..."
+  validations:
+    required: true
+
+- type: textarea
+  id: benefit
+  attributes:
+    label: "预期收益（可选）"
+    description: "说明该优化能带来什么好处"
+    placeholder: "优化后可以提升 ... / 减少 ... / 使 ... 更清晰"
+  validations:
+    required: false
+
+- type: dropdown
+  id: scope
+  attributes:
+    label: "优化范围"
+    description: "该优化涉及的范围"
+    options:
+      - "UI / 样式"
+      - "性能"
+      - "用户体验"
+      - "代码质量"
+      - "文档"
+      - "其他"
+  validations:
+    required: true

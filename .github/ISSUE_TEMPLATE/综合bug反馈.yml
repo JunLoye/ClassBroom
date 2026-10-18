@@ -1,0 +1,97 @@
+name: "综合 Bug 反馈"
+description: "遇见了没有细分选项的其他 Bug"
+title: "[Bug] "
+labels: [Bug]
+
+body:
+- type: checkboxes
+  id: checklist
+  attributes:
+    label: "提交前检查"
+    description: "请逐个检查下列项目，并勾选确认"
+    options:
+    - label: "我已在 [Issues 页面](https://github.com/JunLoye/Todo-List/issues)中搜索，确认了这一 Bug 未被提交过"
+      required: true
+    - label: "我已提供足够的环境信息和重现步骤，以便开发者复现问题"
+      required: true
+
+- type: textarea
+  id: description
+  attributes:
+    label: "问题描述"
+    description: "请描述该 Bug 的具体表现，包括错误信息、异常情况或截图"
+    placeholder: "当我执行 ... 操作时，出现了 ... 错误，期望结果是 ..."
+  validations:
+    required: true
+
+- type: textarea
+  id: steps
+  attributes:
+    label: "重现步骤"
+    description: "详细说明如何重现该问题"
+    placeholder: |
+      1. 打开应用
+      2. 点击 ...
+      3. 往下滚动到 ...
+      4. 出现报错/异常
+    value: |
+      1.
+      2.
+      3.
+      4.
+  validations:
+    required: true
+
+- type: dropdown
+  id: severity
+  attributes:
+    label: "严重程度"
+    description: "该 Bug 对使用的影响程度"
+    options:
+      - "严重（应用崩溃或无法使用）"
+      - "较高（主要功能受影响）"
+      - "中等（次要功能/交互受影响）"
+      - "较低（视觉/UI 小问题）"
+    default: 2
+  validations:
+    required: true
+
+- type: input
+  id: version
+  attributes:
+    label: "软件版本"
+    description: "你当前使用的 Todo-List 版本"
+    placeholder: "v1.0.0 / Alpha / Beta"
+  validations:
+    required: true
+
+- type: dropdown
+  id: os
+  attributes:
+    label: "操作系统"
+    options:
+      - "Windows 10"
+      - "Windows 11"
+      - "macOS"
+      - "Linux"
+      - "其他"
+  validations:
+    required: true
+
+- type: textarea
+  id: attachments
+  attributes:
+    label: "日志与附件（可选）"
+    description: "上传日志文件、截图或其他有助于定位问题的附件"
+    placeholder: "先点击这个文本框，然后将文件拖拽到文本框中以上传"
+  validations:
+    required: false
+
+- type: textarea
+  id: additional
+  attributes:
+    label: "补充信息（可选）"
+    description: "任何其他有助于解决问题的信息"
+    placeholder: "该问题在特定条件下才会出现 / 可能是由最近的某个变更导致的 / ..."
+  validations:
+    required: false
