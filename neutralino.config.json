@@ -23,7 +23,7 @@
       "height": 92,
       "minWidth": 800,
       "minHeight": 70,
-      "resizable": true,
+      "resizable": false,
       "fullScreen": false,
       "alwaysOnTop": false,
       "borderless": true,

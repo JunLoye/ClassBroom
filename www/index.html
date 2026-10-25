@@ -211,14 +211,21 @@
   .weather-info .temp { font-family: var(--font-mono); font-size: 17px; font-weight: 800; line-height: 1.1; }
   .weather-info .desc { font-size: 10px; color: var(--text-sub); font-weight: 700; white-space: normal; overflow: visible; text-overflow: clip; width: 88px; max-width: 88px; line-height: 1.2; max-height: 42px; }
   .weather-warning {
-    color: var(--accent-red); font-size: 12px; font-weight: 800; display: flex;
-    align-items: center; gap: 4px; padding: 4px 6px; border-radius: 6px;
-    background: rgba(220, 38, 38, 0.08); animation: warning-alert 1.2s ease-in-out infinite;
+    --warning-color: var(--accent-red);
+    color: var(--warning-color); font-size: 12px; font-weight: 800; display: flex;
+    align-items: center; gap: 4px; padding: 4px 6px; border: none; border-radius: 6px;
+    font-family: inherit; cursor: pointer; user-select: none;
+    background: color-mix(in srgb, var(--warning-color) 8%, transparent);
+    animation: warning-alert 1.2s ease-in-out infinite; flex-shrink: 0;
   }
+  .weather-warning:hover { filter: brightness(0.96); }
   .weather-warning svg { width: 16px; height: 16px; animation: warning-shake 1.2s ease-in-out infinite; }
+  .weather-container.no-warning { justify-content: flex-end; }
+  .weather-container.no-warning .weather-warning { display: none; }
+  .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) 150px 108px; }
   @keyframes warning-alert {
-    0%, 100% { background: rgba(220, 38, 38, 0.08); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-    50% { background: rgba(220, 38, 38, 0.16); box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08); }
+    0%, 100% { background: color-mix(in srgb, var(--warning-color) 8%, transparent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning-color) 0%, transparent); }
+    50% { background: color-mix(in srgb, var(--warning-color) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning-color) 8%, transparent); }
   }
   @keyframes warning-shake {
     0%, 100% { transform: rotate(0deg); }
@@ -259,9 +266,51 @@
   
   .hidden { display: none !important; }
 
-  .settings-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-light); background: var(--bg-app); flex-shrink: 0; min-height: 64px; }
+  #custom-bottom-info {
+    position: absolute; left: 12px; right: 12px; bottom: 2px; z-index: 20;
+    min-height: 14px; text-align: right; pointer-events: none;
+    color: var(--text-muted); font-size: 10px; line-height: 14px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .about-card { max-width: 620px; display: grid; gap: 12px; }
+  .about-title { font-size: 18px; font-weight: 800; color: var(--text-main); }
+  .about-meta { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 12px; font-size: 13px; }
+  .about-meta dt { color: var(--text-muted); font-weight: 700; }
+  .about-meta dd { color: var(--text-main); }
+  .placeholder-help { color: var(--text-muted); font-size: 12px; line-height: 1.7; }
+  .placeholder-details { margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); }
+  .placeholder-details summary { min-height: 44px; padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 800; color: var(--text-main); }
+  .placeholder-table { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 0 14px 8px; }
+  .placeholder-table div { min-width: 0; display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.4fr); gap: 8px; align-items: start; padding: 7px 0; border-top: 1px solid var(--border-light); font-size: 12px; }
+  .placeholder-table span { color: var(--text-sub); line-height: 1.5; }
+  .placeholder-token { min-height: 32px; max-width: 100%; justify-self: start; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); color: var(--accent-cyan); font-family: var(--font-mono); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .placeholder-token:hover { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-card)); }
+  .placeholder-token:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent); outline-offset: 2px; }
+  .placeholder-example { padding: 8px 14px 12px; color: var(--text-muted); font-size: 12px; }
+  .subject-manager-details { margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); }
+  .subject-manager-details summary { min-height: 40px; padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 800; }
+  .subject-manager-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 6px; padding: 0 12px 8px; }
+  .subject-manager-row input { height: 40px; min-width: 0; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 5px; }
+  .subject-manager-row .btn { height: 40px; padding: 6px 10px; }
+  .subject-manager-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+  .subject-manager-item { display: inline-flex; align-items: center; border: 1px solid var(--border-light); border-radius: 5px; overflow: hidden; }
+  .subject-manager-name { height: 36px; padding: 4px 8px; border: none; background: var(--bg-card); color: var(--text-main); cursor: pointer; }
+  .subject-manager-remove { width: 32px; height: 36px; border: none; border-left: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-muted); cursor: pointer; }
+
+  #config-drop-overlay {
+    position: fixed; inset: 8px; z-index: 2000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px dashed var(--accent-cyan); border-radius: 8px;
+    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+    color: var(--accent-cyan); font-size: 18px; font-weight: 800;
+    opacity: 0; transform: scale(0.98); transition: opacity 120ms ease, transform 120ms ease;
+  }
+  #config-drop-overlay.active { opacity: 1; transform: scale(1); }
+
+  .settings-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border-light); background: var(--bg-app); flex-shrink: 0; min-height: 58px; }
   .settings-tabs { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .settings-actions { display: grid; grid-template-columns: repeat(2, auto); align-items: center; gap: 6px 8px; justify-content: end; }
+  .settings-actions { display: flex; align-items: center; gap: 6px; justify-content: end; flex-wrap: nowrap; }
   .theme-select { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: 12px; white-space: nowrap; }
   .theme-select select {
     appearance: none; -webkit-appearance: none; height: 32px; min-width: 118px; padding: 0 32px 0 10px;
@@ -278,30 +327,41 @@
   .tab-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   .tab-icon { margin-right: 6px; }
 
-  .settings-body { flex: 1; overflow-y: auto; padding: 16px; min-height: 0; position: relative; }
+  .settings-body { flex: 1; overflow-y: auto; padding: 12px 16px 16px; min-height: 0; position: relative; }
+  .settings-footer { flex-shrink: 0; display: flex; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid var(--border-light); background: var(--bg-app); }
+  .settings-footer .btn { min-width: 128px; height: 40px; }
+  .settings-footer .btn:disabled { opacity: 0.45; cursor: default; filter: grayscale(1); }
   
   .tab-content { display: none !important; }
   .tab-content.active { display: block !important; }
+  #tab-courses.active { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; gap: 10px; min-height: 0; }
+  #tab-courses.active .course-header { grid-column: 1; grid-row: 1; margin-bottom: 0; }
+  #tab-courses.active .course-list { grid-column: 1; grid-row: 2; min-height: 0; padding-right: 4px; }
 
   .form-group { margin-bottom: 16px; }
   .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
-  .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 6px; font-size: 13px; outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
+  .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 5px; font-size: 13px; outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
+  .form-group input[type="color"] { padding: 3px; }
   .form-group textarea { height: auto; min-height: 100px; resize: none; font-family: var(--font-mono); font-size: 12px; }
   .form-group input:focus, .form-group textarea:focus { border-color: var(--accent-cyan); }
   .form-row { display: flex; gap: 12px; }
   .form-row .col { flex: 1 1 220px; min-width: 0; }
-  @media (max-width: 850px) {
-    .settings-header { flex-wrap: wrap; }
+  @media (max-width: 1100px) {
+    .settings-header { align-items: flex-start; flex-wrap: wrap; }
     .settings-tabs { width: 100%; }
-    .settings-actions { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .settings-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
     .settings-actions .theme-select { justify-content: flex-start; }
     .form-row { flex-wrap: wrap; }
+  }
+  @media (max-width: 850px) {
+    #tab-courses.active { grid-template-columns: 1fr; grid-template-rows: 52px minmax(240px, 1fr); }
+    #tab-courses.active .course-list { grid-column: 1; grid-row: 2; }
   }
   @media (max-width: 620px) {
     .settings-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .settings-actions .btn { width: 100%; }
     .course-item { flex-wrap: wrap; }
-    .course-item input[type="text"] { flex-basis: 100%; }
+    .course-custom-input { min-width: 0; width: 0; }
   }
 
   .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
@@ -309,15 +369,72 @@
   .day-btn { background: var(--bg-card); border: 1px solid var(--border-light); padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
   .day-btn.active { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
   
-  .course-list { display: flex; flex-direction: column; gap: 8px; }
-  .course-item { display: flex; gap: 8px; align-items: center; background: var(--bg-app); padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); }
-  .course-item input[type="time"] { width: 110px; padding: 6px; height: 32px; border: 1px solid var(--border-light); border-radius: 4px; font-family: var(--font-mono); font-size: 12px; background: var(--bg-card); }
-  .course-item input[type="text"] { flex: 1; min-width: 0; padding: 6px 10px; height: 32px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 13px; background: var(--bg-card); }
-  .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: 32px; height: 32px; border-radius: 4px; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
+  .course-list { display: flex; flex-direction: column; gap: 6px; }
+  .course-item { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(180px, auto) 44px; gap: 8px; align-items: center; min-height: 64px; background: var(--bg-app); padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); cursor: pointer; }
+  .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr) 44px; min-height: 64px; opacity: 0.58; }
+  .course-item:not(.selected):hover { opacity: 0.82; }
+  .course-item.selected { grid-template-columns: minmax(280px, 0.72fr) minmax(520px, 1.28fr) 44px; min-height: 112px; height: auto; opacity: 1; border-color: var(--accent-cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent); align-items: start; padding-top: 8px; padding-bottom: 8px; overflow: visible; }
+  .course-subject-panel { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .course-time-panel { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; display: flex; align-items: center; justify-content: end; overflow: visible; }
+  .course-item.selected > .btn-delete { grid-column: 3; grid-row: 1; align-self: start; justify-self: end; margin-left: 0; }
+  .course-item:not(.selected) > .btn-delete { grid-column: 2; grid-row: 1; justify-self: end; margin-left: 0; }
+  .course-item.selected .btn-delete { margin-left: 0; align-self: start; }
+  .course-name-summary { min-width: 0; font-size: 15px; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .course-time-summary { min-width: 0; margin-top: 2px; white-space: nowrap; font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: var(--text-sub); }
+  .course-item:not(.selected) .course-subject-panel { grid-column: 1; }
+  .course-subject-options { width: 100%; max-width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(5, minmax(42px, 1fr)); align-items: center; gap: 4px; overflow: visible; }
+  .course-subject-option { min-width: 0; width: 100%; min-height: 32px; height: 32px; padding: 4px 6px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-main); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .course-subject-option:hover, .course-subject-option.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 7%, var(--bg-card)); }
+  .course-custom-button { height: 32px !important; min-height: 32px !important; padding: 4px 6px !important; border: 1px solid var(--border-light) !important; border-radius: 4px !important; background: var(--bg-card); color: var(--text-sub); font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .course-custom-button:hover { border-color: var(--accent-cyan) !important; color: var(--accent-cyan); }
+  .course-custom-input { flex: 1; min-width: 120px; height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--bg-card); color: var(--text-main); font-size: 14px; }
+  .course-custom-confirm { height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--accent-cyan); color: #fff; font-size: 13px; cursor: pointer; }
+  .course-time-range { width: min(560px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 4px; }
+  .course-time-range-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+  .course-range-value { min-height: 36px; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 8px; color: var(--text-sub); font-size: 12px; line-height: 1.2; }
+  .course-range-value b { min-width: 0; color: var(--text-main); font-family: var(--font-mono); font-size: 18px; line-height: 1.2; text-align: right; font-variant-numeric: tabular-nums; }
+  .course-range-value span { white-space: nowrap; font-size: 13px; font-weight: 700; line-height: 1.2; }
+  .course-time-range-track { --range-start: 0%; --range-end: 100%; position: relative; width: 100%; height: 48px; cursor: pointer; touch-action: none; outline: none; }
+  .course-time-range-track::before { top: 21px !important; }
+  .course-time-range-fill { top: 21px !important; }
+  .course-time-range-track::before { content: ''; position: absolute; left: 0; right: 0; top: 18px; height: 6px; border-radius: 3px; background: var(--border-light); }
+  .course-time-range-fill { position: absolute; left: var(--range-start); right: calc(100% - var(--range-end)); top: 18px; height: 6px; border-radius: 3px; background: var(--accent-cyan); }
+  .course-time-range-thumb { position: absolute; top: 8px; width: 32px; height: 32px; transform: translateX(-50%); border-radius: 50%; border: 3px solid var(--bg-card); background: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.18); cursor: grab; touch-action: none; outline: none; }
+  .course-time-range-thumb.start { left: var(--range-start); }
+  .course-time-range-thumb.end { left: var(--range-end); }
+  .course-time-range-thumb:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-cyan) 20%, transparent); }
+  .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: 44px; height: 44px; border-radius: 6px; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
   .btn-delete:hover { background: var(--accent-red); color: #fff; }
+  .day-btn { min-height: 44px; min-width: 52px; }
+  #btn-add-course { min-height: 44px; }
+  @media (pointer: coarse) {
+    .settings-header { min-height: 58px; }
+    .tab-btn { min-height: 44px; }
+    .settings-actions .btn, .theme-select select, .startup-toggle input { min-height: 44px; }
+    .course-item { min-height: 64px; }
+    .course-time-range { width: 100%; min-width: 280px; }
+    .settings-body { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  }
+  @media (max-width: 1100px) {
+    .course-item,
+    .course-item.selected { grid-template-columns: minmax(180px, 1fr) 44px; grid-template-rows: auto auto; min-height: 64px; }
+    .course-subject-panel { grid-column: 1; grid-row: 1; }
+    .course-time-panel { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+    .course-subject-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .course-item.selected > .btn-delete,
+    .course-item:not(.selected) > .btn-delete { grid-column: 2; grid-row: 1; }
+  }
+  @media (max-width: 760px) {
+    .placeholder-table { grid-template-columns: 1fr; }
+
+    .settings-actions { width: 100%; flex-wrap: wrap; }
+    .course-time-range { width: 100%; min-width: 0; }
+  }
 </style>
 </head>
 <body>
+
+  <div id="config-drop-overlay">释放以加载 JSON 配置</div>
 
   <div id="view-main">
     <div class="window-controls">
@@ -333,6 +450,7 @@
       </button>
     </div>
 
+    <div id="custom-bottom-info" aria-live="polite"></div>
     <div class="widget-content" id="main-view">
       <div class="timeline-container" id="timeline"></div>
       <div class="time-container" id="time-display" aria-label="当前时间">
@@ -344,7 +462,7 @@
   </div>
 
   <div id="view-settings" class="hidden">
-    <div class="settings-header">
+    <div id="settings-header" class="settings-header">
       <div class="settings-tabs">
         <button class="tab-btn active" data-target="weather">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></svg>
@@ -354,8 +472,14 @@
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
           课表配置
         </button>
+        <button class="tab-btn" data-target="display">
+          显示
+        </button>
+        <button class="tab-btn" data-target="about">
+          关于
+        </button>
       </div>
-      <div class="settings-actions">
+      <div id="settings-actions" class="settings-actions">
         <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
         <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
         <label class="startup-toggle"><input id="input-autostart" type="checkbox">开机自启</label>
@@ -370,7 +494,6 @@
           </select>
         </label>
         <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
-        <button id="btn-save-settings" class="btn btn-primary">保存并应用</button>
       </div>
     </div>
 
@@ -378,6 +501,7 @@
       <div class="tab-content active" id="tab-weather">
         <div class="form-group"><label>API Host (专属域名)</label><input type="text" id="input-api-host" placeholder="例如: nc3wrwk7e7.re.qweatherapi.com"></div>
         <div class="form-group"><label>经纬度 (经度,纬度)</label><input type="text" id="input-location" placeholder="例如: 113.29,22.81"></div>
+        <div class="form-group"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" placeholder="例如：广东省珠海市香洲区"></div>
         <div class="form-group"><label for="input-weather-refresh-minutes">天气自动刷新间隔（分钟，1–1440）</label><input type="number" id="input-weather-refresh-minutes" min="1" max="1440" step="1" value="10"></div>
         <div class="form-row">
           <div class="form-group col"><label>JWT KID</label><input type="text" id="input-kid" placeholder="凭据 ID"></div>
@@ -392,8 +516,75 @@
           <div class="day-selector" id="day-selector"></div>
           <button id="btn-add-course" class="btn btn-secondary">+ 添加课程</button>
         </div>
+        <details class="subject-manager-details">
+          <summary>课程列表自定义</summary>
+          <div class="subject-manager-row">
+            <input type="text" id="input-new-subject" placeholder="输入课程名称，例如：晚修一">
+            <button type="button" id="btn-add-subject" class="btn btn-secondary">添加课程</button>
+          </div>
+          <div class="subject-manager-list" id="subject-list"></div>
+        </details>
         <div class="course-list" id="course-list"></div>
       </div>
+
+      <div class="tab-content" id="tab-display">
+        <div class="form-group">
+          <label for="input-custom-bottom-text">窗口右下角信息</label>
+          <textarea id="input-custom-bottom-text" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group col"><label for="input-countdown-name">倒计时名称</label><input type="text" id="input-countdown-name" placeholder="例如：高考"></div>
+          <div class="form-group col"><label for="input-countdown-date">目标日期</label><input type="date" id="input-countdown-date"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col"><label for="input-bottom-font-size">底部字体大小</label><input type="number" id="input-bottom-font-size" min="8" max="30" step="1" value="10"></div>
+          <div class="form-group col"><label for="input-bottom-color">底部文字颜色</label><input type="color" id="input-bottom-color" value="#64748b"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col"><label for="input-custom-one">自定义 1</label><input type="text" id="input-custom-one" placeholder="例如：班主任"></div>
+          <div class="form-group col"><label for="input-custom-two">自定义 2</label><input type="text" id="input-custom-two" placeholder="例如：教室"></div>
+          <div class="form-group col"><label for="input-custom-three">自定义 3</label><input type="text" id="input-custom-three" placeholder="例如：口号"></div>
+        </div>
+        <details class="placeholder-details">
+          <summary>占位符详细说明与示例</summary>
+          <div class="placeholder-table">
+            <div><button type="button" class="placeholder-token" data-placeholder="{time}" title="点击添加到右下角信息末尾">{time}</button><span>当前时分秒，例如 14:35:09</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{date}" title="点击添加到右下角信息末尾">{date}</button><span>当前日期，例如 2026-10-25</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{datetime}" title="点击添加到右下角信息末尾">{datetime}</button><span>完整日期与时间</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{weekday}" title="点击添加到右下角信息末尾">{weekday}</button><span>当前星期，例如 周日</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{location}" title="点击添加到右下角信息末尾">{location}</button><span>天气经纬度配置，例如 113.29,22.81</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{real_location}" title="点击添加到右下角信息末尾">{real_location}</button><span>地区名称，例如 广东省珠海市香洲区</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{custom1}" title="点击添加到右下角信息末尾">{custom1}</button><span>自定义文本 1</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{custom2}" title="点击添加到右下角信息末尾">{custom2}</button><span>自定义文本 2</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{custom3}" title="点击添加到右下角信息末尾">{custom3}</button><span>自定义文本 3</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{temperature}" title="点击添加到右下角信息末尾">{temperature}</button><span>当前气温，例如 26°</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{weather}" title="点击添加到右下角信息末尾">{weather}</button><span>天气描述，例如 多云 · 东风3级</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{course}" title="点击添加到右下角信息末尾">{course}</button><span>正在进行的课程，无课程时显示“无课程”</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{nextCourse}" title="点击添加到右下角信息末尾">{nextCourse}</button><span>下一节课程，无后续课程时提示</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{targetName}" title="点击添加到右下角信息末尾">{targetName}</button><span>倒计时名称，例如 高考</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{targetDate}" title="点击添加到右下角信息末尾">{targetDate}</button><span>配置的目标日期</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{daysTo}" title="点击添加到右下角信息末尾">{daysTo}</button><span>距离配置目标日期的天数</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{daysTo:2027-06-07}" title="点击添加到右下角信息末尾">{daysTo:2027-06-07}</button><span>距离指定日期的天数</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{appName}" title="点击添加到右下角信息末尾">{appName}</button><span>固定应用名称 ClassBroom</span></div>
+            <div><button type="button" class="placeholder-token" data-placeholder="{version}" title="点击添加到右下角信息末尾">{version}</button><span>当前应用版本号，例如 1.2.0</span></div>
+          </div>
+          <p class="placeholder-example">示例：<code>距{targetName}还有{daysTo}天 · {temperature} {weather} · {version}</code></p>
+        </details>
+      </div>
+
+      <div class="tab-content" id="tab-about">
+        <div class="about-card">
+          <div class="about-title">ClassBroom</div>
+          <dl class="about-meta">
+            <dt>版本</dt><dd id="about-version">--</dd>
+            <dt>应用 ID</dt><dd>com.junloye.classbroom</dd>
+            <dt>说明</dt><dd>轻量级课程与天气桌面挂件</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button id="btn-save-settings" class="btn btn-primary" type="button" disabled>保存并退出</button>
     </div>
   </div>
 
