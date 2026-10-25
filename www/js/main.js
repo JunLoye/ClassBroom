@@ -18,8 +18,8 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 const APP_CONFIG = {
-    windowSize: { width: 1200, height: 85 }, 
-    settingsSize: { width: 800, height: 600 }, 
+    windowSize: { width: 1400, height: 92 },
+    settingsSize: { width: 1000, height: 700 },
     topOffset: 20,
     excludeDrag: ["btn-refresh", "btn-close", "btn-settings"]
 };
@@ -40,7 +40,101 @@ const REG_KEY = 'ConfigData';
 
 let AppData = { weather: {}, courses: {} };
 let EditData = {}; 
-let CurrentEditDay = 'mon'; 
+let CurrentEditDay = 'mon';
+
+const Logger = {
+    logPath: null,
+    archivePath: null,
+    queue: Promise.resolve(),
+    sessionId: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    maxLogBytes: 2 * 1024 * 1024,
+    async init() {
+        try {
+            this.logPath = await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, 'classbroom.log');
+            this.archivePath = await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, 'classbroom.previous.log');
+            await this.rotateIfNeeded();
+            await this.info('应用启动', {
+                module: 'lifecycle',
+                os: window.NL_OS,
+                platform: navigator.platform,
+                appVersion: window.NL_APPVERSION,
+                resourcesPath: window.NL_PATH,
+                dataPath: window.NL_DATAPATH,
+                userAgent: navigator.userAgent
+            });
+        } catch (error) {
+            console.error('日志系统初始化失败:', error);
+        }
+    },
+    async rotateIfNeeded() {
+        if (!this.logPath) return;
+        try {
+            const stats = await Neutralino.filesystem.getStats(this.logPath);
+            if (!stats.isFile || stats.size < this.maxLogBytes) return;
+            try { await Neutralino.filesystem.remove(this.archivePath); } catch (error) { }
+            await Neutralino.filesystem.move(this.logPath, this.archivePath);
+        } catch (error) {
+            if (!String(error.message || error).includes('does not exist')) {
+                console.error('日志轮转失败:', error);
+            }
+        }
+    },
+    sanitize(value) {
+        if (!value || typeof value !== 'object') return value;
+        const sensitiveKeys = /private.?key|password|token|secret|credential/i;
+        return JSON.parse(JSON.stringify(value, (key, item) => sensitiveKeys.test(key) ? '[REDACTED]' : item));
+    },
+    async write(level, message, context = {}, error = null) {
+        const timestamp = new Date().toISOString();
+        const record = {
+            timestamp,
+            sessionId: this.sessionId,
+            level,
+            message: String(message),
+            module: context.module || 'app',
+            action: context.action || null,
+            durationMs: context.durationMs ?? null,
+            context: this.sanitize(context.context || {}),
+            error: error ? {
+                name: error.name || 'Error',
+                message: error.message || String(error),
+                stack: error.stack || null
+            } : null
+        };
+        const line = `${JSON.stringify(record)}\n`;
+        if (level === 'ERROR') console.error(record);
+        else if (level === 'WARN') console.warn(record);
+        else console.log(record);
+        if (!this.logPath) return;
+        this.queue = this.queue.catch(() => {}).then(async () => {
+            await Neutralino.filesystem.appendFile(this.logPath, line);
+        }).catch((writeError) => {
+            console.error('日志写入失败:', writeError);
+        });
+        await this.queue;
+    },
+    async measure(action, operation, context = {}) {
+        const startedAt = performance.now();
+        try {
+            const result = await operation();
+            await this.info(`${action}完成`, { ...context, action, durationMs: Math.round(performance.now() - startedAt) });
+            return result;
+        } catch (error) {
+            await this.error(`${action}失败`, { ...context, action, durationMs: Math.round(performance.now() - startedAt) }, error);
+            throw error;
+        }
+    },
+    info(message, context = {}) { return this.write('INFO', message, context); },
+    warn(message, context = {}, error = null) { return this.write('WARN', message, context, error); },
+    error(message, context = {}, error = null) { return this.write('ERROR', message, context, error); }
+};
+
+window.addEventListener('error', (event) => {
+    void Logger.error('未捕获的页面错误', { module: 'runtime', context: { filename: event.filename, line: event.lineno, column: event.colno } }, event.error || new Error(event.message));
+});
+window.addEventListener('unhandledrejection', (event) => {
+    void Logger.error('未处理的 Promise 异步异常', { module: 'runtime' }, event.reason instanceof Error ? event.reason : new Error(String(event.reason)));
+});
 
 const Store = {
     async init() {
@@ -219,12 +313,18 @@ const UI = {
         viewMain: document.getElementById('view-main'),
         viewSettings: document.getElementById('view-settings'),
         timeline: document.getElementById('timeline'),
+        timeDisplay: document.getElementById('time-display'),
+        timeClock: document.getElementById('time-clock'),
+        timeDate: document.getElementById('time-date'),
         weather: document.getElementById('weather'),
         btnSettings: document.getElementById('btn-settings'),
         btnRefresh: document.getElementById('btn-refresh'),
+        refreshHint: document.getElementById('refresh-hint'),
         btnClose: document.getElementById('btn-close'),
         btnSaveSettings: document.getElementById('btn-save-settings'),
         btnCancelSettings: document.getElementById('btn-cancel-settings'),
+        btnImportConfig: document.getElementById('btn-import-config'),
+        btnExportConfig: document.getElementById('btn-export-config'),
         inputApiHost: document.getElementById('input-api-host'),
         inputLocation: document.getElementById('input-location'),
         inputKid: document.getElementById('input-kid'),
@@ -232,11 +332,14 @@ const UI = {
         inputIss: document.getElementById('input-iss'),
         inputPrivateKey: document.getElementById('input-private-key'),
         inputAutoStart: document.getElementById('input-autostart'),
+        inputTheme: document.getElementById('input-theme'),
+        inputWeatherRefreshMinutes: document.getElementById('input-weather-refresh-minutes'),
         daySelector: document.getElementById('day-selector'),
         courseList: document.getElementById('course-list'),
         btnAddCourse: document.getElementById('btn-add-course')
     },
 
+    timeTimer: null,
     async init() {
         await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         try {
@@ -244,11 +347,13 @@ const UI = {
         } catch (e) { }
 
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
-        this.el.btnClose.addEventListener('click', () => Neutralino.window.hide());
+        this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
         this.el.btnSettings.addEventListener('click', () => this.openSettings());
         this.el.btnCancelSettings.addEventListener('click', () => this.closeSettings());
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
-        await Neutralino.events.on('windowClose', () => Neutralino.window.hide());
+        this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
+        this.el.btnExportConfig.addEventListener('click', () => this.exportConfig());
+        await Neutralino.events.on('windowClose', () => this.hideMainWindow('window-close'));
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -265,6 +370,39 @@ const UI = {
 
         this.renderDaySelector();
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
+        this.startClock();
+    },
+
+    startClock() {
+        clearTimeout(this.timeTimer);
+        this.updateClock();
+    },
+
+    stopClock() {
+        clearTimeout(this.timeTimer);
+        this.timeTimer = null;
+    },
+
+    updateClock() {
+        const now = new Date();
+        const pad = value => String(value).padStart(2, '0');
+        const hours = pad(now.getHours());
+        const minutes = pad(now.getMinutes());
+        const seconds = pad(now.getSeconds());
+        const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        this.el.timeClock.textContent = `${hours}:${minutes}:${seconds}`;
+        this.el.timeDate.textContent = `${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${weekdayNames[now.getDay()]}`;
+        this.el.timeDisplay.title = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${hours}:${minutes}:${seconds}`;
+
+        const delay = 1000 - now.getMilliseconds() + 5;
+        clearTimeout(this.timeTimer);
+        this.timeTimer = setTimeout(() => this.updateClock(), delay);
+    },
+
+    applyTheme(theme) {
+        const supportedThemes = ['monochrome', 'midnight', 'ocean', 'forest', 'high-contrast'];
+        if (supportedThemes.includes(theme)) document.documentElement.dataset.theme = theme;
+        else document.documentElement.removeAttribute('data-theme');
     },
 
     async positionWindow(size, top) {
@@ -273,6 +411,15 @@ const UI = {
         if (top !== undefined) {
             const centeredPosition = await Neutralino.window.getPosition();
             await Neutralino.window.move(centeredPosition.x ?? 0, top);
+        }
+    },
+
+    hideMainWindow(source = 'unknown') {
+        void Logger.info(`隐藏主窗口: ${source}`);
+        try {
+            void Neutralino.window.hide();
+        } catch (error) {
+            void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide' }, error);
         }
     },
 
@@ -295,7 +442,7 @@ const UI = {
                         await this.showMainWindow();
                         break;
                     case 'hide':
-                        await Neutralino.window.hide();
+                        this.hideMainWindow('tray-hide');
                         break;
                     case 'settings':
                         await Neutralino.window.show();
@@ -308,13 +455,13 @@ const UI = {
                         await this.toggleAutoStart();
                         break;
                     case 'exit':
-                        await Neutralino.app.exit();
+                        await App.shutdown();
                         break;
                 }
             });
             await this.updateTrayMenu();
         } catch (error) {
-            console.error('托盘菜单初始化失败:', error);
+            void Logger.error('托盘菜单初始化失败', { module: 'tray', action: 'init' }, error);
             try {
                 await Neutralino.os.showMessageBox('托盘菜单初始化失败', error.message || String(error));
             } catch (messageBoxError) { }
@@ -322,7 +469,7 @@ const UI = {
     },
 
     async updateTrayMenu() {
-        await Neutralino.os.setTray({
+        const trayOptions = {
             icon: window.NL_OS === 'Windows' ? '/tray.ico' : '/tray.png',
             menuItems: [
                 { id: 'show', text: '显示主界面' },
@@ -332,7 +479,12 @@ const UI = {
                 { id: 'autostart', text: '开机自启', isChecked: AppData.autoStart === true },
                 { id: 'exit', text: '退出' }
             ]
-        });
+        };
+        try {
+            await Neutralino.os.setTray(trayOptions);
+        } catch (error) {
+            await Neutralino.os.setTray({ ...trayOptions, icon: '/app.ico' });
+        }
     },
 
     async toggleAutoStart() {
@@ -345,19 +497,84 @@ const UI = {
             this.el.inputAutoStart.checked = enabled;
             await this.updateTrayMenu();
         } catch (error) {
-            console.error('开机自启设置失败:', error);
+            void Logger.error('开机自启设置失败', { module: 'startup', action: 'toggle' }, error);
             await Neutralino.os.showMessageBox('设置失败', error.message);
         }
     },
 
     async handleRefresh() {
+        this.el.btnRefresh.classList.remove('rotating');
+        void this.el.btnRefresh.offsetWidth;
         this.el.btnRefresh.classList.add('rotating');
-        await App.init();
+        await App.refreshAll();
         setTimeout(() => this.el.btnRefresh.classList.remove('rotating'), 600);
     },
 
-    async openSettings() {
-        EditData = JSON.parse(JSON.stringify(AppData)); 
+    validateConfig(config) {
+        if (!config || typeof config !== 'object' || Array.isArray(config)) {
+            throw new Error('配置文件根节点必须是 JSON 对象');
+        }
+        if (!config.weather || typeof config.weather !== 'object') {
+            throw new Error('配置缺少 weather 对象');
+        }
+        if (!config.courses || typeof config.courses !== 'object' || Array.isArray(config.courses)) {
+            throw new Error('配置缺少 courses 对象');
+        }
+        for (const day of Object.keys(DAY_MAP)) {
+            if (!Array.isArray(config.courses[day])) continue;
+            for (const course of config.courses[day]) {
+                if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(course.start || '') ||
+                    !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.end || '')) {
+                    throw new Error(`课程时间格式无效：${course.start || ''}-${course.end || ''}`);
+                }
+            }
+        }
+    },
+
+    async importConfig() {
+        try {
+            const paths = await Neutralino.os.showOpenDialog('导入 ClassBroom 配置', {
+                multiSelections: false,
+                filters: [{ name: 'JSON 配置', extensions: ['json'] }]
+            });
+            if (!paths || !paths.length) return;
+            const content = await Neutralino.filesystem.readFile(paths[0]);
+            const imported = JSON.parse(content);
+            this.validateConfig(imported);
+            if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
+            if (!imported.courses) imported.courses = {};
+            await this.openSettings(imported);
+            void Logger.info('配置导入成功', { module: 'config', action: 'import', context: { filePath: paths[0] } });
+        } catch (error) {
+            void Logger.error('配置导入失败', { module: 'config', action: 'import' }, error);
+            await Neutralino.os.showMessageBox('导入失败', error.message || String(error));
+        }
+    },
+
+    async exportConfig() {
+        try {
+            const configToExport = this.el.viewSettings.classList.contains('hidden')
+                ? AppData
+                : EditData;
+            const path = await Neutralino.os.showSaveDialog('导出 ClassBroom 配置', {
+                forceOverwrite: true,
+                defaultPath: 'classbroom-config.json',
+                filters: [{ name: 'JSON 配置', extensions: ['json'] }]
+            });
+            if (!path) return;
+            await Neutralino.filesystem.writeFile(path, JSON.stringify(configToExport, null, 2));
+            void Logger.info('配置导出成功', { module: 'config', action: 'export', context: { filePath: path } });
+            await Neutralino.os.showMessageBox('导出成功', path);
+        } catch (error) {
+            void Logger.error('配置导出失败', { module: 'config', action: 'export' }, error);
+            await Neutralino.os.showMessageBox('导出失败', error.message || String(error));
+        }
+    },
+
+    async openSettings(configToEdit = null) {
+        EditData = configToEdit
+            ? JSON.parse(JSON.stringify(configToEdit))
+            : JSON.parse(JSON.stringify(AppData));
         if (!EditData.weather) EditData.weather = { jwtConfig: {} };
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
@@ -369,6 +586,8 @@ const UI = {
         this.el.inputIss.value = EditData.weather.jwtConfig.iss || '';
         this.el.inputPrivateKey.value = EditData.weather.jwtConfig.privateKey || '';
         this.el.inputAutoStart.checked = EditData.autoStart === true;
+        this.el.inputTheme.value = EditData.theme || 'default';
+        this.el.inputWeatherRefreshMinutes.value = EditData.weatherRefreshMinutes || 10;
 
         this.renderCourseList(); 
 
@@ -392,17 +611,27 @@ const UI = {
         EditData.weather.jwtConfig.sub = this.el.inputSub.value.trim();
         EditData.weather.jwtConfig.iss = this.el.inputIss.value.trim();
         EditData.weather.jwtConfig.privateKey = this.el.inputPrivateKey.value.trim();
+        const weatherRefreshMinutes = Number(this.el.inputWeatherRefreshMinutes.value);
+        if (!Number.isInteger(weatherRefreshMinutes) || weatherRefreshMinutes < 1 || weatherRefreshMinutes > 1440) {
+            alert('天气刷新间隔须为 1 到 1440 分钟');
+            return;
+        }
+        EditData.weatherRefreshMinutes = weatherRefreshMinutes;
         EditData.autoStart = this.el.inputAutoStart.checked;
+        EditData.theme = this.el.inputTheme.value;
 
         try {
             await Startup.setEnabled(EditData.autoStart);
-            await Store.saveToRegistry(EditData);
-            AppData = JSON.parse(JSON.stringify(EditData)); 
+            await Logger.measure('设置保存', async () => {
+                await Store.saveToRegistry(EditData);
+                AppData = JSON.parse(JSON.stringify(EditData));
+            }, { module: 'config', action: 'save', context: { theme: EditData.theme, weatherRefreshMinutes: EditData.weatherRefreshMinutes, courseDays: Object.keys(EditData.courses || {}).length } });
             await this.updateTrayMenu();
             await this.closeSettings();
             await App.init(); 
-        } catch (e) {
-            alert("保存失败，请检查内容！\n" + e.message);
+        } catch (error) {
+            void Logger.error('设置保存失败', { module: 'config', action: 'save' }, error);
+            alert("保存失败，请检查内容！\n" + error.message);
         }
     },
 
@@ -469,39 +698,89 @@ const UI = {
         this.renderCourseList();
     },
 
+    timelineSignature: null,
     renderTimeline(courses) {
-        this.el.timeline.innerHTML = '';
-        if (!courses.length) { this.el.timeline.innerHTML = `<div style="color:var(--text-muted); font-size:14px; font-weight:600; padding-left:8px;">今日无课</div>`; return; }
         const now = new Date();
-        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const courseSignature = JSON.stringify(courses || []);
+        const courseChanged = this.timelineSignature !== courseSignature;
+        if (courseChanged) {
+            this.timelineSignature = courseSignature;
+            this.el.timeline.innerHTML = '';
+        }
+        this.el.timeline.classList.remove('has-current-course');
 
-        courses.forEach(item => {
+        if (!courses.length) {
+            if (this.el.timeline.children.length === 1 && this.el.timeline.firstElementChild.classList.contains('empty')) return;
+            const emptyNode = document.createElement('div');
+            emptyNode.className = 'time-node empty';
+            emptyNode.innerHTML = '<div class="dot"></div><div class="time">--:--</div><div class="name" title="无">无</div>';
+            this.el.timeline.appendChild(emptyNode);
+            return;
+        }
+
+        courses.forEach((item, index) => {
             if (!item.start || !item.end) return;
             const [sH, sM] = item.start.split(':').map(Number);
             const [eH, eM] = item.end.split(':').map(Number);
-            const startMins = sH * 60 + sM;
-            const endMins = eH * 60 + eM;
+            const startTime = new Date(now);
+            startTime.setHours(sH, sM, 0, 0);
+            const displayEndTime = new Date(now);
+            displayEndTime.setHours(eH, eM, 0, 0);
+            const actualEndTime = new Date(displayEndTime.getTime());
+
+            if (actualEndTime < startTime) {
+                actualEndTime.setDate(actualEndTime.getDate() + 1);
+                displayEndTime.setDate(displayEndTime.getDate() + 1);
+            }
 
             let statusClass = 'upcoming';
             let displayName = item.course || '无';
-            if (currentMins > endMins) statusClass = 'done';
-            else if (currentMins >= startMins && currentMins <= endMins) {
-                statusClass = 'now'; displayName = `${item.course || '无'} · 进行中`;
+            const endingAnimationStart = new Date(actualEndTime.getTime() - 60 * 1000);
+            if (now >= actualEndTime) statusClass = 'done';
+            else if (now >= endingAnimationStart && now < actualEndTime) statusClass = 'ending';
+            else if (now >= startTime && now < actualEndTime) statusClass = 'now';
+
+            if (statusClass === 'now' || statusClass === 'ending') {
+                this.el.timeline.classList.add('has-current-course');
             }
 
-            const el = document.createElement('div');
+            const existingNode = !courseChanged ? this.el.timeline.children[index] : null;
+            const el = existingNode || document.createElement('div');
+            const displayTime = statusClass === 'now' || statusClass === 'ending'
+                ? `${item.start}-${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
+                : item.start;
+            const previousStatus = el.dataset.status || '';
             el.className = `time-node ${statusClass}`;
-            el.innerHTML = `<div class="dot"></div><div class="time">${item.start}</div><div class="name" title="${displayName}">${displayName}</div>`;
-            this.el.timeline.appendChild(el);
+            el.dataset.status = statusClass;
+            el.setAttribute('aria-current', statusClass === 'now' || statusClass === 'ending' ? 'true' : 'false');
+            if (!existingNode) {
+                el.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
+                el.innerHTML = `<div class="dot"></div><div class="time">${displayTime}</div><div class="name" title="${displayName}">${displayName}</div>`;
+                this.el.timeline.appendChild(el);
+            } else {
+                el.querySelector('.time').textContent = displayTime;
+                const nameEl = el.querySelector('.name');
+                nameEl.textContent = displayName;
+                nameEl.title = displayName;
+                if (previousStatus !== statusClass && ['now', 'ending', 'done'].includes(statusClass)) {
+                    el.classList.remove('course-state-entered');
+                    void el.offsetWidth;
+                    el.classList.add('course-state-entered');
+                }
+            }
         });
     },
 
+    weatherSignature: null,
     renderWeather(weather, warning) {
         const w = weather || { temp: "--°", desc: "无数据" };
         let warnHtml = '';
         if (warning && warning.hasWarning) {
-            warnHtml = `<div style="color:var(--accent-red); font-size:12px; font-weight:700; display:flex; align-items:center; gap:4px;" title="${warning.headline}">${ICONS.warn} ${warning.event}</div>`;
+            warnHtml = `<div class="weather-warning" title="${warning.headline}">${ICONS.warn}<span>${warning.event}</span></div>`;
         }
+        const weatherSignature = JSON.stringify({ weather: w, warning });
+        const changed = this.weatherSignature !== weatherSignature;
+        this.weatherSignature = weatherSignature;
         this.el.weather.innerHTML = `
             <div class="weather-main">
                 <div class="weather-icon">${ICONS.weather}</div>
@@ -512,20 +791,86 @@ const UI = {
             </div>
             ${warnHtml}
         `;
+        return changed;
     }
 };
 
 const App = {
     trayInitialized: false,
+    courseRefreshTimer: null,
+    weatherRefreshTimer: null,
+    weatherRefreshInFlight: null,
+    nextWeatherRefreshAt: null,
     async init() {
+        await Logger.init();
         await Store.init();
+        UI.applyTheme(AppData.theme);
         if (!this.trayInitialized) {
             await UI.initTray();
             this.trayInitialized = true;
         }
-        UI.renderTimeline(Store.getTodayCourses());
-        const weatherData = await API.fetchWeather();
-        UI.renderWeather(weatherData.weather, weatherData.warning);
+        this.refreshCourses();
+        this.startRefreshTimers();
+        await this.refreshWeather();
+        void Logger.info('应用初始化完成', { module: 'lifecycle', action: 'init' });
+    },
+    refreshCourses() {
+        const startedAt = performance.now();
+        try {
+            const courses = Store.getTodayCourses();
+            UI.renderTimeline(courses);
+            void Logger.info('课程刷新完成', { module: 'course', action: 'refresh', durationMs: Math.round(performance.now() - startedAt), context: { courseCount: courses.length } });
+        } catch (error) {
+            void Logger.error('课程刷新失败', { module: 'course', action: 'refresh' }, error);
+        }
+    },
+    startRefreshTimers() {
+        clearInterval(this.courseRefreshTimer);
+        clearInterval(this.weatherRefreshTimer);
+        this.courseRefreshTimer = setInterval(() => this.refreshCourses(), 5000);
+        void Logger.info('课程刷新定时器已启动', { module: 'course', action: 'schedule', context: { intervalMs: 5000 } });
+        this.scheduleNextWeatherRefresh();
+    },
+    scheduleNextWeatherRefresh() {
+        clearInterval(this.weatherRefreshTimer);
+        const configuredMinutes = Number(AppData.weatherRefreshMinutes);
+        const weatherRefreshMinutes = Number.isFinite(configuredMinutes) && configuredMinutes >= 1
+            ? configuredMinutes
+            : 10;
+        this.nextWeatherRefreshAt = Date.now() + weatherRefreshMinutes * 60 * 1000;
+        this.weatherRefreshTimer = setInterval(() => this.refreshWeather(), weatherRefreshMinutes * 60 * 1000);
+    },
+    async shutdown() {
+        UI.stopClock();
+        clearInterval(this.courseRefreshTimer);
+        clearInterval(this.weatherRefreshTimer);
+        await Logger.info('应用退出', { module: 'lifecycle', action: 'shutdown' });
+        await Neutralino.app.exit();
+    },
+    async refreshWeather() {
+        if (this.weatherRefreshInFlight) return this.weatherRefreshInFlight;
+        this.weatherRefreshInFlight = Logger.measure('天气刷新', async () => {
+            const weatherData = await API.fetchWeather();
+            const changed = UI.renderWeather(weatherData.weather, weatherData.warning);
+            this.scheduleNextWeatherRefresh();
+            if (changed) {
+                UI.el.refreshHint.classList.add('active');
+                setTimeout(() => UI.el.refreshHint.classList.remove('active'), 650);
+            }
+            return changed;
+        }, { module: 'weather', context: { configuredMinutes: AppData.weatherRefreshMinutes || 10 } });
+        try {
+            return await this.weatherRefreshInFlight;
+        } finally {
+            this.weatherRefreshInFlight = null;
+        }
+    },
+    async refreshAll() {
+        const courseBefore = UI.timelineSignature;
+        this.refreshCourses();
+        const courseChanged = courseBefore !== UI.timelineSignature;
+        const weatherChanged = await this.refreshWeather();
+        return courseChanged || weatherChanged;
     }
 };
 

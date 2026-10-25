@@ -1,12 +1,31 @@
-# Neutralino 缓存
+# Neutralino
 .neutralino/
 bin/
+dist/
 
-# C++ 编译生成的可执行文件
-www/backend/schedule_backend
-www/backend/schedule_backend.exe
-backend/*.exe
-backend/*.o
+# 打包产物
+installer/
+*.zip
+
+# C++ 编译产物
+*.exe
+*.dll
+*.obj
+*.o
+*.pdb
+*.ilk
+*.a
+*.so
+*.dylib
+
+# 日志与密钥
+*.log
+*.pem
+
+# 临时文件
+.tmp/
+*.tmp
+*.swp
 
 # 系统文件
 .DS_Store
@@ -16,11 +35,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-.pem
-
-.tmp/
-
-*.log
-
-dist/
-installer/
+*.ps1
+*.iss

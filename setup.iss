@@ -4,9 +4,9 @@
 
 [Setup]
 ; 应用基本信息
-AppId={{A7B3C4D5-E6F7-4A8B-9C0D-1E2F3A4B5C6D}
+AppId=ClassBroom
 AppName=ClassBroom
-AppVersion=1.0.0
+AppVersion=1.1.0
 SetupIconFile=www\app.ico
 AppPublisher=ClassBroom
 AppPublisherURL=https://github.com/your-repo/ClassBroom
@@ -20,7 +20,7 @@ DisableProgramGroupPage=yes
 
 ; 输出设置
 OutputDir=installer
-OutputBaseFilename=ClassBroom-Setup-v1.0.0
+OutputBaseFilename=ClassBroom-Setup-v1.1.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
