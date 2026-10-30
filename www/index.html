@@ -651,9 +651,9 @@
 
     <div class="settings-body" autocomplete="off">
       <div class="tab-content active" id="tab-weather">
-        <div class="form-group"><label>API Host (专属域名)</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: nc3wrwk7e7.re.qweatherapi.com"></div>
-        <div class="form-group"><label>经纬度 (经度,纬度)</label><input type="text" id="input-location" autocomplete="off" spellcheck="false" placeholder="例如: 113.29,22.81"></div>
-        <div class="form-group"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" autocomplete="off" placeholder="例如：广东省珠海市香洲区"></div>
+        <div class="form-group"><label>API Host (专属域名)</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: xxx.qweatherapi.com"></div>
+        <div class="form-group"><label>经纬度 (经度,纬度)</label><input type="text" id="input-location" autocomplete="off" spellcheck="false" placeholder="例如: xx.xx,xx.xx"></div>
+        <div class="form-group"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" autocomplete="off" placeholder=""></div>
         <div class="form-group"><label for="input-weather-refresh-minutes">天气自动刷新间隔（分钟，1–1440）</label><input type="number" id="input-weather-refresh-minutes" autocomplete="off" min="1" max="1440" step="1" value="10"></div>
         <div class="form-row">
           <div class="form-group col"><label>JWT KID</label><input type="text" id="input-kid" autocomplete="off" spellcheck="false" placeholder="凭据 ID"></div>
@@ -671,7 +671,7 @@
         <details class="subject-manager-details">
           <summary>课程列表自定义</summary>
           <div class="subject-manager-row">
-            <input type="text" id="input-new-subject" autocomplete="off" placeholder="输入课程名称，例如：晚修一">
+            <input type="text" id="input-new-subject" autocomplete="off" placeholder="输入课程名称，例如：语文">
             <button type="button" id="btn-add-subject" class="btn btn-secondary">添加课程</button>
           </div>
           <div class="subject-manager-list" id="subject-list"></div>

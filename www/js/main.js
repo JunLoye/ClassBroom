@@ -998,6 +998,30 @@ const UI = {
         if (!config.courses || typeof config.courses !== 'object' || Array.isArray(config.courses)) {
             throw new Error('配置缺少 courses 对象');
         }
+        // 天气字段允许缺省，但类型必须正确，否则会污染运行时配置
+        if (!config.weather.jwtConfig || typeof config.weather.jwtConfig !== 'object') {
+            config.weather.jwtConfig = {};
+        }
+        const stringFields = ['apiHost', 'location', 'realLocation'];
+        for (const field of stringFields) {
+            const value = config.weather[field];
+            if (value !== undefined && value !== null && typeof value !== 'string') {
+                throw new Error(`天气配置 ${field} 必须是字符串`);
+            }
+        }
+        const jwtFields = ['kid', 'sub', 'iss', 'privateKey'];
+        for (const field of jwtFields) {
+            const value = config.weather.jwtConfig[field];
+            if (value !== undefined && value !== null && typeof value !== 'string') {
+                throw new Error(`JWT 配置 ${field} 必须是字符串`);
+            }
+        }
+        // 刷新间隔兼容旧版放在 weather 内的写法，统一提升到顶层
+        const nestedMinutes = Number(config.weather.weatherRefreshMinutes);
+        if (Number.isInteger(nestedMinutes) && nestedMinutes >= 1) {
+            if (config.weatherRefreshMinutes === undefined) config.weatherRefreshMinutes = nestedMinutes;
+            delete config.weather.weatherRefreshMinutes;
+        }
         for (const day of Object.keys(DAY_MAP)) {
             if (!Array.isArray(config.courses[day])) continue;
             for (const course of config.courses[day]) {
@@ -1376,6 +1400,13 @@ const UI = {
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
 
+        // 天气字段必须完整回填，否则保存时会用空值覆盖已有配置
+        this.el.inputApiHost.value = EditData.weather.apiHost || '';
+        this.el.inputLocation.value = EditData.weather.location || '';
+        this.el.inputRealLocation.value = EditData.weather.realLocation || '';
+        this.el.inputKid.value = EditData.weather.jwtConfig.kid || '';
+        this.el.inputSub.value = EditData.weather.jwtConfig.sub || '';
+        this.el.inputIss.value = EditData.weather.jwtConfig.iss || '';
         this.el.inputPrivateKey.value = EditData.weather.jwtConfig.privateKey || '';
         this.el.inputAutoStart.checked = EditData.autoStart === true;
         this.el.inputTheme.value = EditData.theme || 'default';
