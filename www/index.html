@@ -132,11 +132,9 @@
   .timeline-container::before { content: ''; position: absolute; left: 0; right: 0; top: 3.5px; height: 1px; background: var(--border-light); z-index: 1; }
   .timeline-container.has-current-course { justify-content: stretch; }
   .timeline-container.has-current-course::before { opacity: 0; transition: opacity 300ms ease-out; }
-  .timeline-container.has-current-course .time-node:not(.now):not(.ending) { display: none; }
   .timeline-container.has-current-course .time-node.now,
   .timeline-container.has-current-course .time-node.ending {
-    flex: 1 1 100% !important; width: 100%; max-width: none; min-height: 48px;
-    justify-content: center; animation: current-course-reveal 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    flex-grow: 2.4; animation: current-course-reveal 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   @keyframes current-course-reveal {
     0% { opacity: 0.35; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-orange) 0%, transparent); }
@@ -204,22 +202,23 @@
   .time-container.seconds-visible .time-clock::after { content: attr(data-seconds); color: var(--text-sub); font-size: 13px; }
 
   .weather-container { grid-column: 2; grid-row: 1; position: relative; right: auto; bottom: auto; height: 48px; width: 150px; max-width: 150px; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; margin: 0 0 0 auto; z-index: 15; overflow: hidden; }
-  .weather-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .weather-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
   .weather-icon { color: var(--accent-cyan); display: flex; align-items: center; flex-shrink: 0; }
   .weather-icon svg { width: 24px; height: 24px; }
-  .weather-info { display: flex; flex-direction: column; gap: 0; min-width: 0; }
-  .weather-info .temp { font-family: var(--font-mono); font-size: 17px; font-weight: 800; line-height: 1.1; }
-  .weather-info .desc { font-size: 10px; color: var(--text-sub); font-weight: 700; white-space: normal; overflow: visible; text-overflow: clip; width: 88px; max-width: 88px; line-height: 1.2; max-height: 42px; }
+  .weather-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
+  .weather-info .temp { font-family: var(--font-mono); font-size: 17px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+  /* 描述单行省略，避免换行后与预警标签在同一行区域重叠 */
+  .weather-info .desc { font-size: 10px; color: var(--text-sub); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88px; line-height: 1.2; }
   .weather-warning {
     --warning-color: var(--accent-red);
     color: var(--warning-color); font-size: 12px; font-weight: 800; display: flex;
     align-items: center; gap: 4px; padding: 4px 6px; border: none; border-radius: 6px;
-    font-family: inherit; cursor: pointer; user-select: none;
+    font-family: inherit; user-select: none; max-width: 88px; overflow: hidden;
     background: color-mix(in srgb, var(--warning-color) 8%, transparent);
     animation: warning-alert 1.2s ease-in-out infinite; flex-shrink: 0;
   }
-  .weather-warning:hover { filter: brightness(0.96); }
-  .weather-warning svg { width: 16px; height: 16px; animation: warning-shake 1.2s ease-in-out infinite; }
+  .weather-warning span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .weather-warning svg { width: 16px; height: 16px; flex-shrink: 0; animation: warning-shake 1.2s ease-in-out infinite; }
   .weather-container.no-warning { justify-content: flex-end; }
   .weather-container.no-warning .weather-warning { display: none; }
   .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) 150px 108px; }
@@ -240,7 +239,8 @@
     .time-container { width: 92px; }
     .time-clock { font-size: 15px; }
     .weather-container { width: 140px; height: 48px; padding: 0; gap: 4px; }
-    .weather-warning span { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .weather-info .desc { max-width: 72px; }
+    .weather-warning { max-width: 72px; font-size: 11px; }
   }
   @media (max-width: 900px) {
     .widget-content { grid-template-columns: minmax(0, 1fr) 130px 78px; padding: 0 82px 0 8px; column-gap: 4px; }
@@ -251,6 +251,8 @@
     .time-date { font-size: 9px; }
     .weather-container { width: 130px; }
     .weather-icon { display: none; }
+    .weather-info .desc { max-width: 66px; }
+    .weather-warning { max-width: 62px; font-size: 10px; padding: 3px 4px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .weather-warning, .weather-warning svg { animation: none; }
@@ -308,6 +310,104 @@
   }
   #config-drop-overlay.active { opacity: 1; transform: scale(1); }
 
+  /* 自定义弹窗：替代浏览器原生 alert/confirm，与应用主题保持一致 */
+  .app-dialog-mask {
+    position: fixed; inset: 0; z-index: 3000;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(2px);
+  }
+  .app-dialog-mask.active { display: flex; }
+  .app-dialog {
+    width: min(420px, calc(100% - 40px)); max-height: calc(100% - 60px);
+    display: flex; flex-direction: column;
+    background: var(--bg-card); color: var(--text-main);
+    border: 1px solid var(--border-light); border-radius: 12px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+    animation: dialog-pop 140ms ease-out;
+    /* 窗口很矮时（如主界面 92px）优先保证内容可滚动，不与标题/按钮挤压 */
+    min-height: 0; overflow: hidden;
+  }
+  /* 弹窗内各区域都允许收缩，防止标题与按钮被压成同一条 */
+  .app-dialog-header, .app-dialog-footer { flex-shrink: 0; }
+  /* 紧凑模式：窗口极矮时（主界面 92px）压缩留白，优先保证内容可读 */
+  .app-dialog-mask.is-compact .app-dialog { max-height: calc(100% - 12px); border-radius: 10px; }
+  .app-dialog-mask.is-compact .app-dialog-header { padding: 8px 12px 6px; font-size: 13px; }
+  .app-dialog-mask.is-compact .app-dialog-body { padding: 0 12px 2px; font-size: 12px; line-height: 1.45; }
+  .app-dialog-mask.is-compact .app-dialog-footer { padding: 8px 12px 9px; }
+  .app-dialog-mask.is-compact .app-dialog-footer .btn { min-width: 72px; height: 32px; font-size: 12px; }
+  @keyframes dialog-pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  .app-dialog-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px 10px; font-size: 14px; font-weight: 800;
+  }
+  .app-dialog-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-cyan); }
+  .app-dialog-icon.warning { color: var(--accent-orange); }
+  .app-dialog-icon.danger { color: var(--accent-red); }
+  .app-dialog-body {
+    padding: 0 16px 4px; overflow-y: auto; min-height: 0;
+    color: var(--text-sub); font-size: 13px; line-height: 1.62;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .app-dialog-footer {
+    display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px;
+  }
+  .app-dialog-footer .btn { min-width: 88px; height: 38px; }
+  /* 导入预览：加宽弹窗并改用分段式布局 */
+  .app-dialog.is-wide { width: min(660px, calc(100% - 40px)); }
+  .app-dialog.is-wide .app-dialog-body { white-space: normal; padding: 0 16px 8px; }
+
+  .import-preview { display: flex; flex-direction: column; gap: 10px; }
+  .import-preview-meta {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+    padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 8px;
+    background: var(--bg-app); font-size: 12px; color: var(--text-sub);
+  }
+  .import-preview-meta b { color: var(--text-main); font-family: var(--font-mono); }
+  .import-preview-badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+    border-radius: 999px; font-size: 11px; font-weight: 800;
+    background: color-mix(in srgb, var(--accent-cyan) 12%, transparent); color: var(--accent-cyan);
+  }
+  .import-preview-badge.warning { background: color-mix(in srgb, var(--accent-orange) 14%, transparent); color: var(--accent-orange); }
+  .import-preview-section { border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; }
+  .import-preview-title {
+    padding: 7px 10px; background: var(--bg-app); border-bottom: 1px solid var(--border-light);
+    font-size: 12px; font-weight: 800; color: var(--text-main);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .import-preview-title span { font-weight: 700; color: var(--text-muted); font-size: 11px; }
+  .import-preview-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 4px 12px; padding: 8px 10px; font-size: 12px;
+  }
+  .import-preview-item { display: flex; gap: 6px; min-width: 0; }
+  .import-preview-item > span { color: var(--text-muted); flex-shrink: 0; }
+  .import-preview-item > b {
+    color: var(--text-main); font-weight: 700; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .import-preview-item > b.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+  .import-preview-days { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+  .import-preview-day {
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    background: var(--bg-app); color: var(--text-sub); border: 1px solid var(--border-light);
+  }
+  .import-preview-day.has-course { background: color-mix(in srgb, var(--accent-cyan) 10%, var(--bg-card)); color: var(--accent-cyan); border-color: transparent; }
+  .import-preview-list { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px 10px; font-size: 12px; }
+  .import-preview-course { display: flex; gap: 8px; align-items: baseline; color: var(--text-sub); }
+  .import-preview-course time { font-family: var(--font-mono); font-weight: 800; color: var(--accent-cyan); flex-shrink: 0; }
+  .import-preview-course em { color: var(--text-main); font-style: normal; font-weight: 700; }
+  .import-preview-note { color: var(--text-muted); font-size: 11px; font-style: italic; }
+  /* 版本不一致时的独立风险提示块，与正常导入明显区分 */
+  .import-preview-warn {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 9px 11px; border-radius: 8px; font-size: 11px; line-height: 1.5;
+    border: 1px solid color-mix(in srgb, var(--accent-orange) 45%, transparent);
+    background: color-mix(in srgb, var(--accent-orange) 10%, transparent);
+    color: var(--text-sub);
+  }
+  .import-preview-warn strong { color: var(--accent-orange); font-size: 12px; font-weight: 800; }
+
   .settings-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border-light); background: var(--bg-app); flex-shrink: 0; min-height: 58px; }
   .settings-tabs { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .settings-actions { display: flex; align-items: center; gap: 6px; justify-content: end; flex-wrap: nowrap; }
@@ -328,8 +428,9 @@
   .tab-icon { margin-right: 6px; }
 
   .settings-body { flex: 1; overflow-y: auto; padding: 12px 16px 16px; min-height: 0; position: relative; }
-  .settings-footer { flex-shrink: 0; display: flex; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid var(--border-light); background: var(--bg-app); }
-  .settings-footer .btn { min-width: 128px; height: 40px; }
+  .settings-footer { flex-shrink: 0; display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border-light); background: var(--bg-app); }
+  .settings-footer .btn { min-width: 96px; height: 40px; }
+  .settings-footer #btn-save-settings { min-width: 160px; }
   .settings-footer .btn:disabled { opacity: 0.45; cursor: default; filter: grayscale(1); }
   
   .tab-content { display: none !important; }
@@ -389,20 +490,37 @@
   .course-custom-button:hover { border-color: var(--accent-cyan) !important; color: var(--accent-cyan); }
   .course-custom-input { flex: 1; min-width: 120px; height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--bg-card); color: var(--text-main); font-size: 14px; }
   .course-custom-confirm { height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--accent-cyan); color: #fff; font-size: 13px; cursor: pointer; }
-  .course-time-range { width: min(560px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 4px; }
-  .course-time-range-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
-  .course-range-value { min-height: 36px; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 8px; color: var(--text-sub); font-size: 12px; line-height: 1.2; }
-  .course-range-value b { min-width: 0; color: var(--text-main); font-family: var(--font-mono); font-size: 18px; line-height: 1.2; text-align: right; font-variant-numeric: tabular-nums; }
-  .course-range-value span { white-space: nowrap; font-size: 13px; font-weight: 700; line-height: 1.2; }
+  .course-time-range { width: min(560px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 6px; }
+  .course-time-range-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+  .course-range-value { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 6px; border: 1px solid transparent; border-radius: 8px; background: var(--bg-card); color: var(--text-sub); font-size: 12px; line-height: 1.2; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: border-color 120ms ease, background-color 120ms ease; }
+  .course-range-value:hover { border-color: color-mix(in srgb, var(--accent-cyan) 40%, var(--border-light)); }
+  .course-range-value.active { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-card)); }
+  .course-range-value b { min-width: 0; color: var(--text-main); font-family: var(--font-mono); font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .course-range-value span { white-space: nowrap; font-size: 12px; font-weight: 700; line-height: 1.2; }
   .course-time-range-track { --range-start: 0%; --range-end: 100%; position: relative; width: 100%; height: 48px; cursor: pointer; touch-action: none; outline: none; }
   .course-time-range-track::before { top: 21px !important; }
   .course-time-range-fill { top: 21px !important; }
   .course-time-range-track::before { content: ''; position: absolute; left: 0; right: 0; top: 18px; height: 6px; border-radius: 3px; background: var(--border-light); }
   .course-time-range-fill { position: absolute; left: var(--range-start); right: calc(100% - var(--range-end)); top: 18px; height: 6px; border-radius: 3px; background: var(--accent-cyan); }
-  .course-time-range-thumb { position: absolute; top: 8px; width: 32px; height: 32px; transform: translateX(-50%); border-radius: 50%; border: 3px solid var(--bg-card); background: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.18); cursor: grab; touch-action: none; outline: none; }
+  /* 触屏热区：拇指视觉 32px，但命中区域扩展到 48px，避免手指难以按中 */
+  .course-time-range-thumb { position: absolute; top: 0; width: 48px; height: 48px; margin-left: -24px; left: var(--range-start); border-radius: 50%; background: transparent; cursor: grab; touch-action: none; outline: none; }
+  .course-time-range-thumb::after { content: ''; position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--bg-card); background: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
   .course-time-range-thumb.start { left: var(--range-start); }
   .course-time-range-thumb.end { left: var(--range-end); }
-  .course-time-range-thumb:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-cyan) 20%, transparent); }
+  .course-time-range-thumb:active { cursor: grabbing; }
+  .course-time-range-thumb:active::after,
+  .course-time-range-thumb:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-cyan) 22%, transparent); }
+  /* 触屏步进按钮与预设行 */
+  .course-time-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+  .course-time-steppers { display: flex; align-items: center; gap: 6px; }
+  .course-time-stepper { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-size: 18px; font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .course-time-stepper:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .course-time-stepper:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
+  .course-time-steppers .course-time-step-label { min-width: 62px; text-align: center; color: var(--text-sub); font-size: 12px; font-weight: 700; }
+  .course-time-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .course-time-preset { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); color: var(--text-sub); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .course-time-preset:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .course-time-preset:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
   .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: 44px; height: 44px; border-radius: 6px; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
   .btn-delete:hover { background: var(--accent-red); color: #fff; }
   .day-btn { min-height: 44px; min-width: 52px; }
@@ -430,11 +548,46 @@
     .settings-actions { width: 100%; flex-wrap: wrap; }
     .course-time-range { width: 100%; min-width: 0; }
   }
+
+  /* 禁用浏览器/WebView2 的自动填充与「保存信息？」气泡 */
+  input::-webkit-credentials-auto-fill-button,
+  input::-webkit-contacts-auto-fill-button,
+  input::-webkit-strong-password-auto-fill-button,
+  input::-webkit-textfield-decoration-container,
+  input::-webkit-inner-spin-button ~ * {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  /* 移除 Chrome/Edge 自动填充时的黄色背景 */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill {
+    -webkit-text-fill-color: var(--text-main) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-card) inset !important;
+    box-shadow: 0 0 0 1000px var(--bg-card) inset !important;
+    transition: background-color 999999s ease-in-out 0s !important;
+  }
 </style>
 </head>
 <body>
 
   <div id="config-drop-overlay">释放以加载 JSON 配置</div>
+
+  <div class="app-dialog-mask" id="app-dialog" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="app-dialog">
+      <div class="app-dialog-header">
+        <span class="app-dialog-icon" id="app-dialog-icon"></span>
+        <span id="app-dialog-title"></span>
+      </div>
+      <div class="app-dialog-body" id="app-dialog-body"></div>
+      <div class="app-dialog-footer" id="app-dialog-footer"></div>
+    </div>
+  </div>
 
   <div id="view-main">
     <div class="window-controls">
@@ -480,8 +633,6 @@
         </button>
       </div>
       <div id="settings-actions" class="settings-actions">
-        <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
-        <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
         <label class="startup-toggle"><input id="input-autostart" type="checkbox">开机自启</label>
         <label class="theme-select" for="input-theme">主题
           <select id="input-theme">
@@ -493,22 +644,21 @@
             <option value="monochrome">纯黑白</option>
           </select>
         </label>
-        <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
       </div>
     </div>
 
-    <div class="settings-body">
+    <div class="settings-body" autocomplete="off">
       <div class="tab-content active" id="tab-weather">
-        <div class="form-group"><label>API Host (专属域名)</label><input type="text" id="input-api-host" placeholder="例如: nc3wrwk7e7.re.qweatherapi.com"></div>
-        <div class="form-group"><label>经纬度 (经度,纬度)</label><input type="text" id="input-location" placeholder="例如: 113.29,22.81"></div>
-        <div class="form-group"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" placeholder="例如：广东省珠海市香洲区"></div>
-        <div class="form-group"><label for="input-weather-refresh-minutes">天气自动刷新间隔（分钟，1–1440）</label><input type="number" id="input-weather-refresh-minutes" min="1" max="1440" step="1" value="10"></div>
+        <div class="form-group"><label>API Host (专属域名)</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: nc3wrwk7e7.re.qweatherapi.com"></div>
+        <div class="form-group"><label>经纬度 (经度,纬度)</label><input type="text" id="input-location" autocomplete="off" spellcheck="false" placeholder="例如: 113.29,22.81"></div>
+        <div class="form-group"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" autocomplete="off" placeholder="例如：广东省珠海市香洲区"></div>
+        <div class="form-group"><label for="input-weather-refresh-minutes">天气自动刷新间隔（分钟，1–1440）</label><input type="number" id="input-weather-refresh-minutes" autocomplete="off" min="1" max="1440" step="1" value="10"></div>
         <div class="form-row">
-          <div class="form-group col"><label>JWT KID</label><input type="text" id="input-kid" placeholder="凭据 ID"></div>
-          <div class="form-group col"><label>JWT SUB</label><input type="text" id="input-sub" placeholder="项目 ID"></div>
-          <div class="form-group col"><label>JWT ISS</label><input type="text" id="input-iss" placeholder="开发者 ID"></div>
+          <div class="form-group col"><label>JWT KID</label><input type="text" id="input-kid" autocomplete="off" spellcheck="false" placeholder="凭据 ID"></div>
+          <div class="form-group col"><label>JWT SUB</label><input type="text" id="input-sub" autocomplete="off" spellcheck="false" placeholder="项目 ID"></div>
+          <div class="form-group col"><label>JWT ISS</label><input type="text" id="input-iss" autocomplete="off" spellcheck="false" placeholder="开发者 ID"></div>
         </div>
-        <div class="form-group"><label>Private Key (私钥)</label><textarea id="input-private-key" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea></div>
+        <div class="form-group"><label>Private Key (私钥)</label><textarea id="input-private-key" autocomplete="off" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea></div>
       </div>
 
       <div class="tab-content" id="tab-courses">
@@ -519,7 +669,7 @@
         <details class="subject-manager-details">
           <summary>课程列表自定义</summary>
           <div class="subject-manager-row">
-            <input type="text" id="input-new-subject" placeholder="输入课程名称，例如：晚修一">
+            <input type="text" id="input-new-subject" autocomplete="off" placeholder="输入课程名称，例如：晚修一">
             <button type="button" id="btn-add-subject" class="btn btn-secondary">添加课程</button>
           </div>
           <div class="subject-manager-list" id="subject-list"></div>
@@ -530,20 +680,20 @@
       <div class="tab-content" id="tab-display">
         <div class="form-group">
           <label for="input-custom-bottom-text">窗口右下角信息</label>
-          <textarea id="input-custom-bottom-text" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
+          <textarea id="input-custom-bottom-text" autocomplete="off" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
         </div>
         <div class="form-row">
-          <div class="form-group col"><label for="input-countdown-name">倒计时名称</label><input type="text" id="input-countdown-name" placeholder="例如：高考"></div>
-          <div class="form-group col"><label for="input-countdown-date">目标日期</label><input type="date" id="input-countdown-date"></div>
+          <div class="form-group col"><label for="input-countdown-name">倒计时名称</label><input type="text" id="input-countdown-name" autocomplete="off" placeholder="例如：高考"></div>
+          <div class="form-group col"><label for="input-countdown-date">目标日期</label><input type="date" id="input-countdown-date" autocomplete="off"></div>
         </div>
         <div class="form-row">
-          <div class="form-group col"><label for="input-bottom-font-size">底部字体大小</label><input type="number" id="input-bottom-font-size" min="8" max="30" step="1" value="10"></div>
-          <div class="form-group col"><label for="input-bottom-color">底部文字颜色</label><input type="color" id="input-bottom-color" value="#64748b"></div>
+          <div class="form-group col"><label for="input-bottom-font-size">底部字体大小</label><input type="number" id="input-bottom-font-size" autocomplete="off" min="8" max="30" step="1" value="10"></div>
+          <div class="form-group col"><label for="input-bottom-color">底部文字颜色</label><input type="color" id="input-bottom-color" autocomplete="off" value="#64748b"></div>
         </div>
         <div class="form-row">
-          <div class="form-group col"><label for="input-custom-one">自定义 1</label><input type="text" id="input-custom-one" placeholder="例如：班主任"></div>
-          <div class="form-group col"><label for="input-custom-two">自定义 2</label><input type="text" id="input-custom-two" placeholder="例如：教室"></div>
-          <div class="form-group col"><label for="input-custom-three">自定义 3</label><input type="text" id="input-custom-three" placeholder="例如：口号"></div>
+          <div class="form-group col"><label for="input-custom-one">自定义 1</label><input type="text" id="input-custom-one" autocomplete="off" placeholder="例如：班主任"></div>
+          <div class="form-group col"><label for="input-custom-two">自定义 2</label><input type="text" id="input-custom-two" autocomplete="off" placeholder="例如：教室"></div>
+          <div class="form-group col"><label for="input-custom-three">自定义 3</label><input type="text" id="input-custom-three" autocomplete="off" placeholder="例如：口号"></div>
         </div>
         <details class="placeholder-details">
           <summary>占位符详细说明与示例</summary>
@@ -584,6 +734,9 @@
       </div>
     </div>
     <div class="settings-footer">
+      <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
+      <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
+      <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
       <button id="btn-save-settings" class="btn btn-primary" type="button" disabled>保存并退出</button>
     </div>
   </div>
