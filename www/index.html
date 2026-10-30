@@ -283,13 +283,15 @@
   .placeholder-help { color: var(--text-muted); font-size: 12px; line-height: 1.7; }
   .placeholder-details { margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); }
   .placeholder-details summary { min-height: 44px; padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 800; color: var(--text-main); }
-  .placeholder-table { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; padding: 0 14px 8px; }
-  .placeholder-table div { min-width: 0; display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.4fr); gap: 8px; align-items: start; padding: 7px 0; border-top: 1px solid var(--border-light); font-size: 12px; }
-  .placeholder-table span { color: var(--text-sub); line-height: 1.5; }
-  .placeholder-token { min-height: 32px; max-width: 100%; justify-self: start; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); color: var(--accent-cyan); font-family: var(--font-mono); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .placeholder-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; padding: 0 14px 10px; }
+  .placeholder-group { min-width: 0; }
+  .placeholder-group h4 { margin: 0 0 6px; font-size: 11px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.04em; }
+  .placeholder-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .placeholder-token { min-height: 30px; max-width: 100%; padding: 4px 9px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); color: var(--accent-cyan); font-family: var(--font-mono); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .placeholder-token:hover { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-card)); }
   .placeholder-token:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent); outline-offset: 2px; }
-  .placeholder-example { padding: 8px 14px 12px; color: var(--text-muted); font-size: 12px; }
+  .placeholder-example { margin: 0; padding: 8px 14px 12px; color: var(--text-muted); font-size: 12px; }
+  .placeholder-example code { font-family: var(--font-mono); word-break: break-all; }
   .subject-manager-details { margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); }
   .subject-manager-details summary { min-height: 40px; padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 800; }
   .subject-manager-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 6px; padding: 0 12px 8px; }
@@ -543,7 +545,7 @@
     .course-item:not(.selected) > .btn-delete { grid-column: 2; grid-row: 1; }
   }
   @media (max-width: 760px) {
-    .placeholder-table { grid-template-columns: 1fr; }
+    .placeholder-groups { grid-template-columns: 1fr; }
 
     .settings-actions { width: 100%; flex-wrap: wrap; }
     .course-time-range { width: 100%; min-width: 0; }
@@ -696,29 +698,54 @@
           <div class="form-group col"><label for="input-custom-three">自定义 3</label><input type="text" id="input-custom-three" autocomplete="off" placeholder="例如：口号"></div>
         </div>
         <details class="placeholder-details">
-          <summary>占位符详细说明与示例</summary>
-          <div class="placeholder-table">
-            <div><button type="button" class="placeholder-token" data-placeholder="{time}" title="点击添加到右下角信息末尾">{time}</button><span>当前时分秒，例如 14:35:09</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{date}" title="点击添加到右下角信息末尾">{date}</button><span>当前日期，例如 2026-10-25</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{datetime}" title="点击添加到右下角信息末尾">{datetime}</button><span>完整日期与时间</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{weekday}" title="点击添加到右下角信息末尾">{weekday}</button><span>当前星期，例如 周日</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{location}" title="点击添加到右下角信息末尾">{location}</button><span>天气经纬度配置，例如 113.29,22.81</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{real_location}" title="点击添加到右下角信息末尾">{real_location}</button><span>地区名称，例如 广东省珠海市香洲区</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{custom1}" title="点击添加到右下角信息末尾">{custom1}</button><span>自定义文本 1</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{custom2}" title="点击添加到右下角信息末尾">{custom2}</button><span>自定义文本 2</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{custom3}" title="点击添加到右下角信息末尾">{custom3}</button><span>自定义文本 3</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{temperature}" title="点击添加到右下角信息末尾">{temperature}</button><span>当前气温，例如 26°</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{weather}" title="点击添加到右下角信息末尾">{weather}</button><span>天气描述，例如 多云 · 东风3级</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{course}" title="点击添加到右下角信息末尾">{course}</button><span>正在进行的课程，无课程时显示“无课程”</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{nextCourse}" title="点击添加到右下角信息末尾">{nextCourse}</button><span>下一节课程，无后续课程时提示</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{targetName}" title="点击添加到右下角信息末尾">{targetName}</button><span>倒计时名称，例如 高考</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{targetDate}" title="点击添加到右下角信息末尾">{targetDate}</button><span>配置的目标日期</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{daysTo}" title="点击添加到右下角信息末尾">{daysTo}</button><span>距离配置目标日期的天数</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{daysTo:2027-06-07}" title="点击添加到右下角信息末尾">{daysTo:2027-06-07}</button><span>距离指定日期的天数</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{appName}" title="点击添加到右下角信息末尾">{appName}</button><span>固定应用名称 ClassBroom</span></div>
-            <div><button type="button" class="placeholder-token" data-placeholder="{version}" title="点击添加到右下角信息末尾">{version}</button><span>当前应用版本号，例如 1.2.0</span></div>
+          <summary>可用占位符（点击插入）</summary>
+          <div class="placeholder-groups">
+            <div class="placeholder-group">
+              <h4>时间</h4>
+              <div class="placeholder-chips">
+                <button type="button" class="placeholder-token" data-placeholder="{time}" title="当前时分秒">{time}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{date}" title="当前日期">{date}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{datetime}" title="完整日期时间">{datetime}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{weekday}" title="星期几">{weekday}</button>
+              </div>
+            </div>
+            <div class="placeholder-group">
+              <h4>课程</h4>
+              <div class="placeholder-chips">
+                <button type="button" class="placeholder-token" data-placeholder="{course}" title="正在进行的课程">{course}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{nextCourse}" title="下一节课程">{nextCourse}</button>
+              </div>
+            </div>
+            <div class="placeholder-group">
+              <h4>天气</h4>
+              <div class="placeholder-chips">
+                <button type="button" class="placeholder-token" data-placeholder="{temperature}" title="当前气温">{temperature}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{weather}" title="天气描述与风力">{weather}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{location}" title="经纬度">{location}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{real_location}" title="地区名称">{real_location}</button>
+              </div>
+            </div>
+            <div class="placeholder-group">
+              <h4>倒计时</h4>
+              <div class="placeholder-chips">
+                <button type="button" class="placeholder-token" data-placeholder="{targetName}" title="倒计时名称">{targetName}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{targetDate}" title="目标日期">{targetDate}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{daysTo}" title="距目标日期的天数">{daysTo}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{daysTo:2027-06-07}" title="距指定日期的天数">{daysTo:日期}</button>
+              </div>
+            </div>
+            <div class="placeholder-group">
+              <h4>其他</h4>
+              <div class="placeholder-chips">
+                <button type="button" class="placeholder-token" data-placeholder="{custom1}" title="自定义文本 1">{custom1}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{custom2}" title="自定义文本 2">{custom2}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{custom3}" title="自定义文本 3">{custom3}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{appName}" title="应用名称">{appName}</button>
+                <button type="button" class="placeholder-token" data-placeholder="{version}" title="应用版本号">{version}</button>
+              </div>
+            </div>
           </div>
-          <p class="placeholder-example">示例：<code>距{targetName}还有{daysTo}天 · {temperature} {weather} · {version}</code></p>
+          <p class="placeholder-example">示例：<code>{weekday} {date} · {course} · 距{targetName}还有{daysTo}天</code></p>
         </details>
       </div>
 

@@ -6,7 +6,7 @@
 ; 应用基本信息
 AppId=ClassBroom
 AppName=ClassBroom
-AppVersion=1.2.0
+AppVersion=1.3.0
 SetupIconFile=www\app.ico
 AppPublisher=ClassBroom
 AppPublisherURL=https://github.com/your-repo/ClassBroom
@@ -20,7 +20,7 @@ DisableProgramGroupPage=yes
 
 ; 输出设置
 OutputDir=installer
-OutputBaseFilename=ClassBroom-Setup-v1.2.0
+OutputBaseFilename=ClassBroom-Setup-v1.3.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -30,8 +30,8 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
 ; 架构支持
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
@@ -46,6 +46,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\classbroom\classbroom-win_x64.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\classbroom\resources.neu"; DestDir: "{app}"; Flags: ignoreversion
 Source: "www\app.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "www\tray.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; 如果存在 WebView2Loader.dll，一并打包（某些旧版 Windows 可能需要）
 Source: "dist\classbroom\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
