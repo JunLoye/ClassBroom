@@ -1,8 +1,77 @@
 Neutralino.init();
 window.addEventListener('contextmenu', e => e.preventDefault());
 
-// 屏蔽 F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U 等常见调试快捷键
+/**
+ * 禁用 WebView2 的自动填充与「保存信息？」提示。
+ *
+ * WebView2 密码管理器通过以下特征判定「可保存的凭据」：
+ *   1. 存在 <form> 包裹
+ *   2. input 具备 name 属性
+ *   3. input 的 type 为 password / email 等
+ *   4. autocomplete 未显式声明为 off/new-password
+ * 这些特征全部消除后，内核不会再弹出保存气泡。同时周期性校正，
+ * 防止浏览器在输入过程中回写属性。
+ */
+const AutoFillGuard = {
+    /** 需要跳过的非文本输入类型 */
+    skipTypes: /^(checkbox|radio|button|submit|reset|hidden|color|range|file)$/i,
+    apply(element) {
+        if (!element || !(element instanceof HTMLElement)) return;
+        const tag = element.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA') return;
+        const type = (element.getAttribute('type') || 'text').toLowerCase();
+        if (this.skipTypes.test(type)) return;
+        if (element.hasAttribute('name')) element.removeAttribute('name');
+        if (tag === 'INPUT' && (type === 'password' || type === 'email')) {
+            element.setAttribute('type', 'text');
+        }
+        const isTextLike = tag === 'TEXTAREA' || /^(text|search|url|tel|)$/i.test(type);
+        const wanted = isTextLike ? 'new-password' : 'off';
+        if (element.getAttribute('autocomplete') !== wanted) {
+            element.setAttribute('autocomplete', wanted);
+        }
+        if (element.getAttribute('autocorrect') !== 'off') element.setAttribute('autocorrect', 'off');
+        if (element.getAttribute('autocapitalize') !== 'off') element.setAttribute('autocapitalize', 'off');
+        if (element.getAttribute('spellcheck') !== 'false') element.setAttribute('spellcheck', 'false');
+    },
+    applyAll(root = document) {
+        root.querySelectorAll('input, textarea').forEach((element) => this.apply(element));
+    },
+    stripForms() {
+        document.querySelectorAll('form').forEach((form) => {
+            const fragment = document.createDocumentFragment();
+            while (form.firstChild) fragment.appendChild(form.firstChild);
+            form.replaceWith(fragment);
+        });
+    },
+    init() {
+        this.stripForms();
+        this.applyAll();
+        const observer = new MutationObserver((records) => {
+            records.forEach((record) => {
+                record.addedNodes.forEach((node) => {
+                    if (!(node instanceof HTMLElement)) return;
+                    if (node.matches?.('form')) this.stripForms();
+                    if (node.matches?.('input, textarea')) this.apply(node);
+                    node.querySelectorAll?.('input, textarea').forEach((element) => this.apply(element));
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        document.addEventListener('submit', (event) => event.preventDefault(), true);
+        document.addEventListener('focusin', (event) => this.apply(event.target), true);
+        document.addEventListener('input', (event) => this.apply(event.target), true);
+        document.addEventListener('change', (event) => this.apply(event.target), true);
+        document.addEventListener('blur', (event) => this.apply(event.target), true);
+    }
+};
+
 window.addEventListener('keydown', (e) => {
+    if (e.key === 'F5' || e.keyCode === 116) {
+        e.preventDefault();
+        void UI.handleRefresh();
+        return false;
+    }
     if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
         return false;
@@ -21,6 +90,7 @@ const APP_CONFIG = {
     windowSize: { width: 1400, height: 92 },
     settingsSize: { width: 1400, height: 800 },
     topOffset: 20,
+    documentRoot: '/www/',
     excludeDrag: ["btn-refresh", "btn-close", "btn-settings"]
 };
 
@@ -180,17 +250,30 @@ const Startup = {
         throw new Error('当前系统不支持开机自启');
     },
     async getExecutablePath() {
+        // 优先从命令行参数定位实际可执行文件路径（NL_ARGS[0] 通常为 exe 完整路径）
+        const argv = Array.isArray(window.NL_ARGS) ? window.NL_ARGS : [];
+        if (argv.length && typeof argv[0] === 'string' && argv[0]) {
+            const arg0 = argv[0].replace(/^"|"$/g, '');
+            try {
+                if ((await Neutralino.filesystem.getStats(arg0)).isFile) return arg0;
+            } catch (error) { }
+        }
+        const cwd = window.NL_CWD;
         const executableNames = {
             Windows: ['classbroom-win_x64.exe', 'classbroom.exe'],
             Darwin: ['classbroom-mac_universal', 'classbroom-mac_x64', 'classbroom-mac_arm64', 'classbroom'],
             Linux: ['classbroom-linux_x64', 'classbroom-linux_arm64', 'classbroom-linux_armhf', 'classbroom']
         }[window.NL_OS] || [];
 
-        for (const name of executableNames) {
-            const path = await Neutralino.filesystem.getJoinedPath(window.NL_PATH, name);
-            try {
-                if ((await Neutralino.filesystem.getStats(path)).isFile) return path;
-            } catch (error) { }
+        const bases = [cwd, window.NL_PATH].filter(Boolean);
+        for (const base of bases) {
+            for (const name of executableNames) {
+                let path;
+                try { path = await Neutralino.filesystem.getJoinedPath(base, name); } catch (error) { continue; }
+                try {
+                    if ((await Neutralino.filesystem.getStats(path)).isFile) return path;
+                } catch (error) { }
+            }
         }
         throw new Error('无法定位应用程序文件，请在安装后的应用中设置开机自启');
     },
@@ -201,17 +284,78 @@ const Startup = {
     },
     async setWindows(enabled) {
         const runKey = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+
         if (!enabled) {
             const existing = await Neutralino.os.execCommand(`reg query "${runKey}" /v ClassBroom`);
-            if (existing.exitCode !== 0) return;
-            const removed = await Neutralino.os.execCommand(`reg delete "${runKey}" /v ClassBroom /f`);
-            if (removed.exitCode !== 0) throw new Error(removed.stdErr || removed.stdOut || '删除 Windows 启动项失败');
+            if (existing.exitCode === 0) {
+                const removed = await Neutralino.os.execCommand(`reg delete "${runKey}" /v ClassBroom /f`);
+                if (removed.exitCode !== 0) {
+                    void Logger.warn('删除注册表启动项失败', { module: 'startup', action: 'set-windows' }, new Error(removed.stdErr || removed.stdOut));
+                }
+            }
+            try {
+                const scriptPath = await this.getWindowsStartupShortcutPath();
+                for (const suffix of ['.cmd', '.bat']) {
+                    await Neutralino.filesystem.remove(scriptPath.replace(/\.cmd$/i, '') + suffix);
+                }
+            } catch (error) {
+                void Logger.warn('清理启动文件夹脚本跳过', { module: 'startup', action: 'set-windows' }, error);
+            }
             return;
         }
 
         const executablePath = await this.getExecutablePath();
-        const result = await Neutralino.os.execCommand(`reg add "${runKey}" /v ClassBroom /t REG_SZ /d "\\"${executablePath}\\"" /f`);
-        if (result.exitCode !== 0) throw new Error(result.stdErr || result.stdOut || '写入 Windows 启动项失败');
+
+        try {
+            await this.writeRegistryRunEntry(executablePath);
+            return;
+        } catch (error) {
+            void Logger.warn('注册表写入开机自启失败，改用启动文件夹', { module: 'startup', action: 'set-windows' }, error);
+        }
+
+        const scriptPath = await this.getWindowsStartupShortcutPath();
+        await this.writeWindowsStartupScript(scriptPath, executablePath);
+    },
+    async writeRegistryRunEntry(executablePath) {
+        const runKey = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+        const result = await Neutralino.os.execCommand(`reg add "${runKey}" /v ClassBroom /t REG_SZ /d "${executablePath}" /f`);
+        if (result.exitCode !== 0) {
+            throw new Error(result.stdErr || result.stdOut || '写入 Windows 启动项失败');
+        }
+    },
+    async getWindowsStartupFolder() {
+        const candidates = [];
+        for (const key of ['APPDATA', 'USERPROFILE']) {
+            try {
+                const value = await Neutralino.os.getEnv(key);
+                if (value) candidates.push(value);
+            } catch (error) { }
+        }
+        for (const base of candidates) {
+            try {
+                return await Neutralino.filesystem.getJoinedPath(base, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+            } catch (error) { }
+        }
+        if (candidates.length) {
+            try {
+                return await Neutralino.filesystem.getJoinedPath(candidates[candidates.length - 1], 'AppData', 'Roaming', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+            } catch (error) { }
+        }
+        throw new Error('无法获取 Windows 启动文件夹路径');
+    },
+    async getWindowsStartupShortcutPath() {
+        const folder = await this.getWindowsStartupFolder();
+        return await Neutralino.filesystem.getJoinedPath(folder, 'ClassBroom.cmd');
+    },
+    async writeWindowsStartupScript(scriptPath, executablePath) {
+        const escapedPath = `"${executablePath}"`;
+        const content = `@echo off\nstart "" ${escapedPath}\n`;
+        const parts = scriptPath.split(/[\\/]/);
+        parts.pop();
+        try {
+            await Neutralino.filesystem.createDirectory(parts.join('\\'));
+        } catch (error) { }
+        await Neutralino.filesystem.writeFile(scriptPath, content);
     },
     async setMacOS(enabled) {
         const home = await this.getHomePath();
@@ -299,29 +443,12 @@ const API = {
                 const aData = await alertRes.json();
                 if (!aData.metadata?.zeroResult && aData.alerts?.length > 0) {
                     const latest = aData.alerts[0];
-                    const urlKeys = /^(detailUrl|webUrl|url|link|relatedUrl)$/i;
-                    const findDetailUrl = (value, seen = new WeakSet()) => {
-                        if (!value || typeof value !== 'object' || seen.has(value)) return '';
-                        seen.add(value);
-                        for (const [key, item] of Object.entries(value)) {
-                            if (urlKeys.test(key) && typeof item === 'string') return item;
-                        }
-                        for (const item of Object.values(value)) {
-                            const nestedUrl = findDetailUrl(item, seen);
-                            if (nestedUrl) return nestedUrl;
-                        }
-                        return '';
-                    };
-                    const detailUrl = latest.detailUrl || latest.webUrl || latest.url || latest.link || latest.relatedUrl
-                        || latest.web?.url || latest.links?.detail || latest.source?.url || latest.eventType?.url
-                        || findDetailUrl(latest);
                     warning = {
                         hasWarning: true,
                         event: latest.eventType?.name || "预警",
                         headline: latest.headline || "",
                         severity: latest.severity || "unknown",
-                        color: latest.color?.code || "unknown",
-                        detailUrl
+                        color: latest.color?.code || "unknown"
                     };
                 }
             }
@@ -329,6 +456,114 @@ const API = {
         } catch (error) {
             return { weather: { temp: "ERR", desc: "配置错误" }, warning: null };
         }
+    }
+};
+
+/**
+ * 应用内自定义弹窗，替代浏览器原生 alert/confirm。
+ * 原生弹窗使用系统样式且会阻塞渲染，与透明无边框窗口视觉割裂，
+ * 这里统一为跟随主题的弹窗，并支持 Promise 形式的按钮回调。
+ */
+const Dialog = {
+    mask: null,
+    resolveCurrent: null,
+    ensure() {
+        if (this.mask) return this.mask;
+        this.mask = document.getElementById('app-dialog');
+        return this.mask;
+    },
+    iconSvg(type) {
+        const icons = {
+            info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>',
+            warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+            danger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>'
+        };
+        return icons[type] || icons.info;
+    },
+
+    show({ title = '提示', message = '', html = '', type = 'info', wide = false, buttons = [{ text: '知道了', value: true, primary: true }] } = {}) {
+        const mask = this.ensure();
+        if (!mask) return Promise.resolve(null);
+        if (this.resolveCurrent) {
+            this.resolveCurrent(null);
+            this.resolveCurrent = null;
+        }
+        const titleEl = document.getElementById('app-dialog-title');
+        const bodyEl = document.getElementById('app-dialog-body');
+        const iconEl = document.getElementById('app-dialog-icon');
+        const footerEl = document.getElementById('app-dialog-footer');
+        const boxEl = mask.querySelector('.app-dialog');
+        if (boxEl) boxEl.classList.toggle('is-wide', Boolean(wide));
+        if (titleEl) titleEl.textContent = title;
+        if (bodyEl) {
+            // html 由内部构建（已做转义），message 走纯文本
+            if (html) bodyEl.innerHTML = html;
+            else bodyEl.textContent = message;
+        }
+        if (iconEl) {
+            iconEl.innerHTML = this.iconSvg(type);
+            iconEl.className = `app-dialog-icon${type === 'warning' ? ' warning' : type === 'danger' ? ' danger' : ''}`;
+        }
+        if (footerEl) {
+            footerEl.innerHTML = '';
+            buttons.forEach((button) => {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = `btn ${button.primary ? 'btn-primary' : 'btn-secondary'}`;
+                el.textContent = button.text;
+                el.addEventListener('click', () => this.close(button.value));
+                footerEl.appendChild(el);
+            });
+        }
+        mask.classList.add('active');
+        mask.setAttribute('aria-hidden', 'false');
+        // 窗口高度不足时（如主界面 92px）切换紧凑模式，保证标题与按钮不重叠
+        mask.classList.toggle('is-compact', window.innerHeight < 260);
+        // 预览类弹窗可能较高，滚动到顶部避免上次滚动位置残留
+        if (bodyEl) bodyEl.scrollTop = 0;
+        const primary = footerEl?.querySelector('.btn-primary') || footerEl?.querySelector('.btn');
+        primary?.focus({ preventScroll: true });
+        return new Promise((resolve) => {
+            this.resolveCurrent = resolve;
+        });
+    },
+    close(value = null) {
+        const mask = this.ensure();
+        if (mask) {
+            mask.classList.remove('active');
+            mask.setAttribute('aria-hidden', 'true');
+        }
+        if (this.resolveCurrent) {
+            this.resolveCurrent(value);
+            this.resolveCurrent = null;
+        }
+    },
+    bindKeys() {
+        document.addEventListener('keydown', (event) => {
+            if (!this.mask?.classList.contains('active')) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                this.close(null);
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const primary = document.querySelector('#app-dialog-footer .btn-primary');
+                primary?.click();
+            }
+        }, true);
+    },
+    alert(message, title = '提示', type = 'info') {
+        return this.show({ title, message, type });
+    },
+    confirm(message, { title = '请确认', confirmText = '确定', cancelText = '取消', type = 'warning' } = {}) {
+        return this.show({
+            title,
+            message,
+            type,
+            buttons: [
+                { text: cancelText, value: false },
+                { text: confirmText, value: true, primary: true }
+            ]
+        }).then((value) => value === true);
     }
 };
 
@@ -385,6 +620,8 @@ const UI = {
     async init() {
         await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         await this.setWindowDragRegion('main');
+
+        Dialog.bindKeys();
 
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
@@ -591,9 +828,11 @@ const UI = {
     },
 
     trayBound: false,
+    // 配置变更（如开机自启状态）后重建托盘时做防抖，避免频繁调用 setTray 导致托盘闪烁
+    trayUpdateTimer: null,
     async initTray() {
         if (this.trayBound) {
-            await this.updateTrayMenu();
+            this.scheduleTrayUpdate();
             return;
         }
         this.trayBound = true;
@@ -626,12 +865,20 @@ const UI = {
                 }
             };
             await Neutralino.events.on('trayMenuItemClicked', handleTrayAction);
-            await this.updateTrayMenu();        } catch (error) {
+            await this.updateTrayMenu();
+        } catch (error) {
             void Logger.error('托盘菜单初始化失败', { module: 'tray', action: 'init' }, error);
             try {
-                await Neutralino.os.showMessageBox('托盘菜单初始化失败', error.message || String(error));
+                await Dialog.alert(error.message || String(error), '托盘菜单初始化失败', 'danger');
             } catch (messageBoxError) { }
         }
+    },
+
+    scheduleTrayUpdate(delay = 150) {
+        clearTimeout(this.trayUpdateTimer);
+        this.trayUpdateTimer = setTimeout(() => {
+            this.updateTrayMenu();
+        }, delay);
     },
 
     async updateTrayMenu() {
@@ -643,19 +890,79 @@ const UI = {
             { id: 'autostart', text: '开机自启', isChecked: AppData.autoStart === true },
             { id: 'exit', text: '退出' }
         ];
-        try {
-            await Neutralino.os.setTray({
-                icon: window.NL_OS === 'Windows' ? '/tray.ico' : '/tray.png',
-                menuItems
-            });
-        } catch (error) {
-            void Logger.warn('托盘主图标设置失败，尝试回退图标', { module: 'tray', action: 'set' }, error);
+        // Neutralino 的 setTray 不接受 URL（以 / 开头会被当作无效路径），各平台图标必须是磁盘绝对路径
+        const iconCandidates = window.NL_OS === 'Windows'
+            ? ['tray.ico', 'app.ico']
+            : ['tray.png', 'tray.ico', 'app.ico'];
+        const errors = [];
+        for (const iconName of iconCandidates) {
             try {
-                await Neutralino.os.setTray({ icon: '/app.ico', menuItems });
-            } catch (fallbackError) {
-                void Logger.error('托盘菜单设置失败', { module: 'tray', action: 'set' }, fallbackError);
+                const iconPath = await this.getTrayIconPath(iconName);
+                // 先用默认图标创建托盘，再挂载菜单，避免部分平台上菜单初始化失败导致托盘不出现
+                await Neutralino.os.setTray({ icon: iconPath });
+                await Neutralino.os.setTray({ icon: iconPath, menuItems });
+                return;
+            } catch (error) {
+                errors.push(`${iconName}: ${error?.message || error}`);
             }
         }
+        void Logger.error('托盘创建失败', { module: 'tray', action: 'set', context: { attempted: errors } }, new Error(errors.join(' | ')));
+    },
+
+    async getTrayIconPath(fileName) {
+        const errors = [];
+        const candidates = this.getTrayIconCandidates(fileName);
+        for (const candidate of candidates) {
+            try {
+                const stats = await Neutralino.filesystem.getStats(candidate);
+                if (!stats.isFile) continue;
+                return await Neutralino.filesystem.getAbsolutePath(candidate);
+            } catch (error) {
+                errors.push(`${candidate} => ${error?.message || error}`);
+            }
+        }
+        const resourcePaths = [
+            fileName,
+            `${(APP_CONFIG.documentRoot || '/www/').replace(/^\/+|\/+$/g, '')}/${fileName}`
+        ];
+        for (const resourcePath of resourcePaths) {
+            try {
+                const content = await Neutralino.filesystem.readBinaryFile(resourcePath).catch(() => Neutralino.filesystem.readFile(resourcePath));
+                if (!content) continue;
+                const tempPath = await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, fileName);
+                if (typeof content === 'string') await Neutralino.filesystem.writeFile(tempPath, content);
+                else await Neutralino.filesystem.writeBinaryFile(tempPath, content);
+                return await Neutralino.filesystem.getAbsolutePath(tempPath);
+            } catch (error) {
+                errors.push(`${resourcePath} => ${error?.message || error}`);
+            }
+        }
+        void Logger.warn('托盘图标路径解析失败', { module: 'tray', action: 'resolve', context: { candidates, errors } });
+        throw new Error(errors.join(' | ') || `未找到托盘图标: ${fileName}`);
+    },
+
+    getTrayIconCandidates(fileName) {
+        const documentRoot = (APP_CONFIG.documentRoot || '/www/').replace(/^\/+|\/+$/g, '');
+        const cwd = typeof window.NL_CWD === 'string' ? window.NL_CWD : '';
+        const path = typeof window.NL_PATH === 'string' ? window.NL_PATH : '';
+        // 打包后资源在 resources.neu 内，Neutralino 的 fs API 以 NL_PATH 为基准；
+        // 开发态（--load-dir-res / 服务模式）则需经 documentRoot 定位到 www 目录。
+        // 这里按优先级覆盖两种布局，逐个探测。
+        const bases = [
+            documentRoot,
+            path ? `${path}/${documentRoot}` : '',
+            cwd ? `${cwd}/${documentRoot}` : '',
+            path,
+            cwd
+        ].filter((base) => typeof base === 'string' && base.length > 0);
+        const candidates = [];
+        for (const base of bases) {
+            const separator = base.includes('\\') ? '\\' : '/';
+            const normalized = base.replace(/[\\/]+$/, '') || '.';
+            const candidate = `${normalized}${separator}${fileName}`;
+            if (!candidates.includes(candidate)) candidates.push(candidate);
+        }
+        return candidates;
     },
 
     async toggleAutoStart() {
@@ -666,10 +973,10 @@ const UI = {
             await Store.saveToRegistry(updatedData);
             AppData = updatedData;
             this.el.inputAutoStart.checked = enabled;
-            await this.updateTrayMenu();
+            this.scheduleTrayUpdate();
         } catch (error) {
             void Logger.error('开机自启设置失败', { module: 'startup', action: 'toggle' }, error);
-            await Neutralino.os.showMessageBox('设置失败', error.message);
+            await this.showDialogWithRoom(() => Dialog.alert(error.message || String(error), '设置失败', 'danger'));
         }
     },
 
@@ -702,6 +1009,250 @@ const UI = {
         }
     },
 
+    /** 脱敏显示：仅保留首尾字符，避免预览时暴露完整私钥 */
+    maskSecret(value) {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        // PEM 私钥统一显示为固定占位，避免露出 "----" 之类的头部片段
+        if (/-----BEGIN/.test(text)) return '•••••••• (PEM 私钥已隐藏)';
+        if (text.length <= 8) return '••••••';
+        return `${text.slice(0, 4)}••••${text.slice(-4)}`;
+    },
+
+    /** 构建导入配置的预览 HTML（所有动态内容均已转义） */
+    buildConfigPreview(config, source) {
+        const esc = (value) => this.escapeHtml(value);
+        const currentVersion = String(window.NL_APPVERSION || '').trim();
+        const fileVersion = String(config?.version || '').trim();
+        const versionMatch = Boolean(fileVersion) && fileVersion === currentVersion;
+        const weather = config?.weather || {};
+        const jwt = weather.jwtConfig || {};
+        const courses = config?.courses || {};
+
+        // 统计课程数量与已配置的天数
+        let totalCourses = 0;
+        let activeDays = 0;
+        const dayKeys = Object.keys(DAY_MAP);
+        dayKeys.forEach((day) => {
+            const list = Array.isArray(courses[day]) ? courses[day] : [];
+            if (list.length) activeDays += 1;
+            totalCourses += list.length;
+        });
+
+        const item = (label, value, isSecret = false) => {
+            const text = isSecret ? this.maskSecret(value) : String(value ?? '').trim();
+            const display = text ? esc(text) : '未设置';
+            const cls = text ? '' : ' class="empty"';
+            const title = text && !isSecret ? ` title="${esc(text)}"` : '';
+            return `<div class="import-preview-item"><span>${esc(label)}</span><b${cls}${title}>${display}</b></div>`;
+        };
+
+        const versionBadge = versionMatch
+            ? '<span class="import-preview-badge">版本一致</span>'
+            : `<span class="import-preview-badge warning">${fileVersion ? '版本不一致' : '无版本信息'}</span>`;
+
+        const meta = [
+            `<span>来源：<b>${esc(source || '未知')}</b></span>`,
+            `<span>文件版本：<b>${esc(fileVersion ? `v${fileVersion}` : '无')}</b></span>`,
+            `<span>当前版本：<b>v${esc(currentVersion || '未知')}</b></span>`,
+            versionBadge
+        ].join('');
+
+        const weatherGrid = [
+            item('API Host', weather.apiHost),
+            item('经纬度', weather.location),
+            item('地区名称', weather.realLocation),
+            item('刷新间隔', weather.weatherRefreshMinutes ? `${weather.weatherRefreshMinutes} 分钟` : ''),
+            item('JWT KID', jwt.kid, true),
+            item('JWT SUB', jwt.sub, true),
+            item('JWT ISS', jwt.iss, true),
+            item('私钥', jwt.privateKey, true)
+        ].join('');
+
+        const daysHtml = dayKeys.map((day) => {
+            const count = Array.isArray(courses[day]) ? courses[day].length : 0;
+            const cls = count ? 'import-preview-day has-course' : 'import-preview-day';
+            return `<span class="${cls}">${esc(DAY_MAP[day])} · ${count} 节</span>`;
+        }).join('');
+
+        // 列出今日所配课程明细供快速核对
+        const todayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+        const todayCourses = (Array.isArray(courses[todayKey]) ? courses[todayKey] : [])
+            .filter((c) => c && c.start && c.end)
+            .slice()
+            .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+        const courseListHtml = todayCourses.length
+            ? todayCourses.map((course) => `
+                <div class="import-preview-course">
+                    <time>${esc(course.start)}–${esc(course.end)}</time>
+                    <em>${esc(course.course || '未命名课程')}</em>
+                </div>`).join('')
+            : '<span class="import-preview-note">今日暂无课程安排</span>';
+
+        const displayGrid = [
+            item('主题', config?.theme),
+            item('底部字号', config?.bottomFontSize ? `${config.bottomFontSize} px` : ''),
+            item('底部颜色', config?.bottomColor),
+            item('倒计时名称', config?.countdownName),
+            item('目标日期', config?.countdownDate),
+            item('自定义 1', config?.customTexts?.one),
+            item('自定义 2', config?.customTexts?.two),
+            item('自定义 3', config?.customTexts?.three)
+        ].join('');
+
+        const subjects = Array.isArray(config?.subjects) ? config.subjects : [];
+        const subjectText = subjects.length ? subjects.slice(0, 12).join('、') + (subjects.length > 12 ? ` 等 ${subjects.length} 项` : '') : '';
+
+        return `
+            <div class="import-preview">
+                <div class="import-preview-meta">${meta}</div>
+                <div class="import-preview-section">
+                    <div class="import-preview-title">天气配置<span>${esc(weather.apiHost ? '已配置' : '未配置')}</span></div>
+                    <div class="import-preview-grid">${weatherGrid}</div>
+                </div>
+                <div class="import-preview-section">
+                    <div class="import-preview-title">课程表<span>共 ${totalCourses} 节 · ${activeDays} 天</span></div>
+                    <div class="import-preview-days">${daysHtml}</div>
+                </div>
+                <div class="import-preview-section">
+                    <div class="import-preview-title">今日课程（${esc(DAY_MAP[todayKey])}）<span>${todayCourses.length} 节</span></div>
+                    <div class="import-preview-list">${courseListHtml}</div>
+                </div>
+                <div class="import-preview-section">
+                    <div class="import-preview-title">显示设置<span>${esc(subjectText ? `课程名称 ${subjects.length} 项` : '')}</span></div>
+                    <div class="import-preview-grid">${displayGrid}</div>
+                    ${subjectText ? `<div class="import-preview-list"><span class="import-preview-note">课程名称：${esc(subjectText)}</span></div>` : ''}
+                </div>
+            </div>`;
+    },
+
+    /**
+     * 展示导入预览并询问是否继续。
+     * 版本一致与不一致使用不同的标题、图标与提示文案，避免用户忽略风险。
+     */
+    async confirmImportPreview(config, source) {
+        const currentVersion = String(window.NL_APPVERSION || '').trim();
+        const fileVersion = String(config?.version || '').trim();
+        const versionMatch = Boolean(fileVersion) && fileVersion === currentVersion;
+        const noteHtml = versionMatch
+            ? `<div class="import-preview-note">配置版本与当前应用一致，点击「导入并保存」将立即生效。</div>`
+            : `<div class="import-preview-warn">
+                   <strong>⚠ 版本不一致，请谨慎导入</strong>
+                   <span>文件版本：${this.escapeHtml(fileVersion ? `v${fileVersion}` : '无版本信息')} · 当前版本：v${this.escapeHtml(currentVersion || '未知')}</span>
+                   <span>部分设置可能无法正确读取或丢失，导入后建议逐项核对。</span>
+               </div>`;
+        const html = this.buildConfigPreview(config, source) + `<div class="import-preview">${noteHtml}</div>`;
+        void Logger.info('展示导入预览', {
+            module: 'config',
+            action: 'preview',
+            context: { source, fileVersion: fileVersion || null, currentVersion, versionMatch }
+        });
+        const confirmed = await Dialog.show({
+            title: versionMatch ? '导入前预览' : '导入前预览 · 版本不一致',
+            html,
+            wide: true,
+            type: versionMatch ? 'info' : 'warning',
+            buttons: [
+                { text: '取消', value: false },
+                { text: versionMatch ? '导入并保存' : '仍然导入', value: true, primary: true }
+            ]
+        });
+        return confirmed === true;
+    },
+
+    /**
+     * 导入配置：预览确认后直接写入持久化并返回主页。
+     * 版本不一致时先给出独立的风险提示，确认后再导入。
+     */
+    async applyImportedConfig(imported, source) {
+        this.validateConfig(imported);
+        const currentVersion = String(window.NL_APPVERSION || '').trim();
+        const fileVersion = String(imported?.version || '').trim();
+        const versionMatch = Boolean(fileVersion) && fileVersion === currentVersion;
+
+        const wasSettingsHidden = this.el.viewSettings.classList.contains('hidden');
+        if (wasSettingsHidden) {
+            await this.positionWindow(APP_CONFIG.settingsSize);
+        }
+
+        let proceed = false;
+        try {
+            // 版本不一致时先单独提示，与正常导入区分开
+            if (!versionMatch) {
+                await Dialog.alert(
+                    [
+                        '该配置文件由其他版本的 ClassBroom 导出。',
+                        '',
+                        `文件版本：${fileVersion ? `v${fileVersion}` : '无版本信息'}`,
+                        `当前版本：v${currentVersion || '未知'}`,
+                        '',
+                        '导入后部分设置可能无法正确读取或丢失，建议导入后逐项核对。'
+                    ].join('\n'),
+                    '版本不一致',
+                    'warning'
+                );
+            }
+            proceed = await this.confirmImportPreview(imported, source);
+        } finally {
+            if (!proceed && wasSettingsHidden) {
+                await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            }
+        }
+        if (!proceed) {
+            void Logger.info('用户取消导入', { module: 'config', action: 'import-cancel', context: { source } });
+            return false;
+        }
+
+        if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
+        if (!imported.courses) imported.courses = {};
+        if (!Array.isArray(imported.subjects)) imported.subjects = [];
+        // version 仅用于导入校验，不进入应用数据
+        delete imported.version;
+
+        // 导入即保存，无需再回设置页手动点保存
+        EditData = imported;
+        try {
+            const autoStartError = await this.persistSettings({ trigger: 'import', source, versionMatch });
+            void Logger.info('导入配置已保存', { module: 'config', action: 'import-save', context: { source, versionMatch } });
+            // 此时窗口已缩回主界面高度，弹窗需临时放大才能正常显示，避免被压扁
+            await this.showDialogWithRoom(() => {
+                if (autoStartError) {
+                    return Dialog.alert(
+                        `配置已导入并保存，但开机自启设置失败。\n${autoStartError.message || autoStartError}`,
+                        '开机自启设置失败',
+                        'warning'
+                    );
+                }
+                return Dialog.alert(
+                    versionMatch
+                        ? '配置已导入并保存，界面已按新设置刷新。'
+                        : '配置已导入并保存。由于版本不一致，请检查课表与天气设置是否正确。',
+                    versionMatch ? '导入成功' : '导入成功 · 版本不一致',
+                    versionMatch ? 'info' : 'warning'
+                );
+            });
+        } catch (error) {
+            void Logger.error('导入配置保存失败', { module: 'config', action: 'import-save' }, error);
+            // 保存失败时保持设置页并复原窗口尺寸，错误交由调用方统一提示
+            if (wasSettingsHidden) {
+                await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            }
+            throw error;
+        }
+        return true;
+    },
+
+    async showDialogWithRoom(showFn) {
+        const inSettings = !this.el.viewSettings.classList.contains('hidden');
+        if (inSettings) return showFn();
+        await this.positionWindow(APP_CONFIG.settingsSize);
+        try {
+            return await showFn();
+        } finally {
+            await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+        }
+    },
+
     handleDragEnter(event) {
         if (!event.dataTransfer?.types.includes('Files')) return;
         event.preventDefault();
@@ -726,7 +1277,7 @@ const UI = {
         const files = Array.from(event.dataTransfer?.files || []);
         if (!files.length) return;
         if (files.length !== 1) {
-            await Neutralino.os.showMessageBox('导入失败', '一次只能拖入一个 JSON 配置文件');
+            await this.showDialogWithRoom(() => Dialog.alert('一次只能拖入一个 JSON 配置文件', '导入失败', 'warning'));
             return;
         }
         await this.loadDroppedConfig(files[0]);
@@ -739,9 +1290,8 @@ const UI = {
                 throw new Error('请拖入 JSON 格式的配置文件');
             }
             const imported = JSON.parse(await file.text());
-            this.validateConfig(imported);
-            if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
-            await this.openSettings(imported);
+            const applied = await this.applyImportedConfig(imported, fileName);
+            if (!applied) return;
             void Logger.info('配置拖入成功', {
                 module: 'config',
                 action: 'drag-import',
@@ -749,7 +1299,7 @@ const UI = {
             });
         } catch (error) {
             void Logger.error('配置拖入失败', { module: 'config', action: 'drag-import' }, error);
-            await Neutralino.os.showMessageBox('导入失败', error.message || String(error));
+            await this.showDialogWithRoom(() => Dialog.alert(error.message || String(error), '导入失败', 'danger'));
         }
     },
 
@@ -762,34 +1312,59 @@ const UI = {
             if (!paths || !paths.length) return;
             const content = await Neutralino.filesystem.readFile(paths[0]);
             const imported = JSON.parse(content);
-            this.validateConfig(imported);
-            if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
-            if (!imported.courses) imported.courses = {};
-            await this.openSettings(imported);
+            const applied = await this.applyImportedConfig(imported, paths[0]);
+            if (!applied) return;
             void Logger.info('配置导入成功', { module: 'config', action: 'import', context: { filePath: paths[0] } });
         } catch (error) {
             void Logger.error('配置导入失败', { module: 'config', action: 'import' }, error);
-            await Neutralino.os.showMessageBox('导入失败', error.message || String(error));
+            await this.showDialogWithRoom(() => Dialog.alert(error.message || String(error), '导入失败', 'danger'));
         }
     },
 
     async exportConfig() {
         try {
-            const configToExport = this.el.viewSettings.classList.contains('hidden')
-                ? AppData
-                : EditData;
+            const inSettings = !this.el.viewSettings.classList.contains('hidden');
+            const configToExport = inSettings ? EditData : AppData;
+            const payload = {
+                version: window.NL_APPVERSION || '',
+                ...JSON.parse(JSON.stringify(configToExport))
+            };
             const path = await Neutralino.os.showSaveDialog('导出 ClassBroom 配置', {
                 forceOverwrite: true,
                 defaultPath: 'classbroom-config.json',
                 filters: [{ name: 'JSON 配置', extensions: ['json'] }]
             });
             if (!path) return;
-            await Neutralino.filesystem.writeFile(path, JSON.stringify(configToExport, null, 2));
-            void Logger.info('配置导出成功', { module: 'config', action: 'export', context: { filePath: path } });
-            await Neutralino.os.showMessageBox('导出成功', path);
+            let exists = false;
+            try {
+                const stats = await Neutralino.filesystem.getStats(path);
+                exists = Boolean(stats?.isFile);
+            } catch (error) {
+                exists = false;
+            }
+            if (exists) {
+                if (!inSettings) await this.positionWindow(APP_CONFIG.settingsSize);
+                let confirmed = false;
+                try {
+                    confirmed = await Dialog.confirm(`文件已存在，是否覆盖？\n${path}`, {
+                        title: '覆盖已有文件',
+                        confirmText: '覆盖',
+                        cancelText: '取消',
+                        type: 'warning'
+                    });
+                } finally {
+                    if (!confirmed && !inSettings) await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+                }
+                if (!confirmed) return;
+            }
+            await Neutralino.filesystem.writeFile(path, JSON.stringify(payload, null, 2));
+            void Logger.info('配置导出成功', { module: 'config', action: 'export', context: { filePath: path, version: payload.version } });
+            if (!inSettings) await this.positionWindow(APP_CONFIG.settingsSize);
+            await Dialog.alert(path, '导出成功');
+            if (!inSettings) await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         } catch (error) {
             void Logger.error('配置导出失败', { module: 'config', action: 'export' }, error);
-            await Neutralino.os.showMessageBox('导出失败', error.message || String(error));
+            await Dialog.alert(error.message || String(error), '导出失败', 'danger');
         }
     },
 
@@ -801,12 +1376,6 @@ const UI = {
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
 
-        this.el.inputApiHost.value = EditData.weather.apiHost || '';
-        this.el.inputLocation.value = EditData.weather.location || '';
-        this.el.inputRealLocation.value = EditData.weather.realLocation || '';
-        this.el.inputKid.value = EditData.weather.jwtConfig.kid || '';
-        this.el.inputSub.value = EditData.weather.jwtConfig.sub || '';
-        this.el.inputIss.value = EditData.weather.jwtConfig.iss || '';
         this.el.inputPrivateKey.value = EditData.weather.jwtConfig.privateKey || '';
         this.el.inputAutoStart.checked = EditData.autoStart === true;
         this.el.inputTheme.value = EditData.theme || 'default';
@@ -829,7 +1398,7 @@ const UI = {
         this.el.viewSettings.classList.remove('hidden');
         this.bindSettingsDirtyTracking();
         this.settingsSnapshot = this.getSettingsSnapshot();
-        if (this.el.btnSaveSettings) this.el.btnSaveSettings.disabled = true;
+        this.el.btnSaveSettings.disabled = true;
 
         await this.positionWindow(APP_CONFIG.settingsSize);
         await this.setWindowDragRegion('settings');
@@ -867,6 +1436,33 @@ const UI = {
         this.settingsDirtyBound = true;
     },
 
+    async persistSettings(context = {}) {
+        let autoStartError = null;
+        try {
+            await Startup.setEnabled(EditData.autoStart);
+        } catch (error) {
+            autoStartError = error;
+            void Logger.error('开机自启设置失败', { module: 'startup', action: 'save' }, error);
+        }
+        await Logger.measure('设置保存', async () => {
+            await Store.saveToRegistry(EditData);
+            AppData = JSON.parse(JSON.stringify(EditData));
+        }, {
+            module: 'config',
+            action: 'save',
+            context: {
+                theme: EditData.theme,
+                weatherRefreshMinutes: EditData.weatherRefreshMinutes,
+                courseDays: Object.keys(EditData.courses || {}).length,
+                ...context
+            }
+        });
+        this.scheduleTrayUpdate();
+        await this.closeSettings();
+        await App.init();
+        return autoStartError;
+    },
+
     async saveSettings() {
         EditData.weather.apiHost = this.el.inputApiHost.value.trim();
         EditData.weather.location = this.el.inputLocation.value.trim();
@@ -877,7 +1473,7 @@ const UI = {
         EditData.weather.jwtConfig.privateKey = this.el.inputPrivateKey.value.trim();
         const weatherRefreshMinutes = Number(this.el.inputWeatherRefreshMinutes.value);
         if (!Number.isInteger(weatherRefreshMinutes) || weatherRefreshMinutes < 1 || weatherRefreshMinutes > 1440) {
-            alert('天气刷新间隔须为 1 到 1440 分钟');
+            await Dialog.alert('天气刷新间隔须为 1 到 1440 分钟', '参数无效', 'warning');
             return;
         }
         EditData.weatherRefreshMinutes = weatherRefreshMinutes;
@@ -896,17 +1492,13 @@ const UI = {
         if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
 
         try {
-            await Startup.setEnabled(EditData.autoStart);
-            await Logger.measure('设置保存', async () => {
-                await Store.saveToRegistry(EditData);
-                AppData = JSON.parse(JSON.stringify(EditData));
-            }, { module: 'config', action: 'save', context: { theme: EditData.theme, weatherRefreshMinutes: EditData.weatherRefreshMinutes, courseDays: Object.keys(EditData.courses || {}).length } });
-            await this.updateTrayMenu();
-            await this.closeSettings();
-            await App.init(); 
+            const autoStartError = await this.persistSettings({ trigger: 'save-button' });
+            if (autoStartError) {
+                await Dialog.alert(`其余配置已保存。\n${autoStartError.message || autoStartError}`, '开机自启设置失败', 'warning');
+            }
         } catch (error) {
             void Logger.error('设置保存失败', { module: 'config', action: 'save' }, error);
-            alert("保存失败，请检查内容！\n" + error.message);
+            await Dialog.alert(`保存失败，请检查内容！\n${error.message}`, '保存失败', 'danger');
         }
     },
 
@@ -1002,6 +1594,16 @@ const UI = {
                 if (endMinutes <= startMinutes) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
                 if (endMinutes - startMinutes < COURSE_TIME_STEP) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
 
+                // 触屏操作时明确当前作用于哪个时间点，步进按钮与轨道点击都按它执行
+                let activeTarget = 'start';
+                let stepperLabelEl = null;
+                const setActiveTarget = (target) => {
+                    activeTarget = target;
+                    startLabel.classList.toggle('active', target === 'start');
+                    endLabel.classList.toggle('active', target === 'end');
+                    if (stepperLabelEl) stepperLabelEl.textContent = target === 'start' ? '调节开始' : '调节结束';
+                };
+
                 const updateRange = (activeThumb = null) => {
                     startMinutes = Math.max(MIN_COURSE_TIME, Math.min(startMinutes, endMinutes - COURSE_TIME_STEP));
                     endMinutes = Math.min(MAX_COURSE_TIME, Math.max(endMinutes, startMinutes + COURSE_TIME_STEP));
@@ -1024,6 +1626,15 @@ const UI = {
                     EditData.courses[CurrentEditDay][index].start = startTime;
                     EditData.courses[CurrentEditDay][index].end = endTime;
                     if (activeThumb) activeThumb.focus({ preventScroll: true });
+                    this.markSettingsDirty();
+                };
+
+                /** 按步长加减某一端时间，触屏下比拖拽更精确 */
+                const stepTime = (target, step) => {
+                    if (target === 'start') startMinutes += step;
+                    else endMinutes += step;
+                    setActiveTarget(target);
+                    updateRange(target === 'start' ? startThumb : endThumb);
                 };
 
                 const updateThumbFromPointer = (thumb, event) => {
@@ -1032,29 +1643,48 @@ const UI = {
                     const minutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
                     if (thumb === startThumb) startMinutes = Math.min(minutes, endMinutes - COURSE_TIME_STEP);
                     else endMinutes = Math.max(minutes, startMinutes + COURSE_TIME_STEP);
+                    setActiveTarget(thumb === startThumb ? 'start' : 'end');
                     updateRange(thumb);
                 };
                 let draggedThumb = null;
+                let dragStartX = 0;
+                let dragMoved = false;
+                const DRAG_THRESHOLD = 6;
                 track.addEventListener('pointerdown', (event) => {
                     if (event.target === startThumb || event.target === endThumb) return;
                     event.stopPropagation();
-                    const rect = track.getBoundingClientRect();
-                    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-                    const clickedMinutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
-                    draggedThumb = Math.abs(clickedMinutes - startMinutes) <= Math.abs(clickedMinutes - endMinutes)
-                        ? startThumb
-                        : endThumb;
+                    draggedThumb = null;
+                    dragStartX = event.clientX;
+                    dragMoved = false;
                     track.setPointerCapture(event.pointerId);
-                    updateThumbFromPointer(draggedThumb, event);
                 });
                 track.addEventListener('pointermove', (event) => {
-                    if (draggedThumb && track.hasPointerCapture(event.pointerId)) updateThumbFromPointer(draggedThumb, event);
+                    if (!track.hasPointerCapture(event.pointerId)) return;
+                    if (!dragMoved && Math.abs(event.clientX - dragStartX) < DRAG_THRESHOLD) return;
+                    if (!dragMoved) {
+                        // 超过阈值才认定为拖动，避免触屏轻点轨道时时间被瞬间跳到远处
+                        dragMoved = true;
+                        const rect = track.getBoundingClientRect();
+                        const ratio = Math.max(0, Math.min(1, (dragStartX - rect.left) / rect.width));
+                        const startPosMinutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
+                        draggedThumb = Math.abs(startPosMinutes - startMinutes) <= Math.abs(startPosMinutes - endMinutes)
+                            ? startThumb
+                            : endThumb;
+                    }
+                    updateThumbFromPointer(draggedThumb, event);
                 });
                 track.addEventListener('pointerup', (event) => {
-                    draggedThumb = null;
                     if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
+                    if (!dragMoved) {
+                        const rect = track.getBoundingClientRect();
+                        const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                        const clickMinutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
+                        setActiveTarget(Math.abs(clickMinutes - startMinutes) <= Math.abs(clickMinutes - endMinutes) ? 'start' : 'end');
+                    }
+                    draggedThumb = null;
+                    dragMoved = false;
                 });
-                track.addEventListener('pointercancel', () => { draggedThumb = null; });
+                track.addEventListener('pointercancel', () => { draggedThumb = null; dragMoved = false; });
                 [startThumb, endThumb].forEach((thumb) => {
                     thumb.addEventListener('pointerdown', (event) => {
                         event.stopPropagation();
@@ -1076,6 +1706,68 @@ const UI = {
 
                 updateRange();
                 group.append(labels, track);
+
+                const actions = document.createElement('div');
+                actions.className = 'course-time-actions';
+
+                const steppers = document.createElement('div');
+                steppers.className = 'course-time-steppers';
+                const stepConfigs = [
+                    { text: '-5', step: -COURSE_TIME_STEP, label: '向前 5 分钟' },
+                    { text: '-10', step: -COURSE_TIME_STEP * 2, label: '向前 10 分钟' },
+                    { text: '+5', step: COURSE_TIME_STEP, label: '向后 5 分钟' },
+                    { text: '+10', step: COURSE_TIME_STEP * 2, label: '向后 10 分钟' }
+                ];
+                stepConfigs.forEach(({ text, step, label }) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'course-time-stepper';
+                    button.textContent = text;
+                    button.title = `${label}（作用于当前选中的时间点）`;
+                    button.setAttribute('aria-label', label);
+                    button.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        stepTime(activeTarget, step);
+                    });
+                    steppers.appendChild(button);
+                });
+
+                const stepperLabel = document.createElement('span');
+                stepperLabel.className = 'course-time-step-label';
+                steppers.appendChild(stepperLabel);
+                stepperLabelEl = stepperLabel;
+
+                const presets = document.createElement('div');
+                presets.className = 'course-time-presets';
+                const presetDurations = [40, 45, 50];
+                presetDurations.forEach((duration) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'course-time-preset';
+                    button.textContent = `${duration}分钟`;
+                    button.title = `将结束时间设为开始时间 + ${duration} 分钟`;
+                    button.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        endMinutes = startMinutes + duration;
+                        setActiveTarget('end');
+                        updateRange(endThumb);
+                    });
+                    presets.appendChild(button);
+                });
+
+                actions.append(steppers, presets);
+                group.appendChild(actions);
+
+                startLabel.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    setActiveTarget('start');
+                });
+                endLabel.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    setActiveTarget('end');
+                });
+
+                setActiveTarget('start');
                 return group;
             };
 
@@ -1099,6 +1791,7 @@ const UI = {
                     CurrentEditCourseIndex = index;
                     EditData.courses[CurrentEditDay][index].course = subject;
                     this.renderCourseList();
+                    this.markSettingsDirty();
                 });
                 subjectOptions.appendChild(subjectButton);
             });
@@ -1116,6 +1809,7 @@ const UI = {
                 customInput.className = 'course-custom-input';
                 customInput.placeholder = '输入自定义课程名称';
                 customInput.value = course.course || '';
+                AutoFillGuard.apply(customInput);
                 customInput.addEventListener('click', (inputEvent) => inputEvent.stopPropagation());
                 const confirmButton = document.createElement('button');
                 confirmButton.type = 'button';
@@ -1130,6 +1824,7 @@ const UI = {
                         if (!EditData.subjects.includes(customName)) EditData.subjects.push(customName);
                     }
                     this.renderCourseList();
+                    this.markSettingsDirty();
                 });
                 subjectOptions.append(customInput, confirmButton);
                 customInput.focus();
@@ -1146,6 +1841,7 @@ const UI = {
                 if (CurrentEditCourseIndex === index) CurrentEditCourseIndex = null;
                 else if (CurrentEditCourseIndex !== null && CurrentEditCourseIndex > index) CurrentEditCourseIndex -= 1;
                 this.renderCourseList();
+                this.markSettingsDirty();
             };
 
             const timePanel = document.createElement('div');
@@ -1188,6 +1884,7 @@ const UI = {
                 if (CurrentEditCourseIndex !== null && EditData.courses[CurrentEditDay]?.[CurrentEditCourseIndex]) {
                     EditData.courses[CurrentEditDay][CurrentEditCourseIndex].course = subject;
                     this.renderCourseList();
+                    this.markSettingsDirty();
                 }
             });
             const remove = document.createElement('button');
@@ -1198,6 +1895,7 @@ const UI = {
             remove.addEventListener('click', () => {
                 EditData.subjects.splice(subjectIndex, 1);
                 this.renderSubjectList();
+                this.markSettingsDirty();
             });
             item.append(name, remove);
             this.el.subjectList.appendChild(item);
@@ -1211,6 +1909,7 @@ const UI = {
         if (!EditData.subjects.includes(subject)) EditData.subjects.push(subject);
         this.el.inputNewSubject.value = '';
         this.renderSubjectList();
+        this.markSettingsDirty();
     },
 
     addCourseRow() {
@@ -1219,6 +1918,7 @@ const UI = {
         CurrentEditCourseIndex = EditData.courses[CurrentEditDay].length - 1;
         setTimeout(() => { this.el.courseList.scrollTop = this.el.courseList.scrollHeight; }, 10);
         this.renderCourseList();
+        this.markSettingsDirty();
     },
 
     timelineSignature: null,
@@ -1315,15 +2015,6 @@ const UI = {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     },
-    async openWarning(warning) {
-        const candidateUrl = String(warning?.detailUrl || '').trim();
-        let detailUrl = 'https://www.qweather.com/severe-weather-warning';
-        try {
-            const parsedUrl = new URL(candidateUrl);
-            if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') detailUrl = parsedUrl.href;
-        } catch (error) { }
-        await Neutralino.os.open(detailUrl);
-    },
     renderWeather(weather, warning) {
         const w = weather || { temp: "--°", desc: "无数据" };
         const hasWarning = Boolean(warning?.hasWarning);
@@ -1332,7 +2023,8 @@ const UI = {
             const color = this.getWarningColor(warning);
             const headline = this.escapeHtml(warning.headline);
             const event = this.escapeHtml(warning.event);
-            warnHtml = `<button type="button" class="weather-warning" style="--warning-color: ${color}" title="${headline}" aria-label="查看${event}详情">${ICONS.warn}<span>${event}</span></button>`;
+            // 预警仅作状态展示，不再提供跳转
+            warnHtml = `<div class="weather-warning" style="--warning-color: ${color}" title="${headline}" role="status">${ICONS.warn}<span>${event}</span></div>`;
         }
         const weatherSignature = JSON.stringify({ weather: w, warning });
         const changed = this.weatherSignature !== weatherSignature;
@@ -1345,19 +2037,11 @@ const UI = {
                 <div class="weather-icon">${ICONS.weather}</div>
                 <div class="weather-info">
                     <div class="temp">${w.temp}</div>
-                    <div class="desc">${w.desc}</div>
+                    <div class="desc" title="${this.escapeHtml(w.desc)}">${this.escapeHtml(w.desc)}</div>
                 </div>
             </div>
             ${warnHtml}
         `;
-        if (hasWarning) {
-            const warningButton = this.el.weather.querySelector('.weather-warning');
-            warningButton?.addEventListener('click', () => {
-                void this.openWarning(warning).catch((error) => {
-                    void Logger.error('天气预警详情打开失败', { module: 'weather', action: 'open-warning' }, error);
-                });
-            });
-        }
         this.renderCustomBottomInfo();
         return changed;
     }
@@ -1445,6 +2129,7 @@ const App = {
 };
 
 window.onload = async () => {
+    AutoFillGuard.init();
     await UI.init();
     await App.init();
 };

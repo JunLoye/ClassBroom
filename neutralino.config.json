@@ -29,7 +29,7 @@
       "borderless": true,
       "transparent": true,
       "skipTaskbar": true,
-      "enableInspector": false 
+      "enableInspector": false
     }
   },
   "cli": {
