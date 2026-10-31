@@ -1,19 +1,7 @@
 Neutralino.init();
 window.addEventListener('contextmenu', e => e.preventDefault());
 
-/**
- * 禁用 WebView2 的自动填充与「保存信息？」提示。
- *
- * WebView2 密码管理器通过以下特征判定「可保存的凭据」：
- *   1. 存在 <form> 包裹
- *   2. input 具备 name 属性
- *   3. input 的 type 为 password / email 等
- *   4. autocomplete 未显式声明为 off/new-password
- * 这些特征全部消除后，内核不会再弹出保存气泡。同时周期性校正，
- * 防止浏览器在输入过程中回写属性。
- */
 const AutoFillGuard = {
-    /** 需要跳过的非文本输入类型 */
     skipTypes: /^(checkbox|radio|button|submit|reset|hidden|color|range|file)$/i,
     apply(element) {
         if (!element || !(element instanceof HTMLElement)) return;
@@ -87,10 +75,8 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 const APP_CONFIG = {
-    // 主界面高度：76px（顶部控件与底部文本合并为一行）
     windowSize: { width: 1400, height: 76 },
     settingsSize: { width: 1400, height: 800 },
-    // 文本被截断时允许的最大窗口宽度（超出屏幕时会被 Neutralino 自动约束）
     maxWindowWidth: 1920,
     topOffset: 20,
     documentRoot: '/www/',
@@ -253,7 +239,6 @@ const Startup = {
         throw new Error('当前系统不支持开机自启');
     },
     async getExecutablePath() {
-        // 优先从命令行参数定位实际可执行文件路径（NL_ARGS[0] 通常为 exe 完整路径）
         const argv = Array.isArray(window.NL_ARGS) ? window.NL_ARGS : [];
         if (argv.length && typeof argv[0] === 'string' && argv[0]) {
             const arg0 = argv[0].replace(/^"|"$/g, '');
@@ -462,11 +447,6 @@ const API = {
     }
 };
 
-/**
- * 应用内自定义弹窗，替代浏览器原生 alert/confirm。
- * 原生弹窗使用系统样式且会阻塞渲染，与透明无边框窗口视觉割裂，
- * 这里统一为跟随主题的弹窗，并支持 Promise 形式的按钮回调。
- */
 const Dialog = {
     mask: null,
     resolveCurrent: null,
@@ -499,7 +479,6 @@ const Dialog = {
         if (boxEl) boxEl.classList.toggle('is-wide', Boolean(wide));
         if (titleEl) titleEl.textContent = title;
         if (bodyEl) {
-            // html 由内部构建（已做转义），message 走纯文本
             if (html) bodyEl.innerHTML = html;
             else bodyEl.textContent = message;
         }
@@ -520,9 +499,7 @@ const Dialog = {
         }
         mask.classList.add('active');
         mask.setAttribute('aria-hidden', 'false');
-        // 窗口高度不足时（如主界面 92px）切换紧凑模式，保证标题与按钮不重叠
         mask.classList.toggle('is-compact', window.innerHeight < 260);
-        // 预览类弹窗可能较高，滚动到顶部避免上次滚动位置残留
         if (bodyEl) bodyEl.scrollTop = 0;
         const primary = footerEl?.querySelector('.btn-primary') || footerEl?.querySelector('.btn');
         primary?.focus({ preventScroll: true });
@@ -570,11 +547,6 @@ const Dialog = {
     }
 };
 
-/**
- * 自定义下拉选择器：完全用 HTML/CSS/JS 实现，不使用原生 <select>。
- * 原生 select 在透明无边框窗口下会弹出系统级下拉列表，样式无法控制且会溢出窗口。
- * 用法：容器上声明 data-input（关联的 hidden input id）与 data-placeholder。
- */
 const CustomSelect = {
     registry: new Map(),
     initAll() {
@@ -647,7 +619,6 @@ const CustomSelect = {
                     item.setAttribute('aria-selected', selected ? 'true' : 'false');
                 });
                 if (emit) {
-                    // 与原生 select 保持一致：变更后派发 change，触发脏检查
                     hidden?.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             },
@@ -663,11 +634,7 @@ const CustomSelect = {
                 trigger.setAttribute('aria-expanded', 'true');
                 this.position();
             },
-            /**
-             * 面板使用 fixed 定位，坐标由脚本按视口计算：
-             * 1) 不再受父级 overflow 与层叠上下文裁剪，避免被下方元素遮挡；
-             * 2) 上下空间不足时自动翻转/限高，保证选项完整可见。
-             */
+
             position() {
                 if (!root.classList.contains('open')) return;
                 const rect = root.getBoundingClientRect();
@@ -735,7 +702,6 @@ const CustomSelect = {
             if (instance !== except) instance.close();
         });
     },
-    /** 跟踪当前展开的面板：滚动/缩放时重新计算位置或直接收起 */
     repositionOpen() {
         this.registry.forEach((instance) => {
             if (instance.root.classList.contains('open')) instance.position();
@@ -746,7 +712,6 @@ const CustomSelect = {
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') this.closeAll();
         });
-        // 面板为 fixed 定位，需跟随页面滚动与窗口尺寸变化
         window.addEventListener('resize', () => this.repositionOpen());
         document.addEventListener('scroll', (event) => {
             if (event.target instanceof Node && event.target.nodeType === 1 && event.target.closest?.('.custom-select-panel')) return;
@@ -860,7 +825,6 @@ const UI = {
         this.el.inputNewSubject.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); this.addSubject(); }
         });
-        // 记录光标位置：点击占位符按钮时 textarea 会失焦，需要保留最后位置用于插入
         const rememberCaret = () => {
             this.customBottomTextSelection = this.el.inputCustomBottomText.selectionStart;
         };
@@ -869,13 +833,11 @@ const UI = {
         this.el.inputCustomBottomText.addEventListener('keyup', rememberCaret);
         this.el.inputCustomBottomText.addEventListener('blur', rememberCaret);
         document.querySelectorAll('.placeholder-token').forEach(button => {
-            // mousedown 时阻止默认行为，避免 textarea 失焦丢失选区
             button.addEventListener('mousedown', (event) => event.preventDefault());
             button.addEventListener('click', () => {
                 this.appendPlaceholder(button.dataset.placeholder);
             });
         });
-        // 字号缩放滑块：拖动时实时更新标签、全局缩放与预览
         if (this.el.inputFontSizeScale) {
             this.el.inputFontSizeScale.addEventListener('input', () => {
                 this.syncFontSizeScaleLabel();
@@ -884,7 +846,6 @@ const UI = {
                 this.updateFontPreview();
             });
         }
-        // 课程字号 / 底部字号滑块：拖动时同步像素标签
         [this.el.inputCourseFontSize, this.el.inputBottomFontSize].forEach((input) => {
             if (!input) return;
             input.addEventListener('input', () => {
@@ -892,7 +853,6 @@ const UI = {
                 this.updateFontPreview();
             });
         });
-        // 字体下拉变化时即时刷新预览（与全局/课程字体联动）
         [this.el.inputFontFamily, this.el.inputCourseFont].forEach((input) => {
             if (!input) return;
             input.addEventListener('change', () => this.updateFontPreview());
@@ -900,7 +860,6 @@ const UI = {
         this.startClock();
     },
 
-    /** 主题选项，供自定义下拉与顶部操作区共用 */
     THEME_OPTIONS: [
         { value: 'default', label: '默认' },
         { value: 'ocean', label: '海洋蓝' },
@@ -910,7 +869,6 @@ const UI = {
         { value: 'monochrome', label: '纯黑白' }
     ],
 
-    /** 字体选项，供全局字体与课程字体共用 */
     FONT_OPTIONS: [
         { value: '', label: '跟随系统' },
         { value: "'Microsoft YaHei', 'PingFang SC', sans-serif", label: '微软雅黑' },
@@ -922,10 +880,8 @@ const UI = {
         { value: "'Consolas', 'Courier New', monospace", label: 'Consolas' }
     ],
 
-    /** 初始化所有自定义下拉并注入选项 */
     initCustomSelects() {
         CustomSelect.initAll();
-        // 顶部与主界面各有一个主题下拉，保持同步
         ['select-theme', 'select-theme-main'].forEach((id) => {
             if (!document.getElementById(id)) return;
             CustomSelect.init(document.getElementById(id));
@@ -939,7 +895,6 @@ const UI = {
                 index === 0 ? { value: '', label: '跟随全局' } : item
             )));
         }
-        // 主题变化时同步两个下拉的显示，并立即预览
         this.el.inputTheme?.addEventListener('change', () => {
             const value = this.el.inputTheme.value;
             ['select-theme', 'select-theme-main'].forEach((id) => CustomSelect.setValue(id, value));
@@ -958,7 +913,6 @@ const UI = {
         if (!placeholder || !this.el.inputCustomBottomText) return;
         const textArea = this.el.inputCustomBottomText;
         const value = textArea.value;
-        // 优先使用记录的光标位置；点击按钮时 textarea 会失焦，selectionStart 仍保留最后位置
         let start = Number.isInteger(textArea.selectionStart) ? textArea.selectionStart : value.length;
         let end = Number.isInteger(textArea.selectionEnd) ? textArea.selectionEnd : start;
         if (start > value.length) start = value.length;
@@ -1047,14 +1001,13 @@ const UI = {
         this.el.customBottomText.textContent = rendered;
         this.el.customBottomText.style.fontSize = `${Number(AppData.bottomFontSize) || 10}px`;
         this.el.customBottomText.style.color = AppData.bottomColor || '#64748b';
-        // 底部信息可能超长被截断，渲染后检测并扩展窗口
+        this.weatherExtraWidth = 0;
         this.scheduleFitWindow();
     },
 
-    /** 布局自适应防抖：合并短时间内的多次渲染触发 */
     fitWidthTimer: null,
-    /** 当前已应用的主界面宽度，用于避免重复调整 */
     appliedMainWidth: null,
+    weatherExtraWidth: 0,
     scheduleFitWindow(delay = 120) {
         clearTimeout(this.fitWidthTimer);
         this.fitWidthTimer = setTimeout(() => {
@@ -1085,35 +1038,25 @@ const UI = {
         else document.documentElement.removeAttribute('data-theme');
     },
 
-    /**
-     * 应用全局字体与课程字体。
-     * - 全局字体写入 --font-sans，影响界面所有文本
-     * - 课程字体/字号独立覆盖，未设置时跟随全局
-     */
     applyFontStyles() {
         const style = document.documentElement.style;
         const family = String(AppData.fontFamily || '').trim();
-        // 全局字体：为空时回落到 CSS 中定义的默认字体栈
         if (family) style.setProperty('--font-sans', family);
         else style.removeProperty('--font-sans');
 
-        // 全局字号缩放：写入倍数，界面字号通过 calc(Npx * var(--fs-scale)) 跟随
         const scale = Math.max(80, Math.min(150, Number(AppData.fontSizeScale) || 100)) / 100;
         style.setProperty('--fs-scale', String(scale));
 
-        // 课程字体：未单独指定时跟随全局
         const courseSize = Math.max(12, Math.min(32, Number(AppData.courseFontSize) || 15));
         const courseFont = String(AppData.courseFont || '').trim();
         style.setProperty('--course-name-size', `${courseSize}px`);
         if (courseFont) style.setProperty('--course-name-font', courseFont);
         else style.removeProperty('--course-name-font');
 
-        // 字体或字号变化后内容宽度会改变，重新检测主界面是否需要加宽
         this.appliedMainWidth = null;
         this.scheduleFitWindow(260);
     },
 
-    /** 同步字号缩放滑块的百分比标签 */
     syncFontSizeScaleLabel() {
         const input = this.el.inputFontSizeScale;
         if (!input || !this.el.fontSizeScaleLabel) return;
@@ -1121,7 +1064,6 @@ const UI = {
         this.el.fontSizeScaleLabel.textContent = `${value}%`;
     },
 
-    /** 同步课程字号、底部字号滑块的像素标签 */
     syncRangeLabels() {
         if (this.el.inputCourseFontSize && this.el.courseFontSizeLabel) {
             const value = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize.value) || 15));
@@ -1133,10 +1075,6 @@ const UI = {
         }
     },
 
-    /**
-     * 字体实时预览：直接按当前滑块的数值渲染，不必等到保存。
-     * 课程名用课程字体 + 课程字号 × 全局缩放；界面文本仅跟随全局缩放。
-     */
     updateFontPreview() {
         const ui = this.el.fontPreviewUi;
         const course = this.el.fontPreviewCourse;
@@ -1147,7 +1085,6 @@ const UI = {
         const courseFamily = String(this.el.inputCourseFont?.value || '').trim();
 
         course.style.fontSize = `${courseSize * scale}px`;
-        // 课程字体为空时跟随全局字体，两者都为空则回落到界面默认字体
         course.style.fontFamily = courseFamily || globalFamily || '';
         if (this.el.fontPreviewCourseMeta) {
             this.el.fontPreviewCourseMeta.textContent = `${courseSize} px · ${Math.round(scale * 100)}%`;
@@ -1158,11 +1095,6 @@ const UI = {
         if (this.el.fontPreviewUiMeta) this.el.fontPreviewUiMeta.textContent = `${Math.round(scale * 100)}%`;
     },
 
-    /**
-     * 注册可拖拽区域。
-     * 注意：必须先把对应元素显示出来（去掉 hidden）再注册，否则元素尺寸为 0，
-     * 拖拽区域会失效（启动时主界面处于显示状态，但切换视图后需重新注册）。
-     */
     async setWindowDragRegion(region) {
         try {
             await Neutralino.window.unsetDraggableRegion('view-main');
@@ -1175,7 +1107,6 @@ const UI = {
                     exclude: interactive
                 });
             } else {
-                // 排除交互控件，其余区域（含课表节点、天气、时间）均可拖动
                 const exclude = Array.from(document.querySelectorAll('#view-main button, #view-main .icon-btn, #view-main .weather-warning'))
                     .filter((node) => node.id !== 'view-main');
                 await Neutralino.window.setDraggableRegion('view-main', {
@@ -1185,11 +1116,6 @@ const UI = {
         } catch (error) { }
     },
 
-    /**
-     * 主界面拖拽兜底：部分环境（高 DPI / WebView2 版本差异）下
-     * setDraggableRegion 的拖动区域不生效，改由拖动 + beginDrag 手动接管。
-     * 需移动超过阈值才触发，避免普通点击被误判为拖动窗口。
-     */
     bindMainDrag() {
         const main = this.el.viewMain;
         if (!main || main.dataset.dragBound === '1') return;
@@ -1219,10 +1145,6 @@ const UI = {
         });
     },
 
-    /**
-     * 拖动手柄兜底：部分环境下 setDraggableRegion 对绝对定位/高 DPI 失效，
-     * 在按下手柄时直接调用 beginDrag，由原生接管拖拽。
-     */
     bindDragHandle() {
         const handle = this.el.settingsDragHandle;
         if (!handle || handle.dataset.bound === '1') return;
@@ -1247,48 +1169,28 @@ const UI = {
         }
     },
 
-    /**
-     * 检测主界面中被横向截断的文本，按需自动加宽窗口。
-     * 课程名称、天气描述、预警标签、底部信息在空间不足时会被省略号截断。
-     * 由于这些元素默认 overflow:hidden 且受 flex 收缩，scrollWidth 无法反映真实需求，
-     * 因此先切到 measuring-width 模式放开截断，测量内容自然宽度后再还原。
-     */
     async fitWindowToContent() {
-        // 仅在主界面可见时检测（设置界面为固定宽度，无需适配）
         if (this.el.viewSettings && !this.el.viewSettings.classList.contains('hidden')) return;
         const baseWidth = APP_CONFIG.windowSize.width;
         const maxWidth = APP_CONFIG.maxWindowWidth || 1920;
 
         let extra = 0;
+        let weatherExtra = 0;
         document.body.classList.add('measuring-width');
         try {
-            // 1) 时间轴：比较所有节点的自然宽度总和与容器可用宽度
             const timeline = this.el.timeline;
             if (timeline) {
                 const available = timeline.clientWidth;
                 let contentWidth = 0;
                 timeline.querySelectorAll('.time-node').forEach((node) => {
-                    // 取 name/time 中较宽者作为该节点的自然需求宽度
                     const nameWidth = node.querySelector('.name')?.scrollWidth || 0;
                     const timeWidth = node.querySelector('.time')?.scrollWidth || 0;
                     contentWidth += Math.max(nameWidth, timeWidth, 40);
                 });
                 if (contentWidth > available) extra = Math.max(extra, contentWidth - available);
             }
-            // 2) 天气描述与预警标签：比较自然宽度与当前分配宽度
-            const weatherDesc = document.querySelector('.weather-info .desc');
-            if (weatherDesc) {
-                const need = weatherDesc.scrollWidth;
-                const have = weatherDesc.getBoundingClientRect().width;
-                if (need > have) extra = Math.max(extra, need - have);
-            }
-            const warnSpan = document.querySelector('.weather-warning span');
-            if (warnSpan) {
-                const need = warnSpan.scrollWidth;
-                const have = warnSpan.getBoundingClientRect().width;
-                if (need > have) extra = Math.max(extra, need - have);
-            }
-            // 3) 底部自定义信息（绝对定位，按滚动宽度与可视宽度差计算）
+            weatherExtra = this.measureWeatherOverflow();
+            extra = Math.max(extra, weatherExtra);
             const bottomInfo = this.el.customBottomText;
             if (bottomInfo && bottomInfo.textContent) {
                 const overflow = bottomInfo.scrollWidth - bottomInfo.clientWidth;
@@ -1298,14 +1200,16 @@ const UI = {
             document.body.classList.remove('measuring-width');
         }
 
-        // 再多留 10px 缓冲，避免因字体渲染差异反复触发
+        this.weatherExtraWidth = weatherExtra;
+        this.applyWeatherExtraWidth(weatherExtra);
+
         const targetWidth = Math.min(maxWidth, Math.max(baseWidth, baseWidth + Math.ceil(extra) + 10));
         const appliedWidth = this.appliedMainWidth || baseWidth;
         if (targetWidth === appliedWidth) return;
-        this.appliedMainWidth = targetWidth;
+        this.appliedMainWidth = targetWidt
+        if (weatherExtra > 0) this.scheduleWeatherRemeasure(320);
         try {
             if (extra > 0) {
-                // 需要加宽时用动画过渡，视觉更自然
                 await this.animateWindowSize({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
                 void Logger.info('主界面宽度自适应', {
                     module: 'window',
@@ -1313,7 +1217,6 @@ const UI = {
                     context: { baseWidth, targetWidth, overflow: Math.ceil(extra) }
                 });
             } else {
-                // 内容已能容纳，恢复默认宽度
                 await this.positionWindow({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
             }
         } catch (error) {
@@ -1321,10 +1224,39 @@ const UI = {
         }
     },
 
-    /**
-     * 在两个窗口尺寸之间做渐进过渡，避免主界面与设置界面切换时瞬间跳变。
-     * 按固定帧数插值宽度/高度，完成后精确定位到目标尺寸。
-     */
+    measureWeatherOverflow() {
+        const container = this.el.weather;
+        if (!container) return 0;
+        const assigned = container.getBoundingClientRect().width;
+        const contentWidth = Array.from(container.children)
+            .reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+        const naturalWidth = Math.max(contentWidth, container.scrollWidth);
+        return Math.max(0, Math.ceil(naturalWidth - assigned));
+    },
+
+    applyWeatherExtraWidth(extra) {
+        const root = document.documentElement;
+        if (extra > 0) root.style.setProperty('--weather-extra', `${Math.ceil(extra)}px`);
+        else root.style.removeProperty('--weather-extra');
+    },
+
+    weatherRemeasureTimer: null,
+    scheduleWeatherRemeasure(delay = 320) {
+        clearTimeout(this.weatherRemeasureTimer);
+        this.weatherRemeasureTimer = setTimeout(() => {
+            if (this.el.viewSettings && !this.el.viewSettings.classList.contains('hidden')) return;
+            document.body.classList.add('measuring-width');
+            let extra = 0;
+            try {
+                extra = this.measureWeatherOverflow();
+            } finally {
+                document.body.classList.remove('measuring-width');
+            }
+            this.weatherExtraWidth = extra;
+            this.applyWeatherExtraWidth(extra);
+        }, delay);
+    },
+
     async animateWindowSize(targetSize, top, steps = 12, frameMs = 12) {
         try {
             const current = await Neutralino.window.getSize();
@@ -1337,7 +1269,6 @@ const UI = {
                 return;
             }
             for (let i = 1; i <= steps; i += 1) {
-                // easeOutCubic，前段变化快、后段收尾平滑
                 const t = i / steps;
                 const ease = 1 - Math.pow(1 - t, 3);
                 const width = Math.round(fromWidth + (toWidth - fromWidth) * ease);
@@ -1346,7 +1277,6 @@ const UI = {
                 await new Promise((resolve) => setTimeout(resolve, frameMs));
             }
         } catch (error) {
-            // 过渡失败时直接落到目标尺寸，保证功能可用
         }
         await this.positionWindow(targetSize, top);
     },
@@ -1486,9 +1416,6 @@ const UI = {
         const documentRoot = (APP_CONFIG.documentRoot || '/www/').replace(/^\/+|\/+$/g, '');
         const cwd = typeof window.NL_CWD === 'string' ? window.NL_CWD : '';
         const path = typeof window.NL_PATH === 'string' ? window.NL_PATH : '';
-        // 打包后资源在 resources.neu 内，Neutralino 的 fs API 以 NL_PATH 为基准；
-        // 开发态（--load-dir-res / 服务模式）则需经 documentRoot 定位到 www 目录。
-        // 这里按优先级覆盖两种布局，逐个探测。
         const bases = [
             documentRoot,
             path ? `${path}/${documentRoot}` : '',
@@ -1539,7 +1466,6 @@ const UI = {
         if (!config.courses || typeof config.courses !== 'object' || Array.isArray(config.courses)) {
             throw new Error('配置缺少 courses 对象');
         }
-        // 天气字段允许缺省，但类型必须正确，否则会污染运行时配置
         if (!config.weather.jwtConfig || typeof config.weather.jwtConfig !== 'object') {
             config.weather.jwtConfig = {};
         }
@@ -1557,23 +1483,19 @@ const UI = {
                 throw new Error(`JWT 配置 ${field} 必须是字符串`);
             }
         }
-        // 刷新间隔兼容旧版放在 weather 内的写法，统一提升到顶层
         const nestedMinutes = Number(config.weather.weatherRefreshMinutes);
         if (Number.isInteger(nestedMinutes) && nestedMinutes >= 1) {
             if (config.weatherRefreshMinutes === undefined) config.weatherRefreshMinutes = nestedMinutes;
             delete config.weather.weatherRefreshMinutes;
         }
-        // 全局字体：必须为字符串，空值表示跟随系统
         if (config.fontFamily !== undefined && config.fontFamily !== null && typeof config.fontFamily !== 'string') {
             throw new Error('全局字体必须是字符串');
         }
-        // 全局字号缩放：限定 80–150
         if (config.fontSizeScale !== undefined && config.fontSizeScale !== null) {
             const scale = Number(config.fontSizeScale);
             if (!Number.isFinite(scale)) throw new Error('全局字号缩放必须是数字');
             config.fontSizeScale = Math.max(80, Math.min(150, Math.round(scale)));
         }
-        // 课程字体与字号：字体需为字符串，字号限定 12–32
         if (config.courseFont !== undefined && config.courseFont !== null && typeof config.courseFont !== 'string') {
             throw new Error('课程字体必须是字符串');
         }
@@ -1593,17 +1515,14 @@ const UI = {
         }
     },
 
-    /** 脱敏显示：仅保留首尾字符，避免预览时暴露完整私钥 */
     maskSecret(value) {
         const text = String(value || '').trim();
         if (!text) return '';
-        // PEM 私钥统一显示为固定占位，避免露出 "----" 之类的头部片段
         if (/-----BEGIN/.test(text)) return '•••••••• (PEM 私钥已隐藏)';
         if (text.length <= 8) return '••••••';
         return `${text.slice(0, 4)}••••${text.slice(-4)}`;
     },
 
-    /** 构建导入配置的预览 HTML（所有动态内容均已转义） */
     buildConfigPreview(config, source, sectionsOnly = false) {
         const esc = (value) => this.escapeHtml(value);
         const currentVersion = String(window.NL_APPVERSION || '').trim();
@@ -1613,7 +1532,6 @@ const UI = {
         const jwt = weather.jwtConfig || {};
         const courses = config?.courses || {};
 
-        // 统计课程数量与已配置的天数
         let totalCourses = 0;
         let activeDays = 0;
         const dayKeys = Object.keys(DAY_MAP);
@@ -1623,13 +1541,6 @@ const UI = {
             totalCourses += list.length;
         });
 
-        /**
-         * 生成预览条目。
-         * @param {string} label 字段名
-         * @param {*} value 字段值
-         * @param {{secret?: boolean, critical?: boolean}} options
-         *   secret: 脱敏显示；critical: 关键字段（红标突出，覆盖已有配置时尤其重要）
-         */
         const item = (label, value, options = {}) => {
             const { secret = false, critical = false } = options;
             const text = secret ? this.maskSecret(value) : String(value ?? '').trim();
@@ -1671,7 +1582,6 @@ const UI = {
             return `<span class="${cls}">${esc(DAY_MAP[day])} · ${count} 节</span>`;
         }).join('');
 
-        // 列出今日所配课程明细供快速核对
         const todayKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
         const todayCourses = (Array.isArray(courses[todayKey]) ? courses[todayKey] : [])
             .filter((c) => c && c.start && c.end)
@@ -1721,7 +1631,6 @@ const UI = {
                     <div class="import-preview-grid">${displayGrid}</div>
                     ${subjectText ? `<div class="import-preview-list"><span class="import-preview-note">课程名称：${esc(subjectText)}</span></div>` : ''}
                 </div>`;
-        // 导出预览只需分区内容，不重复展示来源/版本等元信息
         if (sectionsOnly) return sections;
 
         return `
@@ -1733,10 +1642,6 @@ const UI = {
             </div>`;
     },
 
-    /**
-     * 展示导入预览并询问是否继续。
-     * 版本一致与不一致使用不同的标题、图标与提示文案，避免用户忽略风险。
-     */
     async confirmImportPreview(config, source) {
         const currentVersion = String(window.NL_APPVERSION || '').trim();
         const fileVersion = String(config?.version || '').trim();
@@ -1767,10 +1672,6 @@ const UI = {
         return confirmed === true;
     },
 
-    /**
-     * 导入配置：预览确认后直接写入持久化并返回主页。
-     * 版本不一致时先给出独立的风险提示，确认后再导入。
-     */
     async applyImportedConfig(imported, source) {
         this.validateConfig(imported);
         const currentVersion = String(window.NL_APPVERSION || '').trim();
@@ -1784,7 +1685,6 @@ const UI = {
 
         let proceed = false;
         try {
-            // 版本不一致时先单独提示，与正常导入区分开
             if (!versionMatch) {
                 await Dialog.alert(
                     [
@@ -1813,15 +1713,12 @@ const UI = {
         if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
         if (!imported.courses) imported.courses = {};
         if (!Array.isArray(imported.subjects)) imported.subjects = [];
-        // version 仅用于导入校验，不进入应用数据
         delete imported.version;
 
-        // 导入即保存，无需再回设置页手动点保存
         EditData = imported;
         try {
             const autoStartError = await this.persistSettings({ trigger: 'import', source, versionMatch });
             void Logger.info('导入配置已保存', { module: 'config', action: 'import-save', context: { source, versionMatch } });
-            // 此时窗口已缩回主界面高度，弹窗需临时放大才能正常显示，避免被压扁
             await this.showDialogWithRoom(() => {
                 if (autoStartError) {
                     return Dialog.alert(
@@ -1840,7 +1737,6 @@ const UI = {
             });
         } catch (error) {
             void Logger.error('导入配置保存失败', { module: 'config', action: 'import-save' }, error);
-            // 保存失败时保持设置页并复原窗口尺寸，错误交由调用方统一提示
             if (wasSettingsHidden) {
                 await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
             }
@@ -1928,16 +1824,11 @@ const UI = {
         }
     },
 
-    /**
-     * 按固定顺序整理导出数据，让导出的 JSON 结构可读、字段含义清晰。
-     * 未知字段统一追加在末尾，保证向后兼容不丢配置。
-     */
     buildExportPayload(source) {
         const clone = JSON.parse(JSON.stringify(source || {}));
         const weather = clone.weather || {};
         const jwt = weather.jwtConfig || {};
         const customTexts = clone.customTexts || {};
-        // 按导出顺序组装：元信息 → 外观 → 课程表 → 天气 → 自定义文本
         const payload = {
             version: window.NL_APPVERSION || '',
             exportedAt: new Date().toISOString(),
@@ -1972,7 +1863,6 @@ const UI = {
                 }
             }
         };
-        // 附录：保留模板/版本等未知字段，避免导出时丢失
         const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'courseFont',
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
             'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather']);
@@ -1982,7 +1872,6 @@ const UI = {
         return payload;
     },
 
-    /** 导出预览：用与导入一致的分区卡片展示将要写入的配置（敏感字段脱敏） */
     buildExportPreview(payload, path) {
         const sections = this.buildConfigPreview(payload, path, true);
         return `<div class="import-preview">
@@ -2024,7 +1913,6 @@ const UI = {
                 }
                 if (!confirmed) return;
             }
-            // 导出前预览，避免把未确认的配置写进文件（设置页中的修改可能是未保存的草稿）
             const confirmed = await Dialog.show({
                 title: '导出前预览',
                 html: this.buildExportPreview(payload, path),
@@ -2055,7 +1943,6 @@ const UI = {
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
 
-        // 天气字段必须完整回填，否则保存时会用空值覆盖已有配置
         this.el.inputApiHost.value = EditData.weather.apiHost || '';
         this.el.inputLocation.value = EditData.weather.location || '';
         this.el.inputRealLocation.value = EditData.weather.realLocation || '';
@@ -2078,7 +1965,6 @@ const UI = {
         this.syncFontSizeScaleLabel();
         this.syncRangeLabels();
         this.updateFontPreview();
-        // 同步自定义下拉的显示值（原生 select 已替换为自定义组件）
         CustomSelect.setValue('select-theme', this.el.inputTheme.value);
         CustomSelect.setValue('select-theme-main', this.el.inputTheme.value);
         CustomSelect.setValue('select-font-family', this.el.inputFontFamily.value);
@@ -2106,7 +1992,6 @@ const UI = {
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
 
-        // 重置宽度记录，回到主界面后重新按内容自适应
         this.appliedMainWidth = APP_CONFIG.windowSize.width;
         await this.animateWindowSize(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         await this.setWindowDragRegion('main');
@@ -2185,10 +2070,8 @@ const UI = {
         EditData.countdownName = this.el.inputCountdownName.value.trim();
         EditData.countdownDate = this.el.inputCountdownDate.value;
         EditData.bottomFontSize = Math.max(8, Math.min(30, Number(this.el.inputBottomFontSize.value) || 10));
-        // 课程名称字体与字号：字体为空时跟随全局 sans-serif，字号限定 12–32
         EditData.courseFont = this.el.inputCourseFont.value || '';
         EditData.courseFontSize = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize.value) || 15));
-        // 全局字体：字体为空时保留系统默认
         EditData.fontFamily = this.el.inputFontFamily.value || '';
         EditData.fontSizeScale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100));
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
@@ -2302,7 +2185,6 @@ const UI = {
                 if (endMinutes <= startMinutes) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
                 if (endMinutes - startMinutes < COURSE_TIME_STEP) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
 
-                // 触屏操作时明确当前作用于哪个时间点，步进按钮与轨道点击都按它执行
                 let activeTarget = 'start';
                 let stepperLabelEl = null;
                 const setActiveTarget = (target) => {
@@ -2337,7 +2219,6 @@ const UI = {
                     this.markSettingsDirty();
                 };
 
-                /** 按步长加减某一端时间，触屏下比拖拽更精确 */
                 const stepTime = (target, step) => {
                     if (target === 'start') startMinutes += step;
                     else endMinutes += step;
@@ -2370,7 +2251,6 @@ const UI = {
                     if (!track.hasPointerCapture(event.pointerId)) return;
                     if (!dragMoved && Math.abs(event.clientX - dragStartX) < DRAG_THRESHOLD) return;
                     if (!dragMoved) {
-                        // 超过阈值才认定为拖动，避免触屏轻点轨道时时间被瞬间跳到远处
                         dragMoved = true;
                         const rect = track.getBoundingClientRect();
                         const ratio = Math.max(0, Math.min(1, (dragStartX - rect.left) / rect.width));
@@ -2487,7 +2367,7 @@ const UI = {
             subjectOptions.className = 'course-subject-options';
             const subjects = Array.isArray(EditData.subjects) && EditData.subjects.length
                 ? EditData.subjects
-                : ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
+                : ['语文', '数学', '英语'];
             subjects.forEach((subject) => {
                 const subjectButton = document.createElement('button');
                 subjectButton.type = 'button';
@@ -2578,7 +2458,7 @@ const UI = {
 
     renderSubjectList() {
         if (!Array.isArray(EditData.subjects)) {
-            EditData.subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
+            EditData.subjects = ['语文', '数学', '英语'];
         }
         this.el.subjectList.innerHTML = '';
         EditData.subjects.forEach((subject, subjectIndex) => {
@@ -2699,7 +2579,6 @@ const UI = {
                 }
             }
         });
-        // 课程名称/时刻可能被挤压截断，渲染后统一检测布局
         this.scheduleFitWindow();
     },
 
@@ -2732,7 +2611,6 @@ const UI = {
             const color = this.getWarningColor(warning);
             const headline = this.escapeHtml(warning.headline);
             const event = this.escapeHtml(warning.event);
-            // 预警仅作状态展示，不再提供跳转
             warnHtml = `<div class="weather-warning" style="--warning-color: ${color}" title="${headline}" role="status">${ICONS.warn}<span>${event}</span></div>`;
         }
         const weatherSignature = JSON.stringify({ weather: w, warning });
@@ -2752,7 +2630,7 @@ const UI = {
             ${warnHtml}
         `;
         this.renderCustomBottomInfo();
-        // 课程名称可能因课程数量多而被挤压截断，渲染后检测布局
+        this.weatherExtraWidth = 0;
         this.scheduleFitWindow();
         return changed;
     }

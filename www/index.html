@@ -20,7 +20,7 @@
     --accent-red: #DC2626;
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Consolas', monospace;
-    /* 全局字号缩放：JS 写入倍数，界面文本通过 calc 跟随 */
+    
     --fs-scale: 1;
   }
 
@@ -164,7 +164,7 @@
     font-family: var(--course-name-font, var(--font-sans));
     line-height: 1.15;
   }
-  /* 测量模式：临时放开截断，让文本按真实内容宽度布局以便计算溢出量 */
+  
   body.measuring-width .time-node .name,
   body.measuring-width .weather-info .desc,
   body.measuring-width .weather-warning span,
@@ -178,6 +178,11 @@
   body.measuring-width .timeline-container { overflow: visible !important; }
   body.measuring-width .widget-content { overflow: visible !important; }
   body.measuring-width #custom-bottom-info { white-space: nowrap !important; }
+  
+  body.measuring-width .widget-content { grid-template-columns: minmax(0, 1fr) auto auto !important; }
+  body.measuring-width .weather-container { width: auto !important; max-width: none !important; overflow: visible !important; }
+  body.measuring-width .weather-main { flex: 0 0 auto !important; }
+  body.measuring-width .weather-warning { flex-shrink: 0 !important; }
   .time-node.done .dot { background: var(--border-light); border-color: var(--border-light); }
   .time-node.done .name { color: var(--text-muted); font-weight: 700; }
   .time-node.done { opacity: 0.72; animation: course-done 500ms ease-out both, course-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -241,6 +246,14 @@
   .weather-container.no-warning { justify-content: flex-end; }
   .weather-container.no-warning .weather-warning { display: none; }
   .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) 150px 108px; }
+  /* 窗口为容纳内容加宽后，固定列宽会让天气区继续被挤压；
+     由 JS 写入 --weather-extra 把测量到的缺口叠加到天气列宽度上，
+     并禁止天气区内部收缩，从而不再出现截断或元素重叠。 */
+  .widget-content { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
+  .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
+  .weather-container, .widget-content .weather-container { width: 100%; max-width: none; }
+  .weather-container .weather-main { flex-shrink: 0; }
+  .weather-warning { flex-shrink: 0; }
   @keyframes warning-alert {
     0%, 100% { background: color-mix(in srgb, var(--warning-color) 8%, transparent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning-color) 0%, transparent); }
     50% { background: color-mix(in srgb, var(--warning-color) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning-color) 8%, transparent); }
@@ -310,7 +323,7 @@
     .tab-content.active { animation: none; }
   }
 
-  /* 底部文本：颜色与字号由 JS 内联写入；与右上角窗口按钮同一行垂直居中，左侧避让 */
+  
   #custom-bottom-info {
     position: absolute; left: 12px; right: 104px; top: calc(50% - 8px); z-index: 20;
     min-height: 16px; text-align: right; pointer-events: none;
@@ -356,7 +369,7 @@
   }
   #config-drop-overlay.active { opacity: 1; transform: scale(1); }
 
-  /* 自定义弹窗：替代浏览器原生 alert/confirm，与应用主题保持一致 */
+  
   .app-dialog-mask {
     position: fixed; inset: 0; z-index: 3000;
     display: none; align-items: center; justify-content: center;
@@ -370,12 +383,12 @@
     border: 1px solid var(--border-light); border-radius: 12px;
     box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
     animation: dialog-pop 140ms ease-out;
-    /* 窗口很矮时（如主界面 76px）优先保证内容可滚动，不与标题/按钮挤压 */
+    
     min-height: 0; overflow: hidden;
   }
-  /* 弹窗内各区域都允许收缩，防止标题与按钮被压成同一条 */
+  
   .app-dialog-header, .app-dialog-footer { flex-shrink: 0; }
-  /* 紧凑模式：窗口极矮时（主界面 76px）压缩留白，优先保证内容可读 */
+  
   .app-dialog-mask.is-compact .app-dialog { max-height: calc(100% - 12px); border-radius: 10px; }
   .app-dialog-mask.is-compact .app-dialog-header { padding: 8px 12px 6px; font-size: calc(13px * var(--fs-scale)); }
   .app-dialog-mask.is-compact .app-dialog-body { padding: 0 12px 2px; font-size: calc(12px * var(--fs-scale)); line-height: 1.45; }
@@ -398,7 +411,7 @@
     display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px;
   }
   .app-dialog-footer .btn { min-width: 88px; height: 38px; }
-  /* 导入预览：加宽弹窗并改用分段式布局 */
+  
   .app-dialog.is-wide { width: min(660px, calc(100% - 40px)); }
   .app-dialog.is-wide .app-dialog-body { white-space: normal; padding: 0 16px 8px; }
 
@@ -444,7 +457,7 @@
   .import-preview-course time { font-family: var(--font-mono); font-weight: 800; color: var(--accent-cyan); flex-shrink: 0; }
   .import-preview-course em { color: var(--text-main); font-style: normal; font-weight: 700; }
   .import-preview-note { color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); font-style: italic; }
-  /* 版本不一致时的独立风险提示块，与正常导入明显区分 */
+  
   .import-preview-warn {
     display: flex; flex-direction: column; gap: 3px;
     padding: 9px 11px; border-radius: 8px; font-size: 11px; line-height: 1.5;
@@ -454,14 +467,14 @@
   }
   .import-preview-warn strong { color: var(--accent-orange); font-size: calc(12px * var(--fs-scale)); font-weight: 800; }
 
-  /* 关键字段红标：导入后会覆盖当前配置，需醒目提示 */
+  
   .import-preview-critical-mark {
     display: inline-block; margin-right: 3px; font-style: normal;
     color: var(--accent-red); font-size: 9px; line-height: 1; vertical-align: middle;
   }
   .import-preview-item.is-critical > span { color: var(--accent-red); font-weight: 800; }
   .import-preview-item > b.critical { color: var(--accent-red); font-weight: 800; }
-  /* 导出预览：方向键与分组样式 */
+  
   .import-preview-group-arrow { color: var(--accent-cyan); font-weight: 800; margin-right: 2px; }
   .import-preview-section-head {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -484,7 +497,7 @@
   }
 
   .settings-header { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid var(--border-light); background: var(--bg-app); flex-shrink: 0; min-height: 56px; }
-  /* 拖动手柄：占据头部左侧空白区，按下即触发原生窗口拖动 */
+  
   .settings-drag-handle {
     flex: 1 1 auto; align-self: stretch; min-width: 24px; min-height: 56px;
     display: flex; align-items: center; justify-content: flex-start;
@@ -500,7 +513,7 @@
   .settings-tabs { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
   .settings-actions { display: flex; align-items: center; gap: 8px; justify-content: end; flex-wrap: nowrap; flex-shrink: 0; }
 
-  /* ---------- 自定义下拉（完全取代原生 select） ---------- */
+  
   .custom-select { position: relative; display: inline-block; min-width: 0; width: 100%; }
   .custom-select-trigger {
     width: 100%; min-height: 36px; padding: 7px 32px 7px 11px;
@@ -522,7 +535,6 @@
     transition: transform 160ms ease; pointer-events: none;
   }
   .custom-select.open .custom-select-arrow { transform: translateY(-30%) rotate(-135deg); border-color: var(--accent-cyan); }
-  /* 面板使用 fixed 定位并由 JS 写入坐标：脱离父级 overflow 裁剪，不会被下方元素遮挡 */
   .custom-select-panel {
     position: fixed; left: 0; top: 0; z-index: 4000;
     width: 0; max-height: 264px; overflow-y: auto; overscroll-behavior: contain;
@@ -543,7 +555,6 @@
   .custom-select-option:hover, .custom-select-option.focused { background: color-mix(in srgb, var(--accent-cyan) 10%, transparent); color: var(--accent-cyan); }
   .custom-select-option.selected { color: var(--accent-cyan); font-weight: 800; }
   .custom-select-option.selected::after { content: '✓'; float: right; margin-left: 8px; }
-  /* 表格内联宽度 */
   .settings-actions .custom-select { width: 118px; min-width: 118px; }
   .theme-select .custom-select { width: 132px; }
   .theme-select { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); white-space: nowrap; }
@@ -555,7 +566,6 @@
 
   .settings-body { flex: 1; overflow-y: auto; padding: 14px 18px 18px; min-height: 0; position: relative; }
 
-  /* 设置分区卡片 */
   .settings-section {
     margin-bottom: 14px; border: 1px solid var(--border-light); border-radius: 10px;
     background: var(--bg-card); overflow: hidden;
@@ -662,7 +672,6 @@
   .course-time-range-fill { top: 21px !important; }
   .course-time-range-track::before { content: ''; position: absolute; left: 0; right: 0; top: 18px; height: 6px; border-radius: 3px; background: var(--border-light); }
   .course-time-range-fill { position: absolute; left: var(--range-start); right: calc(100% - var(--range-end)); top: 18px; height: 6px; border-radius: 3px; background: var(--accent-cyan); }
-  /* 触屏热区：拇指视觉 32px，但命中区域扩展到 48px，避免手指难以按中 */
   .course-time-range-thumb { position: absolute; top: 0; width: 48px; height: 48px; margin-left: -24px; left: var(--range-start); border-radius: 50%; background: transparent; cursor: grab; touch-action: none; outline: none; }
   .course-time-range-thumb::after { content: ''; position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--bg-card); background: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
   .course-time-range-thumb.start { left: var(--range-start); }
@@ -670,7 +679,6 @@
   .course-time-range-thumb:active { cursor: grabbing; }
   .course-time-range-thumb:active::after,
   .course-time-range-thumb:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-cyan) 22%, transparent); }
-  /* 触屏步进按钮与预设行 */
   .course-time-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
   .course-time-steppers { display: flex; align-items: center; gap: 6px; }
   .course-time-stepper { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-size: calc(18px * var(--fs-scale)); font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
