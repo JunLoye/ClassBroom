@@ -547,6 +547,103 @@ const Dialog = {
     }
 };
 
+/**
+ * 首次使用引导。
+ * 首次启动（配置中无 onboardingCompleted 标记）时弹出，介绍界面组成并给出天气配置指引；
+ * 用户完成勾选后可一键进入天气设置，或稍后再配置。
+ */
+const Onboarding = {
+    
+    dialogWindowSize: { width: APP_CONFIG.windowSize.width, height: 620 },
+
+    /**
+     * 展示引导并收尾。
+     * 弹窗渲染在主界面窗口内，因此需要先把窗口切到足够的高度，
+     * 结束后再按用户去向恢复主界面或进入设置页。
+     */
+    async start() {
+        await UI.animateWindowSize(this.dialogWindowSize, APP_CONFIG.topOffset);
+        // 加高后主界面会露出下方空白，隐藏面板主体避免干扰弹窗阅读
+        document.body.classList.add('onboarding-active');
+
+        const action = await this.showGuide();
+        document.body.classList.remove('onboarding-active');
+        AppData.onboardingCompleted = true;
+        AppData.onboardingCompletedAt = new Date().toISOString();
+        if (action === 'weather') {
+            await UI.openSettings(null, { tab: 'weather', guide: true });
+        } else {
+            await UI.showMainWindow();
+        }
+        try {
+            await Store.saveToRegistry(AppData);
+        } catch (error) {
+            void Logger.warn('保存引导完成状态失败', { module: 'onboarding', action: 'save' }, error);
+        }
+        void Logger.info('完成首次使用引导', { module: 'onboarding', action: 'complete', context: { action } });
+    },
+
+    showGuide() {
+        const html = `
+            <div class="onboarding">
+                <div class="onboarding-steps">
+                    <div class="onboarding-step">
+                        <div class="onboarding-step-index">1</div>
+                        <div class="onboarding-step-body">
+                            <b>它是什么</b>
+                            <span>常驻桌面的课程与天气挂件。拖动任意空白处可移动窗口，右上角依次是刷新、设置与关闭。</span>
+                        </div>
+                    </div>
+                    <div class="onboarding-step">
+                        <div class="onboarding-step-index">2</div>
+                        <div class="onboarding-step-body">
+                            <b>配置天气</b>
+                            <span>天气需要和风天气（QWeather）的 API Host 与 JWT 凭据，首次配置约 5 分钟。</span>
+                        </div>
+                    </div>
+                    <div class="onboarding-step">
+                        <div class="onboarding-step-index">3</div>
+                        <div class="onboarding-step-body">
+                            <b>导入课表</b>
+                            <span>在设置的「课表」页按星期添加课程，或在「主界面」调整主题、字体与字号。</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="onboarding-weather">
+                    <div class="onboarding-weather-title">${ICONS.weather}天气配置指引</div>
+                    <ul class="onboarding-weather-list">
+                        <li>在 QWeather 控制台「项目管理」创建项目，得到 <b>项目 ID</b>（SUB）。</li>
+                        <li>项目下创建「凭据」，得到 <b>凭据 ID</b>（KID）与 <b>Ed25519 私钥</b>；<b>开发者 ID</b> 填 ISS。</li>
+                        <li><b>API Host</b> 填控制台的专属域名，不带 https:// 与路径。</li>
+                        <li><b>经纬度</b> 按「经度,纬度」填写，例如 116.41,39.92（北京）。</li>
+                    </ul>
+                    <div class="onboarding-hint">${ICONS.warn}未配置时天气区会显示「未配置」，不影响课表与时间。</div>
+                </div>
+                <label class="onboarding-confirm"><input type="checkbox" id="onboarding-confirm">我已了解天气配置需要 QWeather 凭据</label>
+            </div>
+        `;
+
+        return new Promise((resolve) => {
+            const buttons = [
+                { text: '稍后再配置', value: 'later' },
+                { text: '开始配置天气', value: 'weather', primary: true }
+            ];
+            const panel = Dialog.show({ title: '欢迎使用 ClassBroom', html, type: 'info', wide: true, buttons });
+            // 未勾选确认前不允许进入配置流程，避免用户跳过指引后找不到凭据
+            const confirm = document.getElementById('onboarding-confirm');
+            const primary = document.querySelector('#app-dialog-footer .btn-primary');
+            if (confirm && primary) {
+                primary.disabled = true;
+                confirm.addEventListener('change', () => {
+                    primary.disabled = !confirm.checked;
+                    if (confirm.checked) primary.focus({ preventScroll: true });
+                });
+            }
+            panel.then((value) => resolve(typeof value === 'string' ? value : 'later'));
+        });
+    }
+};
+
 const CustomSelect = {
     registry: new Map(),
     initAll() {
@@ -740,6 +837,7 @@ const UI = {
         btnCancelSettings: document.getElementById('btn-cancel-settings'),
         btnImportConfig: document.getElementById('btn-import-config'),
         btnExportConfig: document.getElementById('btn-export-config'),
+        btnRestartGuide: document.getElementById('btn-restart-guide'),
         dropOverlay: document.getElementById('config-drop-overlay'),
         inputApiHost: document.getElementById('input-api-host'),
         inputLocation: document.getElementById('input-location'),
@@ -753,6 +851,13 @@ const UI = {
         inputWeatherRefreshMinutes: document.getElementById('input-weather-refresh-minutes'),
         customBottomText: document.getElementById('custom-bottom-info'),
         inputCustomBottomText: document.getElementById('input-custom-bottom-text'),
+        inputShowWeather: document.getElementById('input-show-weather'),
+        inputShowTimeline: document.getElementById('input-show-timeline'),
+        inputShowBottom: document.getElementById('input-show-bottom'),
+        inputShowBottomText: document.getElementById('input-show-bottom-text'),
+        inputBottomOffset: document.getElementById('input-bottom-offset'),
+        bottomOffsetLabel: document.getElementById('bottom-offset-label'),
+        bottomAlignGroup: document.getElementById('bottom-align-group'),
         inputCountdownName: document.getElementById('input-countdown-name'),
         inputCountdownDate: document.getElementById('input-countdown-date'),
         inputBottomFontSize: document.getElementById('input-bottom-font-size'),
@@ -808,15 +913,12 @@ const UI = {
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                e.currentTarget.classList.add('active');
-                const targetEl = document.getElementById(`tab-${e.currentTarget.dataset.target}`);
-                if (targetEl) {
-                    targetEl.classList.add('active');
-                    void targetEl.offsetWidth;
-                }
+                this.switchTab(e.currentTarget.dataset.target);
             });
+        });
+        this.el.btnRestartGuide?.addEventListener('click', async () => {
+            await this.closeSettings({ silent: true });
+            await Onboarding.start();
         });
 
         this.renderDaySelector();
@@ -853,6 +955,16 @@ const UI = {
                 this.updateFontPreview();
             });
         });
+        if (this.el.inputBottomOffset) {
+            this.el.inputBottomOffset.addEventListener('input', () => this.syncBottomOffsetLabel());
+        }
+        if (this.el.bottomAlignGroup) {
+            this.el.bottomAlignGroup.addEventListener('click', (event) => {
+                const button = event.target.closest('.segmented-btn');
+                if (!button) return;
+                this.setBottomAlign(button.dataset.align);
+            });
+        }
         [this.el.inputFontFamily, this.el.inputCourseFont].forEach((input) => {
             if (!input) return;
             input.addEventListener('change', () => this.updateFontPreview());
@@ -950,7 +1062,7 @@ const UI = {
     renderCustomBottomInfo() {
         if (!this.el.customBottomText) return;
         const template = AppData.customBottomText || '';
-        if (!template) {
+        if (!template || !this.isBottomTextVisible()) {
             this.el.customBottomText.textContent = '';
             return;
         }
@@ -1073,6 +1185,55 @@ const UI = {
             const value = Math.max(8, Math.min(30, Number(this.el.inputBottomFontSize.value) || 10));
             this.el.bottomFontSizeLabel.textContent = `${value} px`;
         }
+        this.syncBottomOffsetLabel();
+    },
+
+    syncBottomOffsetLabel() {
+        if (!this.el.inputBottomOffset || !this.el.bottomOffsetLabel) return;
+        const value = Math.max(-20, Math.min(20, Number(this.el.inputBottomOffset.value) || 0));
+        this.el.bottomOffsetLabel.textContent = `${value} px`;
+    },
+
+    setBottomAlign(align) {
+        if (!this.el.bottomAlignGroup) return;
+        this.el.bottomAlignGroup.querySelectorAll('.segmented-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.align === align);
+        });
+    },
+
+    getBottomAlign() {
+        const active = this.el.bottomAlignGroup?.querySelector('.segmented-btn.active');
+        return active?.dataset.align || 'right';
+    },
+
+    getBottomOffset() {
+        return Math.max(-20, Math.min(20, Number(this.el.inputBottomOffset?.value) || 0));
+    },
+
+    applyDisplayOptions() {
+        const viewMain = this.el.viewMain;
+        if (viewMain) {
+            viewMain.classList.toggle('hide-weather', AppData.showWeather === false);
+            viewMain.classList.toggle('hide-timeline', AppData.showTimeline === false);
+        }
+        const bottomText = this.el.customBottomText;
+        if (bottomText) {
+            const align = ['left', 'center', 'right'].includes(AppData.bottomAlign) ? AppData.bottomAlign : 'right';
+            bottomText.classList.toggle('pos-left', align === 'left');
+            bottomText.classList.toggle('pos-center', align === 'center');
+            bottomText.classList.toggle('pos-right', align === 'right');
+            bottomText.classList.toggle('force-hidden', AppData.showBottomText === false);
+        }
+        const root = document.documentElement;
+        const offset = Math.max(-20, Math.min(20, Number(AppData.bottomOffset) || 0));
+        root.style.setProperty('--bottom-offset', `${offset}px`);
+        this.appliedMainWidth = null;
+        this.scheduleFitWindow(200);
+    },
+
+    /** 自定义文本当前是否可见（总开关关闭时不参与宽度测量） */
+    isBottomTextVisible() {
+        return AppData.showBottomText !== false;
     },
 
     updateFontPreview() {
@@ -1179,7 +1340,7 @@ const UI = {
         document.body.classList.add('measuring-width');
         try {
             const timeline = this.el.timeline;
-            if (timeline) {
+            if (timeline && AppData.showTimeline !== false) {
                 const available = timeline.clientWidth;
                 let contentWidth = 0;
                 timeline.querySelectorAll('.time-node').forEach((node) => {
@@ -1189,10 +1350,12 @@ const UI = {
                 });
                 if (contentWidth > available) extra = Math.max(extra, contentWidth - available);
             }
-            weatherExtra = this.measureWeatherOverflow();
-            extra = Math.max(extra, weatherExtra);
+            if (AppData.showWeather !== false) {
+                weatherExtra = (this.weatherExtraWidth || 0) + this.measureWeatherOverflow();
+                extra = Math.max(extra, weatherExtra);
+            }
             const bottomInfo = this.el.customBottomText;
-            if (bottomInfo && bottomInfo.textContent) {
+            if (bottomInfo && bottomInfo.textContent && this.isBottomTextVisible()) {
                 const overflow = bottomInfo.scrollWidth - bottomInfo.clientWidth;
                 if (overflow > 0) extra = Math.max(extra, overflow);
             }
@@ -1200,14 +1363,16 @@ const UI = {
             document.body.classList.remove('measuring-width');
         }
 
-        this.weatherExtraWidth = weatherExtra;
         this.applyWeatherExtraWidth(weatherExtra);
 
         const targetWidth = Math.min(maxWidth, Math.max(baseWidth, baseWidth + Math.ceil(extra) + 10));
         const appliedWidth = this.appliedMainWidth || baseWidth;
-        if (targetWidth === appliedWidth) return;
-        this.appliedMainWidth = targetWidt
-        if (weatherExtra > 0) this.scheduleWeatherRemeasure(320);
+        if (targetWidth === appliedWidth) {
+            if (weatherExtra > 0) this.scheduleWeatherRemeasure(160);
+            return;
+        }
+        this.appliedMainWidth = targetWidth;
+        if (weatherExtra > 0) this.scheduleWeatherRemeasure(360);
         try {
             if (extra > 0) {
                 await this.animateWindowSize({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
@@ -1235,9 +1400,14 @@ const UI = {
     },
 
     applyWeatherExtraWidth(extra) {
+        const next = Math.max(0, Math.ceil(Number(extra) || 0));
+        const current = this.weatherExtraWidth || 0;
+        if (next === current) return false;
+        this.weatherExtraWidth = next;
         const root = document.documentElement;
-        if (extra > 0) root.style.setProperty('--weather-extra', `${Math.ceil(extra)}px`);
+        if (next > 0) root.style.setProperty('--weather-extra', `${next}px`);
         else root.style.removeProperty('--weather-extra');
+        return true;
     },
 
     weatherRemeasureTimer: null,
@@ -1252,8 +1422,9 @@ const UI = {
             } finally {
                 document.body.classList.remove('measuring-width');
             }
-            this.weatherExtraWidth = extra;
-            this.applyWeatherExtraWidth(extra);
+            if (this.applyWeatherExtraWidth((this.weatherExtraWidth || 0) + extra)) {
+                this.scheduleFitWindow(60);
+            }
         }, delay);
     },
 
@@ -1603,6 +1774,10 @@ const UI = {
             item('课程字号', config?.courseFontSize ? `${config.courseFontSize} px` : ''),
             item('底部字号', config?.bottomFontSize ? `${config.bottomFontSize} px` : ''),
             item('底部颜色', config?.bottomColor),
+            item('文本位置', `${config?.bottomAlign === 'left' ? '左对齐' : config?.bottomAlign === 'center' ? '居中' : '右对齐'}${Number(config?.bottomOffset) ? ` · 垂直 ${config.bottomOffset} px` : ''}`),
+            item('显示天气', config?.showWeather === false ? '已隐藏' : '显示'),
+            item('显示课表', config?.showTimeline === false ? '已隐藏' : '显示'),
+            item('显示自定义文本', config?.showBottomText === false ? '已隐藏' : '显示'),
             item('倒计时名称', config?.countdownName),
             item('目标日期', config?.countdownDate),
             item('文本 1', config?.customTexts?.one),
@@ -1840,6 +2015,11 @@ const UI = {
             customBottomText: clone.customBottomText || '',
             bottomFontSize: Math.max(8, Math.min(30, Number(clone.bottomFontSize) || 10)),
             bottomColor: clone.bottomColor || '#64748b',
+            bottomAlign: ['left', 'center', 'right'].includes(clone.bottomAlign) ? clone.bottomAlign : 'right',
+            bottomOffset: Math.max(-20, Math.min(20, Math.round(Number(clone.bottomOffset) || 0))),
+            showWeather: clone.showWeather !== false,
+            showTimeline: clone.showTimeline !== false,
+            showBottomText: clone.showBottomText !== false,
             countdownName: clone.countdownName || '',
             countdownDate: clone.countdownDate || '',
             customTexts: {
@@ -1865,7 +2045,9 @@ const UI = {
         };
         const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'courseFont',
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
-            'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather']);
+            'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
+            'bottomAlign', 'bottomOffset', 'showWeather', 'showTimeline', 'showBottomText',
+            'onboardingCompleted', 'onboardingCompletedAt']);
         Object.keys(clone).forEach((key) => {
             if (!known.has(key)) payload[key] = clone[key];
         });
@@ -1935,7 +2117,8 @@ const UI = {
         }
     },
 
-    async openSettings(configToEdit = null) {
+    async openSettings(configToEdit = null, options = {}) {
+        const { tab = null, guide = false } = options;
         EditData = configToEdit
             ? JSON.parse(JSON.stringify(configToEdit))
             : JSON.parse(JSON.stringify(AppData));
@@ -1958,6 +2141,13 @@ const UI = {
         this.el.inputCountdownName.value = EditData.countdownName || '';
         this.el.inputCountdownDate.value = EditData.countdownDate || '';
         this.el.inputBottomFontSize.value = EditData.bottomFontSize || 10;
+        this.el.inputShowWeather.checked = EditData.showWeather !== false;
+        this.el.inputShowTimeline.checked = EditData.showTimeline !== false;
+        this.el.inputShowBottom.checked = EditData.showBottomText !== false;
+        this.el.inputShowBottomText.checked = EditData.showBottomText !== false;
+        this.el.inputBottomOffset.value = Math.max(-20, Math.min(20, Number(EditData.bottomOffset) || 0));
+        this.setBottomAlign(EditData.bottomAlign || 'right');
+        this.syncBottomOffsetLabel();
         this.el.inputCourseFont.value = EditData.courseFont || '';
         this.el.inputCourseFontSize.value = EditData.courseFontSize || 15;
         this.el.inputFontFamily.value = EditData.fontFamily || '';
@@ -1986,16 +2176,42 @@ const UI = {
 
         await this.animateWindowSize(APP_CONFIG.settingsSize);
         await this.setWindowDragRegion('settings');
+        if (tab) this.switchTab(tab);
+        if (guide) this.runWeatherGuide();
     },
 
-    async closeSettings() {
+    /**
+     * 按 data-target 切换设置页标签。
+     * @param {string} target 标签名（main/weather/courses/bottom/about）
+     */
+    switchTab(target) {
+        if (!target) return;
+        document.querySelectorAll('.tab-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.target === target);
+        });
+        document.querySelectorAll('.tab-content').forEach((content) => {
+            content.classList.toggle('active', content.id === `tab-${target}`);
+        });
+        const targetEl = document.getElementById(`tab-${target}`);
+        if (targetEl) void targetEl.offsetWidth;
+    },
+
+    
+    runWeatherGuide() {
+        const apiHost = this.el.inputApiHost;
+        if (!apiHost) return;
+        apiHost.closest('.form-group')?.scrollIntoView({ block: 'nearest' });
+        apiHost.focus({ preventScroll: true });
+    },
+
+    async closeSettings({ silent = false } = {}) {
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
 
         this.appliedMainWidth = APP_CONFIG.windowSize.width;
         await this.animateWindowSize(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         await this.setWindowDragRegion('main');
-        this.scheduleFitWindow(200);
+        if (!silent) this.scheduleFitWindow(200);
     },
 
     getSettingsSnapshot() {
@@ -2004,10 +2220,15 @@ const UI = {
             'inputPrivateKey', 'inputTheme', 'inputWeatherRefreshMinutes', 'inputCustomBottomText',
             'inputCountdownName', 'inputCountdownDate', 'inputBottomFontSize', 'inputBottomColor',
             'inputCourseFont', 'inputCourseFontSize', 'inputFontFamily', 'inputFontSizeScale',
-            'inputCustomOne', 'inputCustomTwo', 'inputCustomThree'
+            'inputCustomOne', 'inputCustomTwo', 'inputCustomThree', 'inputBottomOffset'
         ];
         const values = fields.map((key) => this.el[key]?.value ?? '');
         values.push(this.el.inputAutoStart?.checked === true);
+        values.push(this.el.inputShowWeather?.checked === true);
+        values.push(this.el.inputShowTimeline?.checked === true);
+        values.push(this.el.inputShowBottom?.checked === true);
+        values.push(this.el.inputShowBottomText?.checked === true);
+        values.push(this.getBottomAlign());
         return JSON.stringify({ values, editData: EditData });
     },
 
@@ -2075,6 +2296,12 @@ const UI = {
         EditData.fontFamily = this.el.inputFontFamily.value || '';
         EditData.fontSizeScale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100));
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
+        EditData.showWeather = this.el.inputShowWeather.checked;
+        EditData.showTimeline = this.el.inputShowTimeline.checked;
+        // 主界面缩略开关与文本页开关共享同一字段，任一关闭即隐藏
+        EditData.showBottomText = this.el.inputShowBottom.checked && this.el.inputShowBottomText.checked;
+        EditData.bottomAlign = this.getBottomAlign();
+        EditData.bottomOffset = this.getBottomOffset();
         EditData.customTexts = {
             one: this.el.inputCustomOne.value.trim(),
             two: this.el.inputCustomTwo.value.trim(),
@@ -2647,6 +2874,7 @@ const App = {
         await Store.init();
         UI.applyTheme(AppData.theme);
         UI.applyFontStyles();
+        UI.applyDisplayOptions();
         if (!this.trayInitialized) {
             await UI.initTray();
             this.trayInitialized = true;
@@ -2656,6 +2884,10 @@ const App = {
         this.startRefreshTimers();
         await this.refreshWeather();
         void Logger.info('应用初始化完成', { module: 'lifecycle', action: 'init' });
+        // 首次使用：引导天气配置与基本操作；老用户配置中已有完成标记则跳过
+        if (AppData.onboardingCompleted !== true) {
+            await Onboarding.start();
+        }
     },
     refreshCourses() {
         const startedAt = performance.now();

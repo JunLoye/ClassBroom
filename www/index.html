@@ -7,6 +7,18 @@
 <link rel="icon" href="app.ico">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* 自定义滚动条：细轨道 + 主题色滑块，滚动时加深 */
+  * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent; border-radius: 8px;
+    background: var(--scrollbar-thumb) padding-box;
+    transition: background-color 140ms ease;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover) padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
   
   :root {
     --bg-app: #F8F9FA;
@@ -22,6 +34,8 @@
     --font-mono: 'JetBrains Mono', 'Consolas', monospace;
     
     --fs-scale: 1;
+    --scrollbar-thumb: rgba(100, 116, 139, 0.42);
+    --scrollbar-thumb-hover: rgba(2, 132, 199, 0.72);
   }
 
   :root[data-theme="monochrome"] {
@@ -33,6 +47,7 @@
     --bg-app: #111827; --bg-card: #1F2937; --border-light: #475569;
     --text-main: #F8FAFC; --text-sub: #CBD5E1; --text-muted: #94A3B8;
     --accent-cyan: #38BDF8; --accent-orange: #FB923C; --accent-red: #F87171;
+    --scrollbar-thumb: rgba(148, 163, 184, 0.45); --scrollbar-thumb-hover: rgba(56, 189, 248, 0.8);
   }
   :root[data-theme="ocean"] {
     --bg-app: #EFF6FF; --bg-card: #FFFFFF; --border-light: #93C5FD;
@@ -48,6 +63,7 @@
     --bg-app: #000000; --bg-card: #000000; --border-light: #FFFFFF;
     --text-main: #FFFFFF; --text-sub: #FFFFFF; --text-muted: #FFFFFF;
     --accent-cyan: #00FFFF; --accent-orange: #FFFF00; --accent-red: #FF4D4D;
+    --scrollbar-thumb: rgba(255, 255, 255, 0.55); --scrollbar-thumb-hover: #00FFFF;
   }
   :root[data-theme="midnight"] #view-settings,
   :root[data-theme="high-contrast"] #view-settings {
@@ -179,9 +195,11 @@
   body.measuring-width .widget-content { overflow: visible !important; }
   body.measuring-width #custom-bottom-info { white-space: nowrap !important; }
   
-  body.measuring-width .widget-content { grid-template-columns: minmax(0, 1fr) auto auto !important; }
+  /* 测量模式：三列分别对应课表、天气、时间，天气列改用 auto 才能被内容撑开 */
+  body.measuring-width .widget-content { grid-template-columns: minmax(0, 1fr) auto 108px !important; }
   body.measuring-width .weather-container { width: auto !important; max-width: none !important; overflow: visible !important; }
-  body.measuring-width .weather-main { flex: 0 0 auto !important; }
+  body.measuring-width .weather-main { flex: 0 0 auto !important; overflow: visible !important; }
+  body.measuring-width .weather-info { overflow: visible !important; }
   body.measuring-width .weather-warning { flex-shrink: 0 !important; }
   .time-node.done .dot { background: var(--border-light); border-color: var(--border-light); }
   .time-node.done .name { color: var(--text-muted); font-weight: 700; }
@@ -232,7 +250,7 @@
   .weather-icon svg { width: 24px; height: 24px; }
   .weather-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
   .weather-info .temp { font-family: var(--font-mono); font-size: calc(17px * var(--fs-scale)); font-weight: 800; line-height: 1.1; white-space: nowrap; }
-  .weather-info .desc { font-size: calc(10px * var(--fs-scale)); color: var(--text-sub); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88px; line-height: 1.2; }
+  .weather-info .desc { font-size: calc(10px * var(--fs-scale)); color: var(--text-sub); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: none; line-height: 1.2; }
   .weather-warning {
     --warning-color: var(--accent-red);
     color: var(--warning-color); font-size: 12px; font-weight: 800; display: flex;
@@ -245,14 +263,14 @@
   .weather-warning svg { width: 16px; height: 16px; flex-shrink: 0; animation: warning-shake 1.2s ease-in-out infinite; }
   .weather-container.no-warning { justify-content: flex-end; }
   .weather-container.no-warning .weather-warning { display: none; }
-  .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) 150px 108px; }
   /* 窗口为容纳内容加宽后，固定列宽会让天气区继续被挤压；
      由 JS 写入 --weather-extra 把测量到的缺口叠加到天气列宽度上，
      并禁止天气区内部收缩，从而不再出现截断或元素重叠。 */
   .widget-content { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
   .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
   .weather-container, .widget-content .weather-container { width: 100%; max-width: none; }
-  .weather-container .weather-main { flex-shrink: 0; }
+  .weather-container .weather-main { flex-shrink: 0; overflow: visible; }
+  .weather-info { min-width: 0; }
   .weather-warning { flex-shrink: 0; }
   @keyframes warning-alert {
     0%, 100% { background: color-mix(in srgb, var(--warning-color) 8%, transparent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--warning-color) 0%, transparent); }
@@ -264,18 +282,18 @@
     40%, 80% { transform: rotate(8deg); }
   }
   @media (max-width: 1100px) {
-    .widget-content { grid-template-columns: minmax(0, 1fr) 140px 92px; padding: 0 96px 0 10px; column-gap: 6px; }
+    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(140px, calc(140px + var(--weather-extra, 0px))) 92px; padding: 0 96px 0 10px; column-gap: 6px; }
     .timeline-container { grid-column: 1; }
     .window-controls { gap: 0; }
     .refresh-hint { width: 16px; }
     .time-container { width: 92px; }
     .time-clock { font-size: 15px; }
     .weather-container { width: 140px; height: 44px; padding: 0; gap: 4px; }
-    .weather-info .desc { max-width: 72px; }
+    .weather-info .desc { max-width: none; }
     .weather-warning { max-width: 72px; font-size: 11px; }
   }
   @media (max-width: 900px) {
-    .widget-content { grid-template-columns: minmax(0, 1fr) 130px 78px; padding: 0 82px 0 8px; column-gap: 4px; }
+    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(130px, calc(130px + var(--weather-extra, 0px))) 78px; padding: 0 82px 0 8px; column-gap: 4px; }
     .timeline-container { grid-column: 1; }
     .window-controls { width: 96px; }
     .time-container { width: 78px; }
@@ -283,7 +301,7 @@
     .time-date { font-size: 9px; }
     .weather-container { width: 130px; }
     .weather-icon { display: none; }
-    .weather-info .desc { max-width: 66px; }
+    .weather-info .desc { max-width: none; }
     .weather-warning { max-width: 62px; font-size: 10px; padding: 3px 4px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -325,13 +343,35 @@
 
   
   #custom-bottom-info {
-    position: absolute; left: 12px; right: 104px; top: calc(50% - 8px); z-index: 20;
+    position: absolute; left: 12px; right: 104px; z-index: 20;
+    top: calc(50% - 8px + var(--bottom-offset, 0px));
     min-height: 16px; text-align: right; pointer-events: none;
     display: flex; align-items: center; justify-content: flex-end;
     color: var(--text-muted); font-size: 10px; line-height: 16px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* 自定义文本位置：水平对齐 + 垂直偏移（由 JS 写入 --bottom-offset） */
+  #custom-bottom-info.pos-left { justify-content: flex-start; }
+  #custom-bottom-info.pos-center { justify-content: center; }
+  #custom-bottom-info.pos-right { justify-content: flex-end; }
   #custom-bottom-info:empty { display: none; }
+  #custom-bottom-info.force-hidden { display: none; }
+  #view-main.hide-weather .weather-container { display: none; }
+  #view-main.hide-timeline .timeline-container { display: none; }
+  /* 隐藏任一模块后按剩余元素重排，避免列位错乱挤占时间区 */
+  #view-main.hide-timeline .widget-content,
+  #view-main.hide-timeline .widget-content.no-warning {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px;
+  }
+  #view-main.hide-timeline .weather-container { grid-column: 1; }
+  #view-main.hide-timeline .time-container { grid-column: 2; }
+  #view-main.hide-weather .widget-content,
+  #view-main.hide-weather .widget-content.no-warning {
+    grid-template-columns: minmax(0, 1fr) 108px;
+  }
+  #view-main.hide-weather .timeline-container { grid-column: 1; }
+  #view-main.hide-weather .time-container { grid-column: 2; }
+  #view-main.hide-weather.hide-timeline .widget-content { grid-template-columns: minmax(0, 1fr) 108px; }
 
   .about-meta { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
   .about-meta { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
@@ -399,7 +439,8 @@
     display: flex; align-items: center; gap: 8px;
     padding: 14px 16px 10px; font-size: 14px; font-weight: 800;
   }
-  .app-dialog-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-cyan); }
+  .app-dialog-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--accent-cyan); display: flex; align-items: center; justify-content: center; }
+  .app-dialog-icon svg { width: 100%; height: 100%; display: block; }
   .app-dialog-icon.warning { color: var(--accent-orange); }
   .app-dialog-icon.danger { color: var(--accent-red); }
   .app-dialog-body {
@@ -414,6 +455,36 @@
   
   .app-dialog.is-wide { width: min(660px, calc(100% - 40px)); }
   .app-dialog.is-wide .app-dialog-body { white-space: normal; padding: 0 16px 8px; }
+
+  .onboarding { display: flex; flex-direction: column; gap: 12px; }
+  .onboarding-steps { display: flex; flex-direction: column; gap: 10px; }
+  .onboarding-step { display: flex; gap: 10px; align-items: flex-start; }
+  .onboarding-step-index {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #fff; background: var(--accent-cyan);
+  }
+  .onboarding-step-body { flex: 1; min-width: 0; }
+  .onboarding-step-body b { display: block; color: var(--text-main); font-size: 13px; margin-bottom: 2px; }
+  .onboarding-step-body span { color: var(--text-sub); font-size: 12px; line-height: 1.55; }
+  .onboarding-weather { clear: both; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-app); padding: 10px 12px; }
+  .onboarding-weather-title { display: flex; align-items: center; gap: 6px; color: var(--text-main); font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+  .onboarding-weather-title svg { width: 15px; height: 15px; flex-shrink: 0; display: block; color: var(--accent-cyan); }
+  .onboarding-weather-list { margin: 0; padding-left: 16px; color: var(--text-sub); font-size: 12px; line-height: 1.7; }
+  .onboarding-weather-list b { color: var(--text-main); font-family: var(--font-mono); font-weight: 700; }
+  .onboarding-hint { display: flex; align-items: center; gap: 4px; margin-top: 6px; color: var(--accent-orange); font-size: 11px; font-weight: 700; }
+  .onboarding-hint svg { width: 13px; height: 13px; flex-shrink: 0; display: block; }
+  .onboarding-confirm { display: flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: 12px; cursor: pointer; }
+  .onboarding-confirm input { accent-color: var(--accent-cyan); margin: 0; }
+  .onboarding-confirm.is-locked { cursor: default; color: var(--text-muted); }
+  .onboarding-weather-open { align-self: flex-start; height: 28px; padding: 0 10px; font-size: 12px; }
+
+  body.onboarding-active #view-main { opacity: 0; pointer-events: none; }
+
+  .settings-guide { display: flex; flex-direction: column; gap: 6px; }
+  .settings-guide ol { margin: 0; padding-left: 18px; line-height: 1.7; }
+  .settings-guide li b { color: var(--text-main); font-family: var(--font-mono); }
+  .settings-guide .settings-guide-tip { color: var(--accent-orange); font-weight: 700; }
 
   .import-preview { display: flex; flex-direction: column; gap: 10px; }
   .import-preview-meta {
@@ -591,10 +662,37 @@
   #tab-courses.active .course-header { grid-column: 1; grid-row: 1; margin-bottom: 0; }
   #tab-courses.active .course-list { grid-column: 1; grid-row: 2; min-height: 0; padding-right: 4px; }
 
+  /* 复选开关行与分段按钮（模块显示、文本位置） */
+  .switch-row {
+    display: flex; align-items: center; gap: 8px; min-height: 32px; margin-bottom: 6px;
+    font-size: calc(13px * var(--fs-scale)); font-weight: 600; color: var(--text-main);
+    cursor: pointer; user-select: none;
+  }
+  .switch-hint { color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); font-weight: 500; line-height: 1.5; }
+  .segmented { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border-light); border-radius: 7px; background: var(--bg-app); }
+  .segmented-btn {
+    min-width: 56px; height: 28px; padding: 0 10px; border: none; border-radius: 5px;
+    background: transparent; color: var(--text-sub); font-size: calc(12px * var(--fs-scale));
+    font-weight: 700; cursor: pointer; transition: background 140ms ease, color 140ms ease;
+  }
+  .segmented-btn:hover { background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); color: var(--text-main); }
+  .segmented-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
   .form-group { margin-bottom: 16px; }
   .form-group label { display: block; font-size: calc(12px * var(--fs-scale)); font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
   .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 5px; font-size: calc(13px * var(--fs-scale)); outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
   .form-group input[type="color"] { padding: 3px; }
+  /* 开关行内的复选框不参与输入框的通用尺寸/边框/内边距样式 */
+  .form-group label.switch-row {
+    display: flex; margin-bottom: 6px;
+    color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 600;
+  }
+  .form-group label.switch-row input[type="checkbox"],
+  .switch-row input[type="checkbox"] {
+    width: 16px; height: 16px; padding: 0; margin: 0; flex: 0 0 16px;
+    border: none; border-radius: 0; background: transparent;
+    accent-color: var(--accent-cyan); cursor: pointer;
+  }
   .form-group textarea { height: auto; min-height: 100px; resize: none; font-family: var(--font-mono); font-size: calc(12px * var(--fs-scale)); }
   .form-group input:focus, .form-group textarea:focus { border-color: var(--accent-cyan); }
   .form-group input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
@@ -813,6 +911,22 @@
         </section>
 
         <section class="settings-section">
+          <h3 class="settings-section-title">模块显示</h3>
+          <div class="settings-section-body">
+            <div class="form-row">
+              <div class="form-group col">
+                <label class="switch-row" for="input-show-weather"><input type="checkbox" id="input-show-weather" checked>显示天气</label>
+                <label class="switch-row" for="input-show-timeline"><input type="checkbox" id="input-show-timeline" checked>显示课表</label>
+              </div>
+              <div class="form-group col">
+                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示自定义文本</label>
+                <div class="switch-hint">关闭后对应区域不占用主界面空间</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
           <h3 class="settings-section-title">字体</h3>
           <div class="settings-section-body">
             <div class="form-row">
@@ -854,6 +968,18 @@
       </div>
 
       <div class="tab-content" id="tab-weather">
+        <section class="settings-section">
+          <h3 class="settings-section-title">配置指引</h3>
+          <div class="settings-section-body settings-guide">
+            <ol>
+              <li>在 <b>QWeather</b> 控制台 <b>项目管理</b> 中创建项目，获取 <b>项目 ID</b>（填到 SUB）。</li>
+              <li>在同一项目下创建 <b>凭据</b>，得到 <b>凭据 ID</b>（KID）与 <b>Ed25519 私钥</b>（PEM），<b>开发者 ID</b> 填到 ISS。</li>
+              <li>API Host 使用控制台显示的 <b>专属域名</b>，只填域名，不带 <b>https://</b> 与路径。</li>
+              <li>经纬度按 <b>经度,纬度</b> 顺序填写，中间用英文逗号分隔；地区名称仅用于界面展示。</li>
+            </ol>
+            <div class="settings-guide-tip">私钥等同密码，仅保存在本机注册表，请勿截图或外发。</div>
+          </div>
+        </section>
         <section class="settings-section">
           <h3 class="settings-section-title">位置与刷新</h3>
           <div class="settings-section-body">
@@ -899,9 +1025,30 @@
         <section class="settings-section">
           <h3 class="settings-section-title">显示内容</h3>
           <div class="settings-section-body">
-            <div class="form-group">
+            <label class="switch-row" for="input-show-bottom-text"><input type="checkbox" id="input-show-bottom-text" checked>在主界面显示自定义文本</label>
+            <div class="form-group" style="margin-top:12px;">
               <label for="input-custom-bottom-text">信息模板</label>
               <textarea id="input-custom-bottom-text" autocomplete="off" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">位置</h3>
+          <div class="settings-section-body">
+            <div class="form-row">
+              <div class="form-group col">
+                <label>水平对齐</label>
+                <div class="segmented" id="bottom-align-group">
+                  <button type="button" class="segmented-btn" data-align="left">左</button>
+                  <button type="button" class="segmented-btn active" data-align="right">右</button>
+                </div>
+              </div>
+              <div class="form-group col">
+                <label for="input-bottom-offset">垂直偏移（-20 ~ 20 px）</label>
+                <input type="range" id="input-bottom-offset" min="-20" max="20" step="1" value="0">
+                <div class="range-value" id="bottom-offset-label">0 px</div>
+              </div>
             </div>
           </div>
         </section>
@@ -1008,6 +1155,7 @@
       </div>
     </div>
     <div class="settings-footer">
+      <button id="btn-restart-guide" class="btn btn-secondary" type="button" title="重新查看首次使用引导">使用引导</button>
       <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
       <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
       <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
