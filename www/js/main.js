@@ -87,7 +87,8 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 const APP_CONFIG = {
-    windowSize: { width: 1400, height: 92 },
+    // 主界面高度：76px（顶部控件与底部文本合并为一行）
+    windowSize: { width: 1400, height: 76 },
     settingsSize: { width: 1400, height: 800 },
     // 文本被截断时允许的最大窗口宽度（超出屏幕时会被 Neutralino 自动约束）
     maxWindowWidth: 1920,
@@ -658,13 +659,37 @@ const CustomSelect = {
             },
             open() {
                 CustomSelect.closeAll(instance);
-                // 下方空间不足时向上展开，避免面板超出窗口
-                const rect = root.getBoundingClientRect();
-                const panelHeight = Math.min(264, Math.max(48, (this.options.length || 1) * 34 + 8));
-                const spaceBelow = window.innerHeight - rect.bottom;
-                root.classList.toggle('drop-up', spaceBelow < panelHeight + 12 && rect.top > spaceBelow);
                 root.classList.add('open');
                 trigger.setAttribute('aria-expanded', 'true');
+                this.position();
+            },
+            /**
+             * 面板使用 fixed 定位，坐标由脚本按视口计算：
+             * 1) 不再受父级 overflow 与层叠上下文裁剪，避免被下方元素遮挡；
+             * 2) 上下空间不足时自动翻转/限高，保证选项完整可见。
+             */
+            position() {
+                if (!root.classList.contains('open')) return;
+                const rect = root.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
+                const gap = 4;
+                const edge = 6;
+                const contentHeight = panel.scrollHeight || (this.options.length || 1) * 34 + 8;
+                const maxAvailable = Math.max(96, viewportHeight - edge * 2);
+                const panelHeight = Math.min(264, contentHeight, maxAvailable);
+                const spaceBelow = viewportHeight - rect.bottom - gap - edge;
+                const spaceAbove = rect.top - gap - edge;
+                const dropUp = spaceBelow < panelHeight && spaceAbove > spaceBelow;
+                const height = Math.min(panelHeight, dropUp ? spaceAbove : spaceBelow, maxAvailable);
+                root.classList.toggle('drop-up', dropUp);
+                panel.style.width = `${Math.round(rect.width)}px`;
+                panel.style.maxHeight = `${Math.max(72, Math.round(height))}px`;
+                panel.style.top = dropUp
+                    ? `${Math.max(edge, Math.round(rect.top - gap - height))}px`
+                    : `${Math.round(rect.bottom + gap)}px`;
+                const left = Math.min(Math.max(edge, Math.round(rect.left)), viewportWidth - Math.round(rect.width) - edge);
+                panel.style.left = `${Math.max(edge, left)}px`;
             },
             close() {
                 root.classList.remove('open', 'drop-up');
@@ -710,11 +735,23 @@ const CustomSelect = {
             if (instance !== except) instance.close();
         });
     },
+    /** 跟踪当前展开的面板：滚动/缩放时重新计算位置或直接收起 */
+    repositionOpen() {
+        this.registry.forEach((instance) => {
+            if (instance.root.classList.contains('open')) instance.position();
+        });
+    },
     bindGlobal() {
         document.addEventListener('click', () => this.closeAll());
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') this.closeAll();
         });
+        // 面板为 fixed 定位，需跟随页面滚动与窗口尺寸变化
+        window.addEventListener('resize', () => this.repositionOpen());
+        document.addEventListener('scroll', (event) => {
+            if (event.target instanceof Node && event.target.nodeType === 1 && event.target.closest?.('.custom-select-panel')) return;
+            this.closeAll();
+        }, true);
     }
 };
 
@@ -759,6 +796,13 @@ const UI = {
         inputFontFamily: document.getElementById('input-font-family'),
         inputFontSizeScale: document.getElementById('input-font-size-scale'),
         fontSizeScaleLabel: document.getElementById('font-size-scale-label'),
+        courseFontSizeLabel: document.getElementById('course-font-size-label'),
+        bottomFontSizeLabel: document.getElementById('bottom-font-size-label'),
+        fontPreview: document.getElementById('font-preview'),
+        fontPreviewCourse: document.getElementById('font-preview-course'),
+        fontPreviewCourseMeta: document.getElementById('font-preview-course-meta'),
+        fontPreviewUi: document.getElementById('font-preview-ui'),
+        fontPreviewUiMeta: document.getElementById('font-preview-ui-meta'),
         inputBottomColor: document.getElementById('input-bottom-color'),
         inputCustomOne: document.getElementById('input-custom-one'),
         inputCustomTwo: document.getElementById('input-custom-two'),
@@ -782,6 +826,7 @@ const UI = {
         this.initCustomSelects();
         CustomSelect.bindGlobal();
         this.bindDragHandle();
+        this.bindMainDrag();
 
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
@@ -830,14 +875,28 @@ const UI = {
                 this.appendPlaceholder(button.dataset.placeholder);
             });
         });
-        // 字号缩放滑块：拖动时实时更新标签与预览
+        // 字号缩放滑块：拖动时实时更新标签、全局缩放与预览
         if (this.el.inputFontSizeScale) {
             this.el.inputFontSizeScale.addEventListener('input', () => {
                 this.syncFontSizeScaleLabel();
                 const preview = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100)) / 100;
                 document.documentElement.style.setProperty('--fs-scale', String(preview));
+                this.updateFontPreview();
             });
         }
+        // 课程字号 / 底部字号滑块：拖动时同步像素标签
+        [this.el.inputCourseFontSize, this.el.inputBottomFontSize].forEach((input) => {
+            if (!input) return;
+            input.addEventListener('input', () => {
+                this.syncRangeLabels();
+                this.updateFontPreview();
+            });
+        });
+        // 字体下拉变化时即时刷新预览（与全局/课程字体联动）
+        [this.el.inputFontFamily, this.el.inputCourseFont].forEach((input) => {
+            if (!input) return;
+            input.addEventListener('change', () => this.updateFontPreview());
+        });
         this.startClock();
     },
 
@@ -1062,23 +1121,102 @@ const UI = {
         this.el.fontSizeScaleLabel.textContent = `${value}%`;
     },
 
+    /** 同步课程字号、底部字号滑块的像素标签 */
+    syncRangeLabels() {
+        if (this.el.inputCourseFontSize && this.el.courseFontSizeLabel) {
+            const value = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize.value) || 15));
+            this.el.courseFontSizeLabel.textContent = `${value} px`;
+        }
+        if (this.el.inputBottomFontSize && this.el.bottomFontSizeLabel) {
+            const value = Math.max(8, Math.min(30, Number(this.el.inputBottomFontSize.value) || 10));
+            this.el.bottomFontSizeLabel.textContent = `${value} px`;
+        }
+    },
+
+    /**
+     * 字体实时预览：直接按当前滑块的数值渲染，不必等到保存。
+     * 课程名用课程字体 + 课程字号 × 全局缩放；界面文本仅跟随全局缩放。
+     */
+    updateFontPreview() {
+        const ui = this.el.fontPreviewUi;
+        const course = this.el.fontPreviewCourse;
+        if (!ui || !course) return;
+        const scale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale?.value) || 100)) / 100;
+        const courseSize = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize?.value) || 15));
+        const globalFamily = String(this.el.inputFontFamily?.value || '').trim();
+        const courseFamily = String(this.el.inputCourseFont?.value || '').trim();
+
+        course.style.fontSize = `${courseSize * scale}px`;
+        // 课程字体为空时跟随全局字体，两者都为空则回落到界面默认字体
+        course.style.fontFamily = courseFamily || globalFamily || '';
+        if (this.el.fontPreviewCourseMeta) {
+            this.el.fontPreviewCourseMeta.textContent = `${courseSize} px · ${Math.round(scale * 100)}%`;
+        }
+
+        ui.style.fontSize = `${12 * scale}px`;
+        ui.style.fontFamily = globalFamily;
+        if (this.el.fontPreviewUiMeta) this.el.fontPreviewUiMeta.textContent = `${Math.round(scale * 100)}%`;
+    },
+
+    /**
+     * 注册可拖拽区域。
+     * 注意：必须先把对应元素显示出来（去掉 hidden）再注册，否则元素尺寸为 0，
+     * 拖拽区域会失效（启动时主界面处于显示状态，但切换视图后需重新注册）。
+     */
     async setWindowDragRegion(region) {
         try {
             await Neutralino.window.unsetDraggableRegion('view-main');
             await Neutralino.window.unsetDraggableRegion('settings-header');
             if (region === 'settings' && this.el.settingsHeader) {
                 const interactive = Array.from(this.el.settingsHeader.querySelectorAll(
-                    '.tab-btn, .settings-tabs, .settings-actions, .custom-select, .startup-toggle, input, label, a'
+                    '.tab-btn, .settings-tabs, .settings-actions, .custom-select, .startup-toggle, input, label, a, button'
                 ));
                 await Neutralino.window.setDraggableRegion('settings-header', {
                     exclude: interactive
                 });
             } else {
+                // 排除交互控件，其余区域（含课表节点、天气、时间）均可拖动
+                const exclude = Array.from(document.querySelectorAll('#view-main button, #view-main .icon-btn, #view-main .weather-warning'))
+                    .filter((node) => node.id !== 'view-main');
                 await Neutralino.window.setDraggableRegion('view-main', {
-                    exclude: APP_CONFIG.excludeDrag
+                    exclude: [...APP_CONFIG.excludeDrag, ...exclude]
                 });
             }
         } catch (error) { }
+    },
+
+    /**
+     * 主界面拖拽兜底：部分环境（高 DPI / WebView2 版本差异）下
+     * setDraggableRegion 的拖动区域不生效，改由拖动 + beginDrag 手动接管。
+     * 需移动超过阈值才触发，避免普通点击被误判为拖动窗口。
+     */
+    bindMainDrag() {
+        const main = this.el.viewMain;
+        if (!main || main.dataset.dragBound === '1') return;
+        main.dataset.dragBound = '1';
+        main.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return;
+            if (event.target.closest('button, input, textarea, select, a, label, .custom-select')) return;
+            const startX = event.screenX;
+            const startY = event.screenY;
+            const onMove = async (moveEvent) => {
+                const dx = Math.abs(moveEvent.screenX - startX);
+                const dy = Math.abs(moveEvent.screenY - startY);
+                if (dx < 4 && dy < 4) return;
+                cleanup();
+                try {
+                    await Neutralino.window.beginDrag(startX, startY);
+                } catch (error) {
+                    void Logger.warn('窗口拖动失败', { module: 'window', action: 'begin-drag-main' }, error);
+                }
+            };
+            const cleanup = () => {
+                document.removeEventListener('mousemove', onMove, true);
+                document.removeEventListener('mouseup', cleanup, true);
+            };
+            document.addEventListener('mousemove', onMove, true);
+            document.addEventListener('mouseup', cleanup, true);
+        });
     },
 
     /**
@@ -1466,7 +1604,7 @@ const UI = {
     },
 
     /** 构建导入配置的预览 HTML（所有动态内容均已转义） */
-    buildConfigPreview(config, source) {
+    buildConfigPreview(config, source, sectionsOnly = false) {
         const esc = (value) => this.escapeHtml(value);
         const currentVersion = String(window.NL_APPVERSION || '').trim();
         const fileVersion = String(config?.version || '').trim();
@@ -1557,20 +1695,15 @@ const UI = {
             item('底部颜色', config?.bottomColor),
             item('倒计时名称', config?.countdownName),
             item('目标日期', config?.countdownDate),
-            item('自定义 1', config?.customTexts?.one),
-            item('自定义 2', config?.customTexts?.two),
-            item('自定义 3', config?.customTexts?.three)
+            item('文本 1', config?.customTexts?.one),
+            item('文本 2', config?.customTexts?.two),
+            item('文本 3', config?.customTexts?.three)
         ].join('');
 
         const subjects = Array.isArray(config?.subjects) ? config.subjects : [];
         const subjectText = subjects.length ? subjects.slice(0, 12).join('、') + (subjects.length > 12 ? ` 等 ${subjects.length} 项` : '') : '';
 
-        return `
-            <div class="import-preview">
-                <div class="import-preview-meta">${meta}</div>
-                <div class="import-preview-legend">
-                    <i class="import-preview-critical-mark" aria-hidden="true">●</i>标记项为关键配置，导入后将覆盖当前设置
-                </div>
+        const sections = `
                 <div class="import-preview-section">
                     <div class="import-preview-title">天气配置<span>${esc(weather.apiHost ? '已配置' : '未配置')}</span></div>
                     <div class="import-preview-grid">${weatherGrid}</div>
@@ -1587,7 +1720,16 @@ const UI = {
                     <div class="import-preview-title">显示设置<span>${esc(subjectText ? `课程名称 ${subjects.length} 项` : '')}</span></div>
                     <div class="import-preview-grid">${displayGrid}</div>
                     ${subjectText ? `<div class="import-preview-list"><span class="import-preview-note">课程名称：${esc(subjectText)}</span></div>` : ''}
-                </div>
+                </div>`;
+        // 导出预览只需分区内容，不重复展示来源/版本等元信息
+        if (sectionsOnly) return sections;
+
+        return `
+            <div class="import-preview">
+                <div class="import-preview-meta">${meta}</div>
+                <div class="import-preview-legend">
+                    <i class="import-preview-critical-mark" aria-hidden="true">●</i>标记项为关键配置，导入后将覆盖当前设置
+                </div>${sections}
             </div>`;
     },
 
@@ -1786,14 +1928,74 @@ const UI = {
         }
     },
 
+    /**
+     * 按固定顺序整理导出数据，让导出的 JSON 结构可读、字段含义清晰。
+     * 未知字段统一追加在末尾，保证向后兼容不丢配置。
+     */
+    buildExportPayload(source) {
+        const clone = JSON.parse(JSON.stringify(source || {}));
+        const weather = clone.weather || {};
+        const jwt = weather.jwtConfig || {};
+        const customTexts = clone.customTexts || {};
+        // 按导出顺序组装：元信息 → 外观 → 课程表 → 天气 → 自定义文本
+        const payload = {
+            version: window.NL_APPVERSION || '',
+            exportedAt: new Date().toISOString(),
+            theme: clone.theme || 'default',
+            fontFamily: clone.fontFamily || '',
+            fontSizeScale: Math.max(80, Math.min(150, Number(clone.fontSizeScale) || 100)),
+            courseFont: clone.courseFont || '',
+            courseFontSize: Math.max(12, Math.min(32, Number(clone.courseFontSize) || 15)),
+            customBottomText: clone.customBottomText || '',
+            bottomFontSize: Math.max(8, Math.min(30, Number(clone.bottomFontSize) || 10)),
+            bottomColor: clone.bottomColor || '#64748b',
+            countdownName: clone.countdownName || '',
+            countdownDate: clone.countdownDate || '',
+            customTexts: {
+                one: customTexts.one || '',
+                two: customTexts.two || '',
+                three: customTexts.three || ''
+            },
+            weatherRefreshMinutes: Number(clone.weatherRefreshMinutes) || 10,
+            autoStart: clone.autoStart === true,
+            subjects: Array.isArray(clone.subjects) ? clone.subjects : [],
+            courses: clone.courses || {},
+            weather: {
+                apiHost: weather.apiHost || '',
+                location: weather.location || '',
+                realLocation: weather.realLocation || '',
+                jwtConfig: {
+                    kid: jwt.kid || '',
+                    sub: jwt.sub || '',
+                    iss: jwt.iss || '',
+                    privateKey: jwt.privateKey || ''
+                }
+            }
+        };
+        // 附录：保留模板/版本等未知字段，避免导出时丢失
+        const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'courseFont',
+            'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
+            'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather']);
+        Object.keys(clone).forEach((key) => {
+            if (!known.has(key)) payload[key] = clone[key];
+        });
+        return payload;
+    },
+
+    /** 导出预览：用与导入一致的分区卡片展示将要写入的配置（敏感字段脱敏） */
+    buildExportPreview(payload, path) {
+        const sections = this.buildConfigPreview(payload, path, true);
+        return `<div class="import-preview">
+            <div class="import-preview-legend">导出文件已按「外观 → 课程表 → 天气」的顺序整理，可直接分享或备份</div>
+            ${sections}
+            <div class="import-preview-path">保存位置：${this.escapeHtml(path)}</div>
+        </div>`;
+    },
+
     async exportConfig() {
         try {
             const inSettings = !this.el.viewSettings.classList.contains('hidden');
-            const configToExport = inSettings ? EditData : AppData;
-            const payload = {
-                version: window.NL_APPVERSION || '',
-                ...JSON.parse(JSON.stringify(configToExport))
-            };
+            const payload = this.buildExportPayload(inSettings ? EditData : AppData);
             const path = await Neutralino.os.showSaveDialog('导出 ClassBroom 配置', {
                 forceOverwrite: true,
                 defaultPath: 'classbroom-config.json',
@@ -1822,6 +2024,18 @@ const UI = {
                 }
                 if (!confirmed) return;
             }
+            // 导出前预览，避免把未确认的配置写进文件（设置页中的修改可能是未保存的草稿）
+            const confirmed = await Dialog.show({
+                title: '导出前预览',
+                html: this.buildExportPreview(payload, path),
+                wide: true,
+                type: 'info',
+                buttons: [
+                    { text: '取消', value: false },
+                    { text: '写入文件', value: true, primary: true }
+                ]
+            });
+            if (confirmed !== true) return;
             await Neutralino.filesystem.writeFile(path, JSON.stringify(payload, null, 2));
             void Logger.info('配置导出成功', { module: 'config', action: 'export', context: { filePath: path, version: payload.version } });
             if (!inSettings) await this.positionWindow(APP_CONFIG.settingsSize);
@@ -1862,6 +2076,8 @@ const UI = {
         this.el.inputFontFamily.value = EditData.fontFamily || '';
         this.el.inputFontSizeScale.value = EditData.fontSizeScale || 100;
         this.syncFontSizeScaleLabel();
+        this.syncRangeLabels();
+        this.updateFontPreview();
         // 同步自定义下拉的显示值（原生 select 已替换为自定义组件）
         CustomSelect.setValue('select-theme', this.el.inputTheme.value);
         CustomSelect.setValue('select-theme-main', this.el.inputTheme.value);
