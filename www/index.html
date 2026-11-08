@@ -377,6 +377,22 @@
   .about-meta { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
   .about-meta dt { color: var(--text-muted); font-weight: 700; }
   .about-meta dd { color: var(--text-main); }
+  /* 版本更新区块 */
+  .update-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .update-status { flex: 1; min-width: 180px; font-size: calc(13px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); }
+  .update-status.has-update { color: var(--accent-orange); }
+  .update-status.is-latest { color: var(--accent-cyan); }
+  .update-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .update-actions .btn { min-width: 92px; height: 34px; font-size: calc(12px * var(--fs-scale)); }
+  .update-dialog { display: flex; flex-direction: column; gap: 8px; }
+  .update-meta-line { color: var(--text-sub); font-size: 12px; line-height: 1.7; }
+  .update-meta-line b { color: var(--text-main); font-family: var(--font-mono); }
+  .update-notes {
+    max-height: 220px; overflow: auto; margin: 0; padding: 10px 12px;
+    border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-app);
+    color: var(--text-sub); font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  }
   .placeholder-help { color: var(--text-muted); font-size: calc(12px * var(--fs-scale)); line-height: 1.7; }
   .placeholder-details { margin-top: 8px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); }
   .placeholder-details summary { min-height: 44px; padding: 12px 14px; cursor: pointer; font-size: calc(13px * var(--fs-scale)); font-weight: 800; color: var(--text-main); }
@@ -480,6 +496,21 @@
   .onboarding-weather-open { align-self: flex-start; height: 28px; padding: 0 10px; font-size: 12px; }
 
   body.onboarding-active #view-main { opacity: 0; pointer-events: none; }
+  /* 引导弹窗需要整块可读：窗口已加高到 620px 时取消遮罩内边距压缩，
+     改为按内容宽度铺开并让正文自身滚动，避免底部勾选行与按钮被裁掉。 */
+  body.dialog-enlarged .app-dialog-mask { align-items: center; padding: 10px 0; }
+  body.dialog-enlarged .app-dialog.is-wide {
+    width: min(880px, calc(100% - 24px));
+    max-height: calc(100% - 20px);
+  }
+  body.dialog-enlarged .app-dialog-body { padding: 0 18px 6px; }
+  body.dialog-enlarged .app-dialog-header { padding: 10px 18px 6px; }
+  body.dialog-enlarged .app-dialog-footer { padding: 10px 18px 12px; }
+  /* 引导内容按两列排布，窗口高度有限时优先压缩纵向留白而不是裁掉按钮 */
+  body.dialog-enlarged .onboarding { gap: 10px; }
+  body.dialog-enlarged .onboarding-steps { gap: 8px; }
+  .onboarding-weather { min-width: 0; }
+  .onboarding-confirm { flex-wrap: wrap; line-height: 1.5; }
 
   .settings-guide { display: flex; flex-direction: column; gap: 6px; }
   .settings-guide ol { margin: 0; padding-left: 18px; line-height: 1.7; }
@@ -1150,6 +1181,19 @@
               <dt>说明</dt><dd>轻量级课程与天气桌面挂件</dd>
               <dt>数据位置</dt><dd>HKCU\Software\ClassBroom</dd>
             </dl>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">版本更新</h3>
+          <div class="settings-section-body">
+            <div class="update-row">
+              <div class="update-status" id="about-update-status">尚未检查更新</div>
+              <div class="update-actions">
+                <button id="btn-check-update" class="btn btn-secondary" type="button">检查更新</button>
+                <button id="btn-open-releases" class="btn btn-secondary" type="button">发布页</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>

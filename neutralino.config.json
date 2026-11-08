@@ -1,6 +1,10 @@
 {
   "applicationId": "com.junloye.classbroom",
-  "version": "1.3.0",
+  "version": "2.0.0",
+  "applicationName": "ClassBroom",
+  "description": "ClassBroom - 桌面课程与天气挂件",
+  "author": "JunLoye",
+  "copyright": "Copyright © 2026 JunLoye",
   "defaultMode": "window",
   "port": 0,
   "documentRoot": "/www/",

@@ -80,7 +80,10 @@ const APP_CONFIG = {
     maxWindowWidth: 1920,
     topOffset: 20,
     documentRoot: '/www/',
-    excludeDrag: ["btn-refresh", "btn-close", "btn-settings"]
+    excludeDrag: ["btn-refresh", "btn-close", "btn-settings"],
+    releasesApi: 'https://api.github.com/repos/JunLoye/ClassBroom/releases/latest',
+    releasesPage: 'https://github.com/JunLoye/ClassBroom/releases/latest',
+    updateCheckIntervalMs: 24 * 60 * 60 * 1000
 };
 
 const ICONS = {
@@ -450,6 +453,7 @@ const API = {
 const Dialog = {
     mask: null,
     resolveCurrent: null,
+    dismissible: true,
     ensure() {
         if (this.mask) return this.mask;
         this.mask = document.getElementById('app-dialog');
@@ -464,9 +468,10 @@ const Dialog = {
         return icons[type] || icons.info;
     },
 
-    show({ title = '提示', message = '', html = '', type = 'info', wide = false, buttons = [{ text: '知道了', value: true, primary: true }] } = {}) {
+    show({ title = '提示', message = '', html = '', type = 'info', wide = false, buttons = [{ text: '知道了', value: true, primary: true }], dismissible = true } = {}) {
         const mask = this.ensure();
         if (!mask) return Promise.resolve(null);
+        this.dismissible = dismissible !== false;
         if (this.resolveCurrent) {
             this.resolveCurrent(null);
             this.resolveCurrent = null;
@@ -513,6 +518,7 @@ const Dialog = {
             mask.classList.remove('active');
             mask.setAttribute('aria-hidden', 'true');
         }
+        this.dismissible = true;
         if (this.resolveCurrent) {
             this.resolveCurrent(value);
             this.resolveCurrent = null;
@@ -523,6 +529,7 @@ const Dialog = {
             if (!this.mask?.classList.contains('active')) return;
             if (event.key === 'Escape') {
                 event.preventDefault();
+                if (this.dismissible === false) return;
                 this.close(null);
             } else if (event.key === 'Enter') {
                 event.preventDefault();
@@ -547,40 +554,67 @@ const Dialog = {
     }
 };
 
-/**
- * 首次使用引导。
- * 首次启动（配置中无 onboardingCompleted 标记）时弹出，介绍界面组成并给出天气配置指引；
- * 用户完成勾选后可一键进入天气设置，或稍后再配置。
- */
 const Onboarding = {
     
     dialogWindowSize: { width: APP_CONFIG.windowSize.width, height: 620 },
+    active: false,
 
-    /**
-     * 展示引导并收尾。
-     * 弹窗渲染在主界面窗口内，因此需要先把窗口切到足够的高度，
-     * 结束后再按用户去向恢复主界面或进入设置页。
-     */
-    async start() {
-        await UI.animateWindowSize(this.dialogWindowSize, APP_CONFIG.topOffset);
-        // 加高后主界面会露出下方空白，隐藏面板主体避免干扰弹窗阅读
+    async start({ returnTab = null } = {}) {
+        const fromSettings = typeof returnTab === 'string' && returnTab.length > 0;
+        const previousSize = await UI.getCurrentSize().catch(() => null);
+        this.active = true;
         document.body.classList.add('onboarding-active');
-
-        const action = await this.showGuide();
-        document.body.classList.remove('onboarding-active');
-        AppData.onboardingCompleted = true;
-        AppData.onboardingCompletedAt = new Date().toISOString();
-        if (action === 'weather') {
-            await UI.openSettings(null, { tab: 'weather', guide: true });
-        } else {
-            await UI.showMainWindow();
-        }
+        document.body.classList.add('dialog-enlarged');
         try {
-            await Store.saveToRegistry(AppData);
-        } catch (error) {
-            void Logger.warn('保存引导完成状态失败', { module: 'onboarding', action: 'save' }, error);
+            await UI.animateWindowSize(this.dialogWindowSize, APP_CONFIG.topOffset);
+            UI.appliedMainWidth = APP_CONFIG.windowSize.width;
+
+            const action = await this.showGuide();
+            AppData.onboardingCompleted = true;
+            AppData.onboardingCompletedAt = new Date().toISOString();
+            if (action === 'weather') {
+                await UI.openSettings(null, { tab: 'weather', guide: true });
+            } else if (fromSettings) {
+                await UI.openSettings(null, { tab: returnTab });
+            } else {
+                await UI.showMainWindow();
+            }
+            try {
+                await Store.saveToRegistry(AppData);
+            } catch (error) {
+                void Logger.warn('保存引导完成状态失败', { module: 'onboarding', action: 'save' }, error);
+            }
+            void Logger.info('完成首次使用引导', { module: 'onboarding', action: 'complete', context: { action, fromSettings } });
+        } finally {
+            this.active = false;
+            document.body.classList.remove('onboarding-active');
+            document.body.classList.remove('dialog-enlarged');
+            if (!AppData.onboardingCompleted) {
+                await this.restoreWindow(previousSize, fromSettings, returnTab);
+            }
         }
-        void Logger.info('完成首次使用引导', { module: 'onboarding', action: 'complete', context: { action } });
+    },
+
+    async restoreWindow(previousSize, fromSettings, returnTab) {
+        const size = previousSize && previousSize.width && previousSize.height
+            ? { width: previousSize.width, height: previousSize.height }
+            : APP_CONFIG.windowSize;
+        try {
+            if (fromSettings) {
+                UI.el.viewMain.classList.add('hidden');
+                UI.el.viewSettings.classList.remove('hidden');
+                await UI.animateWindowSize(size);
+                await UI.setWindowDragRegion('settings');
+            } else {
+                UI.el.viewSettings.classList.add('hidden');
+                UI.el.viewMain.classList.remove('hidden');
+                UI.appliedMainWidth = size.width;
+                await UI.positionWindow(size, APP_CONFIG.topOffset);
+                await UI.setWindowDragRegion('main');
+            }
+        } catch (error) {
+            void Logger.warn('引导中断后恢复窗口失败', { module: 'onboarding', action: 'restore' }, error);
+        }
     },
 
     showGuide() {
@@ -628,8 +662,14 @@ const Onboarding = {
                 { text: '稍后再配置', value: 'later' },
                 { text: '开始配置天气', value: 'weather', primary: true }
             ];
-            const panel = Dialog.show({ title: '欢迎使用 ClassBroom', html, type: 'info', wide: true, buttons });
-            // 未勾选确认前不允许进入配置流程，避免用户跳过指引后找不到凭据
+            const panel = Dialog.show({
+                title: '欢迎使用 ClassBroom',
+                html,
+                type: 'info',
+                wide: true,
+                buttons,
+                dismissible: false
+            });
             const confirm = document.getElementById('onboarding-confirm');
             const primary = document.querySelector('#app-dialog-footer .btn-primary');
             if (confirm && primary) {
@@ -641,6 +681,139 @@ const Onboarding = {
             }
             panel.then((value) => resolve(typeof value === 'string' ? value : 'later'));
         });
+    }
+};
+
+const Updater = {
+    parseVersion(value) {
+        const text = String(value || '').trim().replace(/^v/i, '');
+        const match = text.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+        if (!match) return null;
+        return [match[1], match[2], match[3]].map((part) => Number(part || 0));
+    },
+
+    compareVersions(latest, current) {
+        const a = this.parseVersion(latest);
+        const b = this.parseVersion(current);
+        if (!a || !b) return 0;
+        for (let i = 0; i < 3; i += 1) {
+            if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
+        }
+        return 0;
+    },
+
+    /**
+     * 拉取最新发布信息。
+     * 先用 GitHub API 获取版本号与发布说明；接口失败（如限流）时回退到网页地址解析重定向版本号。
+     */
+    async fetchLatest() {
+        try {
+            const response = await fetch(APP_CONFIG.releasesApi, {
+                headers: { Accept: 'application/vnd.github+json' }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            return {
+                version: String(data.tag_name || data.name || '').trim(),
+                name: String(data.name || '').trim(),
+                notes: String(data.body || '').trim(),
+                url: String(data.html_url || APP_CONFIG.releasesPage),
+                publishedAt: data.published_at || null
+            };
+        } catch (error) {
+            void Logger.warn('GitHub API 获取版本失败，回退网页解析', { module: 'update', action: 'fetch-api' }, error);
+            // 回退：releases/latest 会 302 到具体 tag 页面
+            const response = await fetch(APP_CONFIG.releasesPage, { redirect: 'follow' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const finalUrl = response.url || '';
+            const tagMatch = finalUrl.match(/\/tag\/([^/?#]+)/);
+            if (!tagMatch) throw new Error('无法解析最新版本号');
+            return {
+                version: decodeURIComponent(tagMatch[1]),
+                name: '',
+                notes: '',
+                url: finalUrl,
+                publishedAt: null
+            };
+        }
+    },
+
+    /** 输出检查结果并向调用方返回是否为新版本 */
+    async check({ silent = false } = {}) {
+        const current = String(window.NL_APPVERSION || '').trim();
+        AppData.lastUpdateCheckAt = new Date().toISOString();
+        try {
+            const latest = await this.fetchLatest();
+            const delta = this.compareVersions(latest.version, current);
+            AppData.latestKnownVersion = latest.version;
+            const hasUpdate = delta > 0;
+            void Logger.info('版本检查完成', {
+                module: 'update',
+                action: 'check',
+                context: { current, latest: latest.version, hasUpdate }
+            });
+            if (hasUpdate && !silent) await this.promptUpdate(latest, current);
+            return hasUpdate;
+        } catch (error) {
+            void Logger.warn('版本检查失败', { module: 'update', action: 'check' }, error);
+            if (!silent) await Dialog.alert(`无法获取最新版本信息。\n${error.message || error}`, '检查更新失败', 'warning');
+            return false;
+        } finally {
+            try {
+                await Store.saveToRegistry(AppData);
+            } catch (error) {
+                void Logger.warn('保存检查时间失败', { module: 'update', action: 'persist' }, error);
+            }
+            if (typeof UI !== 'undefined') UI.renderAboutUpdateState();
+        }
+    },
+
+    /** 展示新版本信息并引导前往发布页 */
+    async promptUpdate(latest, current) {
+        const notes = latest.notes
+            ? `<pre class="update-notes">${this.escapeHtml(latest.notes.slice(0, 1200))}</pre>`
+            : '<div class="update-meta-line">该版本未提供更新说明。</div>';
+        const html = `
+            <div class="update-dialog">
+                <div class="update-meta-line">当前版本 <b>v${this.escapeHtml(current || '未知')}</b> → 最新版本 <b>v${this.escapeHtml(latest.version)}</b></div>
+                ${notes}
+            </div>`;
+        const go = await Dialog.show({
+            title: '发现新版本',
+            html,
+            wide: true,
+            type: 'info',
+            buttons: [
+                { text: '稍后提醒', value: false },
+                { text: '前往下载', value: true, primary: true }
+            ]
+        });
+        if (go === true) await this.openReleasePage(latest.url);
+    },
+
+    async openReleasePage(url) {
+        try {
+            await Neutralino.os.open(url || APP_CONFIG.releasesPage);
+        } catch (error) {
+            void Logger.error('打开发布页失败', { module: 'update', action: 'open' }, error);
+            await Dialog.alert('无法打开浏览器，请手动访问：\n' + (url || APP_CONFIG.releasesPage), '打开失败', 'warning');
+        }
+    },
+
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    /** 启动后静默检查：未到间隔时间则跳过 */
+    scheduleStartupCheck(delay = 6000) {
+        const last = Date.parse(AppData.lastUpdateCheckAt || '') || 0;
+        if (Date.now() - last < APP_CONFIG.updateCheckIntervalMs) return;
+        setTimeout(() => { void this.check({ silent: true }); }, delay);
     }
 };
 
@@ -881,6 +1054,9 @@ const UI = {
         inputNewSubject: document.getElementById('input-new-subject'),
         btnAddSubject: document.getElementById('btn-add-subject'),
         aboutVersion: document.getElementById('about-version'),
+        updateStatus: document.getElementById('about-update-status'),
+        btnCheckUpdate: document.getElementById('btn-check-update'),
+        btnOpenReleases: document.getElementById('btn-open-releases'),
         daySelector: document.getElementById('day-selector'),
         courseList: document.getElementById('course-list'),
 
@@ -905,6 +1081,19 @@ const UI = {
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
         this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
         this.el.btnExportConfig.addEventListener('click', () => this.exportConfig());
+        this.el.btnCheckUpdate?.addEventListener('click', async () => {
+            const button = this.el.btnCheckUpdate;
+            button.disabled = true;
+            this.setUpdateStatus('正在检查更新…');
+            try {
+                const hasUpdate = await Updater.check({ silent: false });
+                if (!hasUpdate) this.setUpdateStatus(`已是最新版本 v${window.NL_APPVERSION || '--'}`, 'is-latest');
+            } finally {
+                button.disabled = false;
+                this.renderAboutUpdateState();
+            }
+        });
+        this.el.btnOpenReleases?.addEventListener('click', () => Updater.openReleasePage());
         window.addEventListener('dragenter', (event) => this.handleDragEnter(event));
         window.addEventListener('dragover', (event) => this.handleDragOver(event));
         window.addEventListener('dragleave', (event) => this.handleDragLeave(event));
@@ -917,8 +1106,10 @@ const UI = {
             });
         });
         this.el.btnRestartGuide?.addEventListener('click', async () => {
-            await this.closeSettings({ silent: true });
-            await Onboarding.start();
+            // 重开引导：先让设置页内容继续挂载，仅隐藏窗口视图，避免宽度测量把引导窗口改窄
+            this.el.viewSettings.classList.add('hidden');
+            this.el.viewMain.classList.add('hidden');
+            await Onboarding.start({ returnTab: 'about' });
         });
 
         this.renderDaySelector();
@@ -1236,6 +1427,30 @@ const UI = {
         return AppData.showBottomText !== false;
     },
 
+    /** 设置关于页的更新状态文本与配色 */
+    setUpdateStatus(text, state = '') {
+        const el = this.el.updateStatus;
+        if (!el) return;
+        el.textContent = text;
+        el.classList.remove('has-update', 'is-latest');
+        if (state) el.classList.add(state);
+    },
+
+    /** 根据缓存的检查结果刷新关于页状态（不发请求） */
+    renderAboutUpdateState() {
+        const current = String(window.NL_APPVERSION || '').trim();
+        const latest = String(AppData.latestKnownVersion || '').trim();
+        if (!latest) {
+            this.setUpdateStatus(current ? `当前版本 v${current}` : '尚未检查更新');
+            return;
+        }
+        if (Updater.compareVersions(latest, current) > 0) {
+            this.setUpdateStatus(`发现新版本 v${latest}（当前 v${current || '未知'}）`, 'has-update');
+        } else {
+            this.setUpdateStatus(`已是最新版本 v${current || latest}`, 'is-latest');
+        }
+    },
+
     updateFontPreview() {
         const ui = this.el.fontPreviewUi;
         const course = this.el.fontPreviewCourse;
@@ -1327,6 +1542,18 @@ const UI = {
         if (top !== undefined) {
             const centeredPosition = await Neutralino.window.getPosition();
             await Neutralino.window.move(centeredPosition.x ?? 0, top);
+        }
+    },
+
+    /** 读取当前窗口尺寸，失败时返回 null 以便调用方回退到默认尺寸 */
+    async getCurrentSize() {
+        try {
+            const size = await Neutralino.window.getSize();
+            const width = Math.round(Number(size?.width) || 0);
+            const height = Math.round(Number(size?.height) || 0);
+            return width > 0 && height > 0 ? { width, height } : null;
+        } catch (error) {
+            return null;
         }
     },
 
@@ -1428,34 +1655,65 @@ const UI = {
         }, delay);
     },
 
+    windowTransition: null,
+    windowTransitionToken: 0,
+
     async animateWindowSize(targetSize, top, steps = 12, frameMs = 12) {
+        const token = ++this.windowTransitionToken;
+        if (this.windowTransition) await this.windowTransition.catch(() => { });
+        const run = (async () => {
+            try {
+                const current = await Neutralino.window.getSize();
+                const fromWidth = Number(current.width) || targetSize.width;
+                const fromHeight = Number(current.height) || targetSize.height;
+                const toWidth = Number(targetSize.width);
+                const toHeight = Number(targetSize.height);
+                if (fromWidth === toWidth && fromHeight === toHeight) {
+                    if (top !== undefined) await this.positionWindow(targetSize, top);
+                    return;
+                }
+                for (let i = 1; i <= steps; i += 1) {
+                    if (token !== this.windowTransitionToken) return;
+                    const t = i / steps;
+                    const ease = 1 - Math.pow(1 - t, 3);
+                    const width = Math.round(fromWidth + (toWidth - fromWidth) * ease);
+                    const height = Math.round(fromHeight + (toHeight - fromHeight) * ease);
+                    await Neutralino.window.setSize({ width, height });
+                    await new Promise((resolve) => setTimeout(resolve, frameMs));
+                }
+            } catch (error) {
+            }
+            if (token !== this.windowTransitionToken) return;
+            await this.positionWindow(targetSize, top);
+        })();
+        this.windowTransition = run;
         try {
-            const current = await Neutralino.window.getSize();
-            const fromWidth = Number(current.width) || targetSize.width;
-            const fromHeight = Number(current.height) || targetSize.height;
-            const toWidth = Number(targetSize.width);
-            const toHeight = Number(targetSize.height);
-            if (fromWidth === toWidth && fromHeight === toHeight) {
-                if (top !== undefined) await this.positionWindow(targetSize, top);
-                return;
-            }
-            for (let i = 1; i <= steps; i += 1) {
-                const t = i / steps;
-                const ease = 1 - Math.pow(1 - t, 3);
-                const width = Math.round(fromWidth + (toWidth - fromWidth) * ease);
-                const height = Math.round(fromHeight + (toHeight - fromHeight) * ease);
-                await Neutralino.window.setSize({ width, height });
-                await new Promise((resolve) => setTimeout(resolve, frameMs));
-            }
-        } catch (error) {
+            await run;
+        } finally {
+            if (this.windowTransition === run) this.windowTransition = null;
         }
-        await this.positionWindow(targetSize, top);
     },
 
+    windowVisible: true,
+
     hideMainWindow(source = 'unknown') {
+        // 引导未完成时不允许隐藏窗口，否则托盘重新调出后引导状态与窗口尺寸会错乱
+        if (typeof Onboarding !== 'undefined' && Onboarding.active) {
+            void Logger.info(`忽略隐藏主窗口请求（引导进行中）: ${source}`, { module: 'window', action: 'hide-skip' });
+            try { void Neutralino.window.focus(); } catch (error) { }
+            return;
+        }
         void Logger.info(`隐藏主窗口: ${source}`);
+        const apply = () => {
+            this.windowVisible = false;
+            this.scheduleTrayUpdate(60);
+        };
         try {
-            void Neutralino.window.hide();
+            const task = Neutralino.window.hide();
+            if (task && typeof task.then === 'function') task.then(apply).catch((error) => {
+                void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide' }, error);
+            });
+            else apply();
         } catch (error) {
             void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide' }, error);
         }
@@ -1469,6 +1727,8 @@ const UI = {
         await this.setWindowDragRegion('main');
         await Neutralino.window.show();
         await Neutralino.window.focus();
+        this.windowVisible = true;
+        this.scheduleTrayUpdate(60);
         this.scheduleFitWindow(200);
     },
 
@@ -1495,10 +1755,15 @@ const UI = {
                         break;
                     case 'settings':
                         await Neutralino.window.show();
+                        this.windowVisible = true;
                         await this.openSettings();
+                        this.scheduleTrayUpdate(60);
                         break;
                     case 'refresh':
                         await this.handleRefresh();
+                        break;
+                    case 'check-update':
+                        await Updater.check({ silent: false });
                         break;
                     case 'autostart':
                         await this.toggleAutoStart();
@@ -1526,11 +1791,20 @@ const UI = {
     },
 
     async updateTrayMenu() {
+        const visible = this.windowVisible === true;
         const menuItems = [
-            { id: 'show', text: '显示主界面' },
-            { id: 'hide', text: '隐藏主界面' },
+            ...(visible
+                ? [
+                    { id: 'show', text: '显示主界面', isDisabled: true },
+                    { id: 'hide', text: '隐藏主界面' }
+                ]
+                : [
+                    { id: 'show', text: '显示主界面' },
+                    { id: 'hide', text: '隐藏主界面', isDisabled: true }
+                ]),
             { id: 'settings', text: '设置' },
             { id: 'refresh', text: '刷新' },
+            { id: 'check-update', text: '检查更新' },
             { id: 'autostart', text: '开机自启', isChecked: AppData.autoStart === true },
             { id: 'exit', text: '退出' }
         ];
@@ -2047,6 +2321,7 @@ const UI = {
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
             'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
             'bottomAlign', 'bottomOffset', 'showWeather', 'showTimeline', 'showBottomText',
+            'lastUpdateCheckAt', 'latestKnownVersion',
             'onboardingCompleted', 'onboardingCompletedAt']);
         Object.keys(clone).forEach((key) => {
             if (!known.has(key)) payload[key] = clone[key];
@@ -2165,6 +2440,7 @@ const UI = {
         this.el.inputCustomThree.value = EditData.customTexts?.three || '';
         this.renderSubjectList();
         if (this.el.aboutVersion) this.el.aboutVersion.textContent = window.NL_APPVERSION || '--';
+        this.renderAboutUpdateState();
 
         this.renderCourseList(); 
 
@@ -2884,6 +3160,7 @@ const App = {
         this.startRefreshTimers();
         await this.refreshWeather();
         void Logger.info('应用初始化完成', { module: 'lifecycle', action: 'init' });
+        Updater.scheduleStartupCheck();
         // 首次使用：引导天气配置与基本操作；老用户配置中已有完成标记则跳过
         if (AppData.onboardingCompleted !== true) {
             await Onboarding.start();
@@ -2920,6 +3197,17 @@ const App = {
         UI.stopClock();
         clearInterval(this.courseRefreshTimer);
         clearInterval(this.weatherRefreshTimer);
+        clearTimeout(UI.trayUpdateTimer);
+        clearTimeout(UI.fitWidthTimer);
+        clearTimeout(UI.weatherRemeasureTimer);
+        UI.windowTransitionToken += 1;
+        // 先移除托盘图标再退出，否则系统托盘中可能残留已失效的图标
+        try {
+            await Neutralino.os.setTray({ menuItems: [] });
+            await Neutralino.os.setTray({});
+        } catch (error) {
+            void Logger.warn('移除托盘图标失败', { module: 'tray', action: 'remove' }, error);
+        }
         await Logger.info('应用退出', { module: 'lifecycle', action: 'shutdown' });
         await Neutralino.app.exit();
     },
