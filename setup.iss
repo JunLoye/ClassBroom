@@ -1,7 +1,7 @@
 [Setup]
 AppId=ClassBroom
 AppName=ClassBroom
-AppVersion=2.0.0
+AppVersion=2.1.0
 VersionInfoDescription=ClassBroom - 桌面课程与天气挂件
 VersionInfoProductName=ClassBroom
 VersionInfoCompany=JunLoye
@@ -17,7 +17,7 @@ DefaultGroupName=ClassBroom
 DisableProgramGroupPage=yes
 
 OutputDir=installer
-OutputBaseFilename=ClassBroom-Setup-v2.0.0
+OutputBaseFilename=ClassBroom-Setup-v2.1.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -37,6 +37,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "dist\classbroom\classbroom-win_x64.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\classbroom\classbroom-crypto.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\classbroom\resources.neu"; DestDir: "{app}"; Flags: ignoreversion
 Source: "www\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "www\tray.ico"; DestDir: "{app}"; Flags: ignoreversion

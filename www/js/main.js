@@ -11,7 +11,7 @@ const AutoFillGuard = {
         if (this.skipTypes.test(type)) return;
         if (element.hasAttribute('name')) element.removeAttribute('name');
         if (tag === 'INPUT' && (type === 'password' || type === 'email')) {
-            element.setAttribute('type', 'text');
+            if (type !== 'password' || !element.hasAttribute('data-secret')) element.setAttribute('type', 'text');
         }
         const isTextLike = tag === 'TEXTAREA' || /^(text|search|url|tel|)$/i.test(type);
         const wanted = isTextLike ? 'new-password' : 'off';
@@ -83,6 +83,12 @@ const APP_CONFIG = {
     excludeDrag: ["btn-refresh", "btn-close", "btn-settings"],
     releasesApi: 'https://api.github.com/repos/JunLoye/ClassBroom/releases/latest',
     releasesPage: 'https://github.com/JunLoye/ClassBroom/releases/latest',
+    weatherProviders: {
+        qweather: { label: '和风天气', url: 'https://console.qweather.com/' },
+        openMeteo: { label: 'Open-Meteo', url: 'https://open-meteo.com/en/docs' },
+        weatherApi: { label: 'WeatherAPI.com', url: 'https://www.weatherapi.com/my/' },
+        openWeatherMap: { label: 'OpenWeatherMap', url: 'https://home.openweathermap.org/api_keys' }
+    },
     updateCheckIntervalMs: 24 * 60 * 60 * 1000
 };
 
@@ -100,10 +106,270 @@ const Base64Util = {
 const REG_PATH = 'HKCU\\Software\\ClassBroom';
 const REG_KEY = 'ConfigData';
 
+const FORMAT_VERSION = 2;
+const SENSITIVE_WEATHER_FIELDS = ['apiHost', 'location', 'apiKey'];
+const SENSITIVE_JWT_FIELDS = ['privateKey'];
+
 let AppData = { weather: {}, courses: {} };
 let EditData = {}; 
 let CurrentEditDay = 'mon';
 let CurrentEditCourseIndex = null;
+
+const SecretVault = {
+    WRAP_KEY_NAME: 'cb.vault.wrap',
+    BACKEND_NAMES: { Windows: ['classbroom-crypto.exe'] },
+    masterKey: null,
+    backendPath: null,
+    secrets: new Map(),
+
+    toBase64(buffer) {
+        let binary = '';
+        for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte);
+        return btoa(binary);
+    },
+
+    fromBase64(text) {
+        const binary = atob(text);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    },
+
+    async getKey() {
+        if (this.masterKey) return this.masterKey;
+        this.masterKey = await this.unwrapSessionKey() || await this.createSessionKey();
+        return this.masterKey;
+    },
+
+    async createSessionKey() {
+        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+        const wrapKey = crypto.getRandomValues(new Uint8Array(32));
+        const kek = await crypto.subtle.importKey('raw', wrapKey, 'AES-GCM', false, ['wrapKey', 'unwrapKey']);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const wrapped = await crypto.subtle.wrapKey('raw', key, kek, { name: 'AES-GCM', iv });
+        const payload = { dt: this.toBase64(wrapKey), iv: this.toBase64(iv), dk: this.toBase64(wrapped) };
+        const payloadCipher = await this.aesEncrypt(wrapKey, JSON.stringify(payload), crypto.getRandomValues(new Uint8Array(12)));
+        const stored = await this.callBackend('encrypt', JSON.stringify(payloadCipher));
+        if (stored) {
+            try { sessionStorage.setItem(this.WRAP_KEY_NAME, JSON.stringify({ dpapi: stored })); } catch (error) { }
+        }
+        return key;
+    },
+
+    async unwrapSessionKey() {
+        let record;
+        try {
+            const stored = sessionStorage.getItem(this.WRAP_KEY_NAME);
+            if (!stored) return null;
+            record = JSON.parse(stored);
+        } catch (error) {
+            return null;
+        }
+        try {
+            if (typeof record.dpapi !== 'string' || !record.dpapi) return null;
+            const inner = await this.callBackend('decrypt', record.dpapi);
+            if (!inner) return null;
+            const payload = JSON.parse(inner);
+            const kek = await crypto.subtle.importKey('raw', this.fromBase64(payload.dt), 'AES-GCM', false, ['unwrapKey']);
+            return await crypto.subtle.unwrapKey('raw', this.fromBase64(payload.dk), kek, { name: 'AES-GCM', iv: this.fromBase64(payload.iv) }, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+        } catch (error) {
+            try { sessionStorage.removeItem(this.WRAP_KEY_NAME); } catch (ignored) { }
+            return null;
+        }
+    },
+
+    async aesEncrypt(key, plain, iv) {
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+        return { alg: 'AES-GCM', iv: this.toBase64(iv), data: this.toBase64(cipher) };
+    },
+
+    resolveBackendPath() {
+        if (this.backendPath) return this.backendPath;
+        const candidates = [];
+        const cwd = typeof window.NL_CWD === 'string' ? window.NL_CWD : '';
+        const resources = typeof window.NL_PATH === 'string' ? window.NL_PATH : '';
+        const documentRoot = String(APP_CONFIG?.documentRoot || '/www/').replace(/^\/+|\/+$/g, '');
+        const names = this.BACKEND_NAMES[window.NL_OS] || [];
+        const bases = [resources, cwd].filter(Boolean);
+        for (const base of bases) {
+            for (const name of names) {
+                const separator = base.includes('\\') ? '\\' : '/';
+                candidates.push(`${base.replace(/[\\/]+$/, '')}${separator}${name}`);
+            }
+        }
+        for (const base of bases) {
+            for (const name of names) {
+                const separator = base.includes('\\') ? '\\' : '/';
+                candidates.push(`${base.replace(/[\\/]+$/, '')}${separator}backend${separator}${name}`);
+                candidates.push(`${base.replace(/[\\/]+$/, '')}${separator}${documentRoot}${separator}backend${separator}${name}`);
+            }
+        }
+        this.backendPath = candidates.find((candidate) => typeof candidate === 'string' && candidate.length > 0) || null;
+        return this.backendPath;
+    },
+
+    async callBackend(mode, payload) {
+        const path = this.resolveBackendPath();
+        if (!path) return null;
+        try {
+            const exists = await Neutralino.filesystem.getStats(path);
+            if (!exists?.isFile) return null;
+        } catch (error) {
+            return null;
+        }
+        try {
+            const command = `"${path.replace(/"/g, '""')}" ${mode}`;
+            const result = await Neutralino.os.execCommand(command, { stdIn: String(payload) });
+            if (result.exitCode !== 0) return null;
+            const parsed = JSON.parse(String(result.stdOut || '').trim() || '{}');
+            return typeof parsed.data === 'string' ? parsed.data : null;
+        } catch (error) {
+            return null;
+        }
+    },
+
+    async sealRecord(plain) {
+        const protectedPlain = await this.callBackend('encrypt', plain);
+        if (typeof protectedPlain === 'string' && protectedPlain.length) {
+            return { alg: 'DPAPI', dpapi: protectedPlain };
+        }
+        const key = await this.getKey();
+        const record = await this.aesEncrypt(key, plain, crypto.getRandomValues(new Uint8Array(12)));
+        const wrapped = await this.callBackend('encrypt', JSON.stringify(record));
+        if (typeof wrapped === 'string' && wrapped.length) record.dpapi = wrapped;
+        return record;
+    },
+
+    async openRecord(record) {
+        if (record?.alg === 'DPAPI' && typeof record.dpapi === 'string' && record.dpapi.length) {
+            return await this.callBackend('decrypt', record.dpapi);
+        }
+        if (!record || typeof record.data !== 'string') return null;
+        let source = record;
+        if (typeof record.dpapi === 'string' && record.dpapi.length) {
+            const inner = await this.callBackend('decrypt', record.dpapi);
+            if (inner) {
+                try { source = JSON.parse(inner); } catch (error) { source = record; }
+            }
+        }
+        const key = await this.getKey();
+        const plain = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: this.fromBase64(source.iv) },
+            key,
+            this.fromBase64(source.data)
+        );
+        return new TextDecoder().decode(plain);
+    },
+
+    async encryptText(text) {
+        if (typeof text !== 'string' || !text) return null;
+        try {
+            return await this.sealRecord(text);
+        } catch (error) {
+            void Logger.warn('敏感字段加密失败', { module: 'vault', action: 'encrypt' }, error);
+            return null;
+        }
+    },
+
+    async decryptText(record) {
+        if (!record || typeof record !== 'object') return '';
+        try {
+            return await this.openRecord(record) || '';
+        } catch (error) {
+            void Logger.warn('敏感字段解密失败', { module: 'vault', action: 'decrypt' }, error);
+            return '';
+        }
+    },
+
+    remember(kind, value) {
+        if (typeof value !== 'string' || !value) {
+            this.secrets.delete(kind);
+            return;
+        }
+        this.secrets.set(kind, value);
+    },
+
+    recall(kind) {
+        return this.secrets.get(kind) || '';
+    },
+
+    clearSecrets() {
+        this.secrets.clear();
+    },
+
+    reset() {
+        this.masterKey = null;
+        this.secrets.clear();
+        try { sessionStorage.removeItem(this.WRAP_KEY_NAME); } catch (error) { }
+    },
+
+    async sealConfig(config) {
+        if (!config || typeof config !== 'object') return config;
+        const clone = JSON.parse(JSON.stringify(config));
+        clone.v = FORMAT_VERSION;
+        const weather = clone.weather && typeof clone.weather === 'object' ? clone.weather : (clone.weather = {});
+        const jwt = weather.jwtConfig && typeof weather.jwtConfig === 'object' ? weather.jwtConfig : (weather.jwtConfig = {});
+
+        const sealField = async (target, field, kind) => {
+            const value = target[field];
+            if (typeof value === 'string' && value) {
+                this.remember(kind, value);
+            } else if (value && typeof value === 'object') {
+                const plain = await this.decryptText(value);
+                if (plain) this.remember(kind, plain);
+            }
+            const plain = this.recall(kind);
+            if (!plain) return;
+            const sealed = await this.encryptText(plain);
+            if (sealed) target[field] = sealed;
+        };
+
+        for (const field of SENSITIVE_WEATHER_FIELDS) await sealField(weather, field, `weather:${field}`);
+        for (const field of SENSITIVE_JWT_FIELDS) await sealField(jwt, field, `jwt:${field}`);
+        for (const [provider, providerConfig] of Object.entries(weather.providers || {})) {
+            if (!providerConfig || typeof providerConfig !== 'object') continue;
+            await sealField(providerConfig, 'apiHost', `weather:${provider}:apiHost`);
+            await sealField(providerConfig, 'apiKey', `weather:${provider}:apiKey`);
+            if (!providerConfig.jwtConfig || typeof providerConfig.jwtConfig !== 'object') providerConfig.jwtConfig = {};
+            await sealField(providerConfig.jwtConfig, 'privateKey', `jwt:${provider}:privateKey`);
+        }
+        return clone;
+    },
+
+    async unsealConfig(config) {
+        if (!config || typeof config !== 'object') return config;
+        const clone = JSON.parse(JSON.stringify(config));
+        delete clone.v;
+        const weather = clone.weather && typeof clone.weather === 'object' ? clone.weather : (clone.weather = {});
+        const jwt = weather.jwtConfig && typeof weather.jwtConfig === 'object' ? weather.jwtConfig : (weather.jwtConfig = {});
+
+        const restore = async (target, field, kind, redact = false) => {
+            const value = target[field];
+            if (value && typeof value === 'object') {
+                const plain = await this.decryptText(value);
+                if (plain) {
+                    target[field] = redact ? '' : plain;
+                    this.remember(kind, plain);
+                    return;
+                }
+            }
+            const plain = this.recall(kind);
+            target[field] = redact ? '' : plain;
+        };
+
+        for (const field of SENSITIVE_WEATHER_FIELDS) await restore(weather, field, `weather:${field}`);
+        for (const field of SENSITIVE_JWT_FIELDS) await restore(jwt, field, `jwt:${field}`);
+        for (const [provider, providerConfig] of Object.entries(weather.providers || {})) {
+            if (!providerConfig || typeof providerConfig !== 'object') continue;
+            await restore(providerConfig, 'apiHost', `weather:${provider}:apiHost`, true);
+            await restore(providerConfig, 'apiKey', `weather:${provider}:apiKey`, true);
+            if (!providerConfig.jwtConfig || typeof providerConfig.jwtConfig !== 'object') providerConfig.jwtConfig = {};
+            await restore(providerConfig.jwtConfig, 'privateKey', `jwt:${provider}:privateKey`, true);
+        }
+        return clone;
+    }
+};
+
 
 const Logger = {
     logPath: null,
@@ -144,7 +410,7 @@ const Logger = {
     },
     sanitize(value) {
         if (!value || typeof value !== 'object') return value;
-        const sensitiveKeys = /private.?key|password|token|secret|credential/i;
+        const sensitiveKeys = /private.?key|api.?key|password|token|secret|credential|apihost|location|^sub$|^iss$|^kid$/i;
         return JSON.parse(JSON.stringify(value, (key, item) => sensitiveKeys.test(key) ? '[REDACTED]' : item));
     },
     async write(level, message, context = {}, error = null) {
@@ -200,6 +466,13 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 const Store = {
+    async getConfigPath() {
+        try {
+            return await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, 'config.json');
+        } catch (error) {
+            return 'config.json';
+        }
+    },
     async init() {
         if (window.NL_OS === 'Windows') {
             try {
@@ -207,23 +480,40 @@ const Store = {
                 if (res.exitCode === 0) {
                     const match = res.stdOut.match(new RegExp(`${REG_KEY}\\s+REG_SZ\\s+(.+)`));
                     if (match && match[1]) {
-                        AppData = JSON.parse(Base64Util.decode(match[1].trim()));
+                        const raw = JSON.parse(Base64Util.decode(match[1].trim()));
+                        const legacy = raw.v !== FORMAT_VERSION;
+                        AppData = await SecretVault.unsealConfig(raw);
+                        if (legacy) await this.saveToRegistry(AppData);
                         return;
                     }
                 }
             } catch (e) { }
         }
         try {
-            const str = await Neutralino.filesystem.readFile('config.json');
-            AppData = JSON.parse(str);
-            if (window.NL_OS === 'Windows') await this.saveToRegistry(AppData);
+            let configPath = await this.getConfigPath();
+            let str;
+            try {
+                str = await Neutralino.filesystem.readFile(configPath);
+            } catch (error) {
+                if (configPath === 'config.json') throw error;
+                configPath = 'config.json';
+                str = await Neutralino.filesystem.readFile(configPath);
+            }
+            const raw = JSON.parse(str);
+            const legacy = raw.v !== FORMAT_VERSION;
+            AppData = await SecretVault.unsealConfig(raw);
+            if (legacy || configPath === 'config.json') await this.saveToRegistry(AppData);
         } catch (e) {
             AppData = { weather: { jwtConfig: {} }, courses: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
         }
     },
     async saveToRegistry(data) {
-        if (window.NL_OS !== 'Windows') return Neutralino.filesystem.writeFile('config.json', JSON.stringify(data, null, 2));
-        const b64Str = Base64Util.encode(JSON.stringify(data));
+        const sealed = await SecretVault.sealConfig(data);
+        if (window.NL_OS !== 'Windows') {
+            const configPath = await this.getConfigPath();
+            return Neutralino.filesystem.writeFile(configPath, JSON.stringify(sealed, null, 2));
+        }
+        const b64Str = Base64Util.encode(JSON.stringify(sealed));
         const res = await Neutralino.os.execCommand(`reg add "${REG_PATH}" /v ${REG_KEY} /t REG_SZ /d "${b64Str}" /f`);
         if (res.exitCode !== 0) throw new Error(res.stdErr);
     },
@@ -394,7 +684,7 @@ const API = {
         for (let i = 0; i < binaryDerString.length; i++) binaryDer[i] = binaryDerString.charCodeAt(i);
         return await window.crypto.subtle.importKey("pkcs8", binaryDer.buffer, { name: "Ed25519" }, false, ["sign"]);
     },
-    async generateJWT(jwtConfig) {
+    async generateJWT(jwtConfig, privateKey = SecretVault.recall('jwt:privateKey')) {
         const header = { alg: "EdDSA", kid: jwtConfig.kid };
         const iat = Math.floor(Date.now() / 1000) - 30;
         const exp = iat + 900;
@@ -402,50 +692,115 @@ const API = {
         const encodedHeader = this.base64url(new TextEncoder().encode(JSON.stringify(header)));
         const encodedPayload = this.base64url(new TextEncoder().encode(JSON.stringify(payload)));
         const dataToSign = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`);
-        const cryptoKey = await this.importPrivateKey(jwtConfig.privateKey);
+        if (!privateKey) throw new Error('私钥不可用');
+        const cryptoKey = await this.importPrivateKey(privateKey);
         const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, cryptoKey, dataToSign);
         return `${encodedHeader}.${encodedPayload}.${this.base64url(signature)}`;
     },
+    getCoordinates(config) {
+        const [longitude, latitude] = String(config.location || '').split(',').map((value) => Number(value.trim()));
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            throw new Error('经纬度无效');
+        }
+        return { latitude, longitude };
+    },
+    compassFromDegrees(degrees) {
+        if (degrees === null || degrees === undefined || degrees === '' || !Number.isFinite(Number(degrees))) return '';
+        return ['北', '东北', '东', '东南', '南', '西南', '西', '西北'][Math.round((Number(degrees) % 360) / 45) % 8];
+    },
+    async fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`天气服务请求失败（${response.status}）`);
+        return response.json();
+    },
+    async searchLocations(query) {
+        const params = new URLSearchParams({ name: query, count: '8', language: 'zh', format: 'json' });
+        const data = await this.fetchJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+        return Array.isArray(data.results) ? data.results : [];
+    },
+    async fetchQWeather(config) {
+        if (!config.apiHost || !SecretVault.recall('jwt:privateKey')) return this.notConfigured();
+        const { latitude, longitude } = this.getCoordinates(config);
+        const baseUrl = `https://${config.apiHost}`;
+        const token = await this.generateJWT(config.jwtConfig || {}, SecretVault.recall('jwt:qweather:privateKey') || SecretVault.recall('jwt:privateKey'));
+        const headers = { Authorization: `Bearer ${token}` };
+        const [weather, alerts] = await Promise.all([
+            this.fetchJson(`${baseUrl}/weather/v1/current/${latitude}/${longitude}`, { headers }),
+            fetch(`${baseUrl}/weatheralert/v1/current/${latitude}/${longitude}`, { headers })
+        ]);
+        const condition = weather.condition?.text || '未知';
+        const windDirection = weather.wind?.direction?.compass?.toLowerCase();
+        const compass = { n: '北', ne: '东北', e: '东', se: '东南', s: '南', sw: '西南', w: '西', nw: '西北' }[windDirection];
+        const wind = weather.wind?.scale !== undefined ? `${weather.wind.scale}级` : '';
+        let warning = null;
+        if (alerts.ok) {
+            const data = await alerts.json();
+            const latest = data.alerts?.[0];
+            if (!data.metadata?.zeroResult && latest) {
+                warning = { hasWarning: true, event: latest.eventType?.name || '预警', headline: latest.headline || '', severity: latest.severity || 'unknown', color: latest.color?.code || 'unknown' };
+            }
+        }
+        const temperature = weather.temperature?.value;
+        const temp = temperature !== undefined && temperature !== null && Number.isFinite(Number(temperature)) ? `${Math.round(Number(temperature))}°` : '--°';
+        return { weather: { temp, desc: `${condition}${compass ? ` · ${compass}风${wind}` : ''}` }, warning };
+    },
+    async fetchOpenMeteo(config) {
+        const { latitude, longitude } = this.getCoordinates(config);
+        const params = new URLSearchParams({
+            latitude: String(latitude), longitude: String(longitude),
+            current: 'temperature_2m,weather_code,wind_speed_10m,wind_direction_10m',
+            wind_speed_unit: 'kmh', timezone: 'auto'
+        });
+        const data = await this.fetchJson(`https://api.open-meteo.com/v1/forecast?${params}`);
+        const current = data.current || {};
+        const conditions = { 0: '晴', 1: '大致晴朗', 2: '局部多云', 3: '阴', 45: '雾', 48: '冻雾', 51: '小毛毛雨', 53: '毛毛雨', 55: '强毛毛雨', 61: '小雨', 63: '中雨', 65: '大雨', 71: '小雪', 73: '中雪', 75: '大雪', 80: '阵雨', 81: '强阵雨', 82: '暴雨', 95: '雷雨', 96: '雷雨伴冰雹', 99: '强雷雨伴冰雹' };
+        const compass = this.compassFromDegrees(current.wind_direction_10m);
+        const speed = current.wind_speed_10m !== null && current.wind_speed_10m !== undefined && Number.isFinite(Number(current.wind_speed_10m)) ? `${Math.round(current.wind_speed_10m)}公里/时` : '';
+        const desc = `${conditions[current.weather_code] || '未知天气'}${compass ? ` · ${compass}风${speed}` : ''}`;
+        const temperature = current.temperature_2m;
+        const temp = temperature !== undefined && temperature !== null && Number.isFinite(Number(temperature)) ? `${Math.round(Number(temperature))}°` : '--°';
+        return { weather: { temp, desc }, warning: null };
+    },
+    async fetchWeatherApi(config) {
+        const apiKey = SecretVault.recall('weather:weatherApi:apiKey') || SecretVault.recall('weather:apiKey');
+        if (!apiKey) return this.notConfigured();
+        const { latitude, longitude } = this.getCoordinates(config);
+        const params = new URLSearchParams({ key: apiKey, q: `${latitude},${longitude}`, days: '1', alerts: 'yes' });
+        const data = await this.fetchJson(`https://api.weatherapi.com/v1/forecast.json?${params}`);
+        const current = data.current || {};
+        const wind = current.wind_kph !== null && current.wind_kph !== undefined && Number.isFinite(Number(current.wind_kph)) ? `${Math.round(current.wind_kph)}公里/时` : '';
+        const desc = `${current.condition?.text || '未知'}${current.wind_dir ? ` · ${current.wind_dir}风${wind}` : ''}`;
+        const alert = data.alerts?.alert?.[0];
+        const warning = alert ? { hasWarning: true, event: alert.event || alert.headline || '预警', headline: alert.headline || alert.desc || '', severity: alert.severity || 'unknown', color: 'unknown' } : null;
+        return { weather: { temp: Number.isFinite(Number(current.temp_c)) ? `${Math.round(current.temp_c)}°` : '--°', desc }, warning };
+    },
+    async fetchOpenWeatherMap(config) {
+        const apiKey = SecretVault.recall('weather:openWeatherMap:apiKey') || SecretVault.recall('weather:apiKey');
+        if (!apiKey) return this.notConfigured();
+        const { latitude, longitude } = this.getCoordinates(config);
+        const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude), appid: apiKey, units: 'metric', lang: 'zh_cn' });
+        const data = await this.fetchJson(`https://api.openweathermap.org/data/2.5/weather?${params}`);
+        const current = data.main || {};
+        const compass = this.compassFromDegrees(data.wind?.deg);
+        const speed = data.wind?.speed !== null && data.wind?.speed !== undefined && Number.isFinite(Number(data.wind.speed)) ? `${Math.round(data.wind.speed)}米/秒` : '';
+        const desc = `${data.weather?.[0]?.description || '未知'}${compass ? ` · ${compass}风${speed}` : ''}`;
+        return { weather: { temp: Number.isFinite(Number(current.temp)) ? `${Math.round(current.temp)}°` : '--°', desc }, warning: null };
+    },
+    notConfigured() {
+        return { weather: { temp: '--°', desc: '未配置' }, warning: null };
+    },
     async fetchWeather() {
         const config = Store.getWeatherConfig();
-        if (!config.apiHost || !config.jwtConfig?.privateKey) return { weather: { temp: "--°", desc: "未配置" }, warning: null };
+        if (!config.location) return this.notConfigured();
         try {
-            const [lonStr, latStr] = config.location.split(',').map(s => s.trim());
-            const baseUrl = `https://${config.apiHost}`;
-            const jwtToken = await this.generateJWT(config.jwtConfig);
-            const headers = { 'Authorization': `Bearer ${jwtToken}` };
-
-            const [weatherRes, alertRes] = await Promise.all([
-                fetch(`${baseUrl}/weather/v1/current/${latStr}/${lonStr}`, { headers }),
-                fetch(`${baseUrl}/weatheralert/v1/current/${latStr}/${lonStr}`, { headers })
-            ]);
-
-            if (!weatherRes.ok) throw new Error("请求失败");
-            const wData = await weatherRes.json();
-            const temp = wData.temperature?.value !== undefined ? Math.round(wData.temperature.value) + "°" : "--°";
-            const condition = wData.condition?.text || "未知";
-            const compassMap = { 'n': '北', 'ne': '东北', 'e': '东', 'se': '东南', 's': '南', 'sw': '西南', 'w': '西', 'nw': '西北' };
-            const windDir = compassMap[wData.wind?.direction?.compass?.toLowerCase()] ? compassMap[wData.wind.direction.compass.toLowerCase()] + "风" : "";
-            const windScale = wData.wind?.scale !== undefined ? wData.wind.scale + "级" : "";
-            const desc = condition + (windDir ? ` · ${windDir}${windScale}` : "");
-
-            let warning = null;
-            if (alertRes.ok) {
-                const aData = await alertRes.json();
-                if (!aData.metadata?.zeroResult && aData.alerts?.length > 0) {
-                    const latest = aData.alerts[0];
-                    warning = {
-                        hasWarning: true,
-                        event: latest.eventType?.name || "预警",
-                        headline: latest.headline || "",
-                        severity: latest.severity || "unknown",
-                        color: latest.color?.code || "unknown"
-                    };
-                }
-            }
-            return { weather: { temp, desc }, warning };
+            const provider = config.provider || 'qweather';
+            if (provider === 'openMeteo') return await this.fetchOpenMeteo(config);
+            if (provider === 'weatherApi') return await this.fetchWeatherApi(config);
+            if (provider === 'openWeatherMap') return await this.fetchOpenWeatherMap(config);
+            return await this.fetchQWeather(config);
         } catch (error) {
-            return { weather: { temp: "ERR", desc: "配置错误" }, warning: null };
+            void Logger.warn('天气服务请求失败', { module: 'weather', action: 'fetch', context: { provider: Store.getWeatherConfig().provider || 'qweather' } }, error);
+            return { weather: { temp: 'ERR', desc: '天气获取失败' }, warning: null };
         }
     }
 };
@@ -632,7 +987,7 @@ const Onboarding = {
                         <div class="onboarding-step-index">2</div>
                         <div class="onboarding-step-body">
                             <b>配置天气</b>
-                            <span>天气需要和风天气（QWeather）的 API Host 与 JWT 凭据，首次配置约 5 分钟。</span>
+                            <span>可选和风天气、Open-Meteo、WeatherAPI.com 或 OpenWeatherMap；Open-Meteo 无需密钥。</span>
                         </div>
                     </div>
                     <div class="onboarding-step">
@@ -644,23 +999,22 @@ const Onboarding = {
                     </div>
                 </div>
                 <div class="onboarding-weather">
-                    <div class="onboarding-weather-title">${ICONS.weather}天气配置指引</div>
+                    <div class="onboarding-weather-title">${ICONS.weather}天气服务商</div>
                     <ul class="onboarding-weather-list">
-                        <li>在 QWeather 控制台「项目管理」创建项目，得到 <b>项目 ID</b>（SUB）。</li>
-                        <li>项目下创建「凭据」，得到 <b>凭据 ID</b>（KID）与 <b>Ed25519 私钥</b>；<b>开发者 ID</b> 填 ISS。</li>
-                        <li><b>API Host</b> 填控制台的专属域名，不带 https:// 与路径。</li>
-                        <li><b>经纬度</b> 按「经度,纬度」填写，例如 116.41,39.92（北京）。</li>
+                        <li>在设置的天气页选择服务商，填写经纬度（经度,纬度）。</li>
+                        <li>需要密钥的服务商会显示凭据栏；和风天气使用 JWT 凭据。</li>
+                        <li>控制台支持在窗口内查看；若站点禁止嵌入，可改用系统浏览器。</li>
                     </ul>
-                    <div class="onboarding-hint">${ICONS.warn}未配置时天气区会显示「未配置」，不影响课表与时间。</div>
+                    <div class="onboarding-hint">${ICONS.warn}天气可稍后配置；未配置时不影响课表与时钟。</div>
                 </div>
-                <label class="onboarding-confirm"><input type="checkbox" id="onboarding-confirm">我已了解天气配置需要 QWeather 凭据</label>
+                <label class="onboarding-confirm"><input type="checkbox" id="onboarding-confirm">我已了解天气服务商和密钥要求各不相同</label>
             </div>
         `;
 
         return new Promise((resolve) => {
             const buttons = [
                 { text: '稍后再配置', value: 'later' },
-                { text: '开始配置天气', value: 'weather', primary: true }
+                { text: '选择天气服务商', value: 'weather', primary: true }
             ];
             const panel = Dialog.show({
                 title: '欢迎使用 ClassBroom',
@@ -1013,6 +1367,18 @@ const UI = {
         btnRestartGuide: document.getElementById('btn-restart-guide'),
         dropOverlay: document.getElementById('config-drop-overlay'),
         inputApiHost: document.getElementById('input-api-host'),
+        inputWeatherProvider: document.getElementById('input-weather-provider'),
+        inputLocationQuery: document.getElementById('input-location-query'),
+        btnSearchLocation: document.getElementById('btn-search-location'),
+        inputGeocodingResult: document.getElementById('input-geocoding-result'),
+        locationSearchStatus: document.getElementById('location-search-status'),
+        inputWeatherApiKey: document.getElementById('input-weather-api-key'),
+        btnOpenWeatherProvider: document.getElementById('btn-open-weather-provider'),
+        weatherProviderHint: document.getElementById('weather-provider-hint'),
+        weatherApiHostGroup: document.getElementById('weather-api-host-group'),
+        weatherQWeatherGuide: document.getElementById('weather-qweather-guide'),
+        weatherJwtSection: document.getElementById('weather-jwt-section'),
+        weatherApiKeySection: document.getElementById('weather-api-key-section'),
         inputLocation: document.getElementById('input-location'),
         inputRealLocation: document.getElementById('input-real-location'),
         inputKid: document.getElementById('input-kid'),
@@ -1027,6 +1393,7 @@ const UI = {
         inputShowWeather: document.getElementById('input-show-weather'),
         inputShowTimeline: document.getElementById('input-show-timeline'),
         inputShowBottom: document.getElementById('input-show-bottom'),
+        inputShowClockSeconds: document.getElementById('input-show-clock-seconds'),
         inputShowBottomText: document.getElementById('input-show-bottom-text'),
         inputBottomOffset: document.getElementById('input-bottom-offset'),
         bottomOffsetLabel: document.getElementById('bottom-offset-label'),
@@ -1058,12 +1425,15 @@ const UI = {
         btnCheckUpdate: document.getElementById('btn-check-update'),
         btnOpenReleases: document.getElementById('btn-open-releases'),
         daySelector: document.getElementById('day-selector'),
+        inputCopyCourseDay: document.getElementById('input-copy-course-day'),
+        btnCopyCourses: document.getElementById('btn-copy-courses'),
         courseList: document.getElementById('course-list'),
 
         btnAddCourse: document.getElementById('btn-add-course')
     },
 
     timeTimer: null,
+    locationResults: [],
     async init() {
         await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         await this.setWindowDragRegion('main');
@@ -1081,6 +1451,16 @@ const UI = {
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
         this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
         this.el.btnExportConfig.addEventListener('click', () => this.exportConfig());
+        this.el.inputWeatherProvider.addEventListener('change', () => this.switchWeatherProvider());
+        this.el.btnOpenWeatherProvider.addEventListener('click', () => this.openWeatherProvider());
+        this.el.btnSearchLocation.addEventListener('click', () => this.searchWeatherLocations());
+        this.el.inputLocationQuery.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                void this.searchWeatherLocations();
+            }
+        });
+        this.el.inputGeocodingResult.addEventListener('change', () => this.applySelectedLocation());
         this.el.btnCheckUpdate?.addEventListener('click', async () => {
             const button = this.el.btnCheckUpdate;
             button.disabled = true;
@@ -1113,6 +1493,10 @@ const UI = {
         });
 
         this.renderDaySelector();
+        this.el.inputCopyCourseDay.addEventListener('change', () => {
+            this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value;
+        });
+        this.el.btnCopyCourses.addEventListener('click', () => this.copyCoursesToDay());
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
         this.el.btnAddSubject.addEventListener('click', () => this.addSubject());
         this.el.inputNewSubject.addEventListener('keydown', (event) => {
@@ -1154,6 +1538,7 @@ const UI = {
                 const button = event.target.closest('.segmented-btn');
                 if (!button) return;
                 this.setBottomAlign(button.dataset.align);
+                this.markSettingsDirty();
             });
         }
         [this.el.inputFontFamily, this.el.inputCourseFont].forEach((input) => {
@@ -1183,8 +1568,16 @@ const UI = {
         { value: "'Consolas', 'Courier New', monospace", label: 'Consolas' }
     ],
 
+    WEATHER_PROVIDER_OPTIONS: [
+        { value: 'qweather', label: '和风天气' },
+        { value: 'openMeteo', label: 'Open-Meteo（免密钥）' },
+        { value: 'weatherApi', label: 'WeatherAPI.com' },
+        { value: 'openWeatherMap', label: 'OpenWeatherMap' }
+    ],
+
     initCustomSelects() {
         CustomSelect.initAll();
+        CustomSelect.setOptions('select-weather-provider', this.WEATHER_PROVIDER_OPTIONS);
         ['select-theme', 'select-theme-main'].forEach((id) => {
             if (!document.getElementById(id)) return;
             CustomSelect.init(document.getElementById(id));
@@ -1304,7 +1697,6 @@ const UI = {
         this.el.customBottomText.textContent = rendered;
         this.el.customBottomText.style.fontSize = `${Number(AppData.bottomFontSize) || 10}px`;
         this.el.customBottomText.style.color = AppData.bottomColor || '#64748b';
-        this.weatherExtraWidth = 0;
         this.scheduleFitWindow();
     },
 
@@ -1325,7 +1717,8 @@ const UI = {
         const minutes = pad(now.getMinutes());
         const seconds = pad(now.getSeconds());
         const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-        this.el.timeClock.textContent = `${hours}:${minutes}:${seconds}`;
+        this.el.timeClock.textContent = `${hours}:${minutes}`;
+        this.el.timeClock.dataset.seconds = `:${seconds}`;
         this.el.timeDate.textContent = `${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${weekdayNames[now.getDay()]}`;
         this.el.timeDisplay.title = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${hours}:${minutes}:${seconds}`;
         this.renderCustomBottomInfo();
@@ -1407,6 +1800,7 @@ const UI = {
             viewMain.classList.toggle('hide-weather', AppData.showWeather === false);
             viewMain.classList.toggle('hide-timeline', AppData.showTimeline === false);
         }
+        this.el.timeDisplay?.classList.toggle('seconds-visible', AppData.showClockSeconds !== false);
         const bottomText = this.el.customBottomText;
         if (bottomText) {
             const align = ['left', 'center', 'right'].includes(AppData.bottomAlign) ? AppData.bottomAlign : 'right';
@@ -1578,7 +1972,7 @@ const UI = {
                 if (contentWidth > available) extra = Math.max(extra, contentWidth - available);
             }
             if (AppData.showWeather !== false) {
-                weatherExtra = (this.weatherExtraWidth || 0) + this.measureWeatherOverflow();
+                weatherExtra = this.measureWeatherOverflow();
                 extra = Math.max(extra, weatherExtra);
             }
             const bottomInfo = this.el.customBottomText;
@@ -1595,11 +1989,9 @@ const UI = {
         const targetWidth = Math.min(maxWidth, Math.max(baseWidth, baseWidth + Math.ceil(extra) + 10));
         const appliedWidth = this.appliedMainWidth || baseWidth;
         if (targetWidth === appliedWidth) {
-            if (weatherExtra > 0) this.scheduleWeatherRemeasure(160);
             return;
         }
         this.appliedMainWidth = targetWidth;
-        if (weatherExtra > 0) this.scheduleWeatherRemeasure(360);
         try {
             if (extra > 0) {
                 await this.animateWindowSize({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
@@ -1619,10 +2011,14 @@ const UI = {
     measureWeatherOverflow() {
         const container = this.el.weather;
         if (!container) return 0;
-        const assigned = container.getBoundingClientRect().width;
+        const viewportWidth = window.innerWidth;
+        const assigned = viewportWidth <= 900 ? 130 : viewportWidth <= 1100 ? 140 : 150;
         const contentWidth = Array.from(container.children)
             .reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
-        const naturalWidth = Math.max(contentWidth, container.scrollWidth);
+        const styles = getComputedStyle(container);
+        const gaps = Math.max(0, container.children.length - 1) * (parseFloat(styles.columnGap) || 0);
+        const borders = (parseFloat(styles.borderLeftWidth) || 0) + (parseFloat(styles.borderRightWidth) || 0);
+        const naturalWidth = Math.max(contentWidth + gaps + borders, container.scrollWidth);
         return Math.max(0, Math.ceil(naturalWidth - assigned));
     },
 
@@ -1637,52 +2033,13 @@ const UI = {
         return true;
     },
 
-    weatherRemeasureTimer: null,
-    scheduleWeatherRemeasure(delay = 320) {
-        clearTimeout(this.weatherRemeasureTimer);
-        this.weatherRemeasureTimer = setTimeout(() => {
-            if (this.el.viewSettings && !this.el.viewSettings.classList.contains('hidden')) return;
-            document.body.classList.add('measuring-width');
-            let extra = 0;
-            try {
-                extra = this.measureWeatherOverflow();
-            } finally {
-                document.body.classList.remove('measuring-width');
-            }
-            if (this.applyWeatherExtraWidth((this.weatherExtraWidth || 0) + extra)) {
-                this.scheduleFitWindow(60);
-            }
-        }, delay);
-    },
-
     windowTransition: null,
     windowTransitionToken: 0,
 
-    async animateWindowSize(targetSize, top, steps = 12, frameMs = 12) {
+    async animateWindowSize(targetSize, top) {
         const token = ++this.windowTransitionToken;
         if (this.windowTransition) await this.windowTransition.catch(() => { });
         const run = (async () => {
-            try {
-                const current = await Neutralino.window.getSize();
-                const fromWidth = Number(current.width) || targetSize.width;
-                const fromHeight = Number(current.height) || targetSize.height;
-                const toWidth = Number(targetSize.width);
-                const toHeight = Number(targetSize.height);
-                if (fromWidth === toWidth && fromHeight === toHeight) {
-                    if (top !== undefined) await this.positionWindow(targetSize, top);
-                    return;
-                }
-                for (let i = 1; i <= steps; i += 1) {
-                    if (token !== this.windowTransitionToken) return;
-                    const t = i / steps;
-                    const ease = 1 - Math.pow(1 - t, 3);
-                    const width = Math.round(fromWidth + (toWidth - fromWidth) * ease);
-                    const height = Math.round(fromHeight + (toHeight - fromHeight) * ease);
-                    await Neutralino.window.setSize({ width, height });
-                    await new Promise((resolve) => setTimeout(resolve, frameMs));
-                }
-            } catch (error) {
-            }
             if (token !== this.windowTransitionToken) return;
             await this.positionWindow(targetSize, top);
         })();
@@ -1914,11 +2271,39 @@ const UI = {
         if (!config.weather.jwtConfig || typeof config.weather.jwtConfig !== 'object') {
             config.weather.jwtConfig = {};
         }
+        if (config.weather.provider !== undefined && !Object.prototype.hasOwnProperty.call(APP_CONFIG.weatherProviders, config.weather.provider)) {
+            throw new Error('天气服务商不受支持');
+        }
         const stringFields = ['apiHost', 'location', 'realLocation'];
         for (const field of stringFields) {
             const value = config.weather[field];
             if (value !== undefined && value !== null && typeof value !== 'string') {
                 throw new Error(`天气配置 ${field} 必须是字符串`);
+            }
+        }
+        if (config.weather.apiKey !== undefined && config.weather.apiKey !== null && typeof config.weather.apiKey !== 'string') {
+            throw new Error('天气 API Key 必须是字符串');
+        }
+        if (config.weather.providers !== undefined &&
+            (!config.weather.providers || typeof config.weather.providers !== 'object' || Array.isArray(config.weather.providers))) {
+            throw new Error('天气服务商配置必须是对象');
+        }
+        for (const [provider, providerConfig] of Object.entries(config.weather.providers || {})) {
+            if (!Object.prototype.hasOwnProperty.call(APP_CONFIG.weatherProviders, provider) ||
+                !providerConfig || typeof providerConfig !== 'object' || Array.isArray(providerConfig)) {
+                throw new Error(`天气服务商配置无效：${provider}`);
+            }
+            for (const field of ['apiHost', 'apiKey']) {
+                if (providerConfig[field] !== undefined && providerConfig[field] !== null && typeof providerConfig[field] !== 'string') {
+                    throw new Error(`${provider} 的 ${field} 必须是字符串`);
+                }
+            }
+            if (providerConfig.jwtConfig !== undefined &&
+                (!providerConfig.jwtConfig || typeof providerConfig.jwtConfig !== 'object' || Array.isArray(providerConfig.jwtConfig))) {
+                throw new Error(`${provider} 的 JWT 配置无效`);
+            }
+            if (providerConfig.jwtConfig?.privateKey !== undefined && typeof providerConfig.jwtConfig.privateKey !== 'string') {
+                throw new Error(`${provider} 的私钥必须是字符串`);
             }
         }
         const jwtFields = ['kid', 'sub', 'iss', 'privateKey'];
@@ -2010,8 +2395,18 @@ const UI = {
             versionBadge
         ].join('');
 
+        const providerSummary = Object.entries(APP_CONFIG.weatherProviders).map(([provider, details]) => {
+            const saved = weather.providers?.[provider] || {};
+            const configured = provider === (weather.provider || 'qweather') || saved.apiHost || saved.apiKey ||
+                (provider === 'qweather' && (weather.apiHost || jwt.privateKey)) ||
+                Boolean(SecretVault.recall(`weather:${provider}:apiKey`) || SecretVault.recall(`jwt:${provider}:privateKey`));
+            return `${details.label}${configured ? '（已配置）' : '（未配置）'}`;
+        }).join('、');
         const weatherGrid = [
+            item('服务商', APP_CONFIG.weatherProviders[weather.provider || 'qweather']?.label || '未知'),
+            item('所有服务商配置', providerSummary),
             item('API Host', weather.apiHost, { critical: true }),
+            item('API Key', weather.apiKey, { secret: true }),
             item('经纬度', weather.location, { critical: true }),
             item('地区名称', weather.realLocation),
             item('刷新间隔', weather.weatherRefreshMinutes ? `${weather.weatherRefreshMinutes} 分钟` : ''),
@@ -2052,6 +2447,7 @@ const UI = {
             item('显示天气', config?.showWeather === false ? '已隐藏' : '显示'),
             item('显示课表', config?.showTimeline === false ? '已隐藏' : '显示'),
             item('显示自定义文本', config?.showBottomText === false ? '已隐藏' : '显示'),
+            item('显示时钟秒数', config?.showClockSeconds === false ? '关闭' : '开启'),
             item('倒计时名称', config?.countdownName),
             item('目标日期', config?.countdownDate),
             item('文本 1', config?.customTexts?.one),
@@ -2160,9 +2556,34 @@ const UI = {
         }
 
         if (!imported.weather.jwtConfig) imported.weather.jwtConfig = {};
+        imported.weather.provider = imported.weather.provider || 'qweather';
+        if (!imported.weather.providers || typeof imported.weather.providers !== 'object') imported.weather.providers = {};
+        if (!imported.weather.providers[imported.weather.provider]) {
+            imported.weather.providers[imported.weather.provider] = imported.weather.provider === 'qweather'
+                ? { apiHost: imported.weather.apiHost || '', jwtConfig: { ...imported.weather.jwtConfig } }
+                : { apiKey: imported.weather.apiKey || '' };
+        }
+        const activeProviderConfig = imported.weather.providers[imported.weather.provider];
+        if (imported.weather.provider === 'qweather') {
+            imported.weather.apiHost = activeProviderConfig.apiHost || imported.weather.apiHost || '';
+            imported.weather.jwtConfig = { ...imported.weather.jwtConfig, ...(activeProviderConfig.jwtConfig || {}) };
+        } else {
+            imported.weather.apiKey = activeProviderConfig.apiKey || imported.weather.apiKey || '';
+        }
         if (!imported.courses) imported.courses = {};
         if (!Array.isArray(imported.subjects)) imported.subjects = [];
+        imported.onboardingCompleted = true;
+        imported.onboardingCompletedAt = AppData.onboardingCompletedAt || new Date().toISOString();
         delete imported.version;
+        SecretVault.remember('weather:apiHost', imported.weather.apiHost || '');
+        SecretVault.remember('weather:location', imported.weather.location || '');
+        SecretVault.remember('weather:apiKey', imported.weather.apiKey || '');
+        SecretVault.remember('jwt:privateKey', imported.weather.jwtConfig.privateKey || '');
+        for (const [provider, providerConfig] of Object.entries(imported.weather.providers)) {
+            SecretVault.remember(`weather:${provider}:apiHost`, providerConfig.apiHost || '');
+            SecretVault.remember(`weather:${provider}:apiKey`, providerConfig.apiKey || '');
+            SecretVault.remember(`jwt:${provider}:privateKey`, providerConfig.jwtConfig?.privateKey || '');
+        }
 
         EditData = imported;
         try {
@@ -2278,6 +2699,32 @@ const UI = {
         const weather = clone.weather || {};
         const jwt = weather.jwtConfig || {};
         const customTexts = clone.customTexts || {};
+        const activeProvider = weather.provider || 'qweather';
+        const weatherProviders = {};
+        Object.keys(APP_CONFIG.weatherProviders).forEach((provider) => {
+            const saved = weather.providers?.[provider] || {};
+            const providerJwt = saved.jwtConfig || (provider === 'qweather' ? jwt : {});
+            if (provider === 'qweather') {
+                weatherProviders[provider] = {
+                    apiHost: saved.apiHost || SecretVault.recall(`weather:${provider}:apiHost`) ||
+                        (activeProvider === provider ? weather.apiHost : '') || '',
+                    jwtConfig: {
+                        kid: providerJwt.kid || '',
+                        sub: providerJwt.sub || '',
+                        iss: providerJwt.iss || '',
+                        privateKey: providerJwt.privateKey || SecretVault.recall('jwt:qweather:privateKey') ||
+                            (activeProvider === provider ? SecretVault.recall('jwt:privateKey') : '') || ''
+                    }
+                };
+            } else if (provider === 'weatherApi' || provider === 'openWeatherMap') {
+                weatherProviders[provider] = {
+                    apiKey: saved.apiKey || SecretVault.recall(`weather:${provider}:apiKey`) ||
+                        (activeProvider === provider ? weather.apiKey || SecretVault.recall('weather:apiKey') : '') || ''
+                };
+            } else {
+                weatherProviders[provider] = {};
+            }
+        });
         const payload = {
             version: window.NL_APPVERSION || '',
             exportedAt: new Date().toISOString(),
@@ -2294,6 +2741,7 @@ const UI = {
             showWeather: clone.showWeather !== false,
             showTimeline: clone.showTimeline !== false,
             showBottomText: clone.showBottomText !== false,
+            showClockSeconds: clone.showClockSeconds !== false,
             countdownName: clone.countdownName || '',
             countdownDate: clone.countdownDate || '',
             customTexts: {
@@ -2306,14 +2754,17 @@ const UI = {
             subjects: Array.isArray(clone.subjects) ? clone.subjects : [],
             courses: clone.courses || {},
             weather: {
+                provider: weather.provider || 'qweather',
+                providers: weatherProviders,
                 apiHost: weather.apiHost || '',
+                apiKey: weather.apiKey || SecretVault.recall(`weather:${activeProvider}:apiKey`) || SecretVault.recall('weather:apiKey'),
                 location: weather.location || '',
                 realLocation: weather.realLocation || '',
                 jwtConfig: {
                     kid: jwt.kid || '',
                     sub: jwt.sub || '',
                     iss: jwt.iss || '',
-                    privateKey: jwt.privateKey || ''
+                    privateKey: jwt.privateKey || SecretVault.recall('jwt:qweather:privateKey') || SecretVault.recall('jwt:privateKey')
                 }
             }
         };
@@ -2321,6 +2772,7 @@ const UI = {
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
             'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
             'bottomAlign', 'bottomOffset', 'showWeather', 'showTimeline', 'showBottomText',
+            'showClockSeconds',
             'lastUpdateCheckAt', 'latestKnownVersion',
             'onboardingCompleted', 'onboardingCompletedAt']);
         Object.keys(clone).forEach((key) => {
@@ -2341,6 +2793,7 @@ const UI = {
     async exportConfig() {
         try {
             const inSettings = !this.el.viewSettings.classList.contains('hidden');
+            if (inSettings) this.cacheWeatherProviderFields(this.el.inputWeatherProvider.value || 'qweather');
             const payload = this.buildExportPayload(inSettings ? EditData : AppData);
             const path = await Neutralino.os.showSaveDialog('导出 ClassBroom 配置', {
                 forceOverwrite: true,
@@ -2401,13 +2854,21 @@ const UI = {
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
 
-        this.el.inputApiHost.value = EditData.weather.apiHost || '';
+        const activeProvider = EditData.weather.provider || 'qweather';
+        const hasProviderConfigs = EditData.weather.providers && typeof EditData.weather.providers === 'object';
+        if (!hasProviderConfigs) EditData.weather.providers = {};
+        if (!EditData.weather.providers[activeProvider]) {
+            EditData.weather.providers[activeProvider] = activeProvider === 'qweather'
+                ? { apiHost: EditData.weather.apiHost || '', jwtConfig: { ...EditData.weather.jwtConfig } }
+                : { apiKey: EditData.weather.apiKey || '' };
+        }
+        this.el.inputWeatherProvider.value = activeProvider;
+        CustomSelect.setValue('select-weather-provider', activeProvider);
+        this.activeWeatherProvider = activeProvider;
+        this.loadWeatherProviderFields(activeProvider);
+        this.updateWeatherProviderFields();
         this.el.inputLocation.value = EditData.weather.location || '';
         this.el.inputRealLocation.value = EditData.weather.realLocation || '';
-        this.el.inputKid.value = EditData.weather.jwtConfig.kid || '';
-        this.el.inputSub.value = EditData.weather.jwtConfig.sub || '';
-        this.el.inputIss.value = EditData.weather.jwtConfig.iss || '';
-        this.el.inputPrivateKey.value = EditData.weather.jwtConfig.privateKey || '';
         this.el.inputAutoStart.checked = EditData.autoStart === true;
         this.el.inputTheme.value = EditData.theme || 'default';
         this.el.inputWeatherRefreshMinutes.value = EditData.weatherRefreshMinutes || 10;
@@ -2419,6 +2880,7 @@ const UI = {
         this.el.inputShowWeather.checked = EditData.showWeather !== false;
         this.el.inputShowTimeline.checked = EditData.showTimeline !== false;
         this.el.inputShowBottom.checked = EditData.showBottomText !== false;
+        this.el.inputShowClockSeconds.checked = EditData.showClockSeconds !== false;
         this.el.inputShowBottomText.checked = EditData.showBottomText !== false;
         this.el.inputBottomOffset.value = Math.max(-20, Math.min(20, Number(EditData.bottomOffset) || 0));
         this.setBottomAlign(EditData.bottomAlign || 'right');
@@ -2474,10 +2936,141 @@ const UI = {
 
     
     runWeatherGuide() {
-        const apiHost = this.el.inputApiHost;
-        if (!apiHost) return;
-        apiHost.closest('.form-group')?.scrollIntoView({ block: 'nearest' });
-        apiHost.focus({ preventScroll: true });
+        const provider = this.el.inputWeatherProvider;
+        if (!provider) return;
+        provider.closest('.form-group')?.scrollIntoView({ block: 'nearest' });
+        provider.focus({ preventScroll: true });
+    },
+
+    getWeatherProviderConfig(provider) {
+        if (!EditData.weather.providers || typeof EditData.weather.providers !== 'object') EditData.weather.providers = {};
+        if (!EditData.weather.providers[provider] || typeof EditData.weather.providers[provider] !== 'object') {
+            EditData.weather.providers[provider] = {};
+        }
+        return EditData.weather.providers[provider];
+    },
+
+    cacheWeatherProviderFields(provider) {
+        const config = this.getWeatherProviderConfig(provider);
+        if (provider === 'qweather') {
+            config.apiHost = this.el.inputApiHost.value.trim() || SecretVault.recall('weather:qweather:apiHost') || config.apiHost || '';
+            const jwt = config.jwtConfig || {};
+            config.jwtConfig = {
+                kid: this.el.inputKid.value.trim(),
+                sub: this.el.inputSub.value.trim(),
+                iss: this.el.inputIss.value.trim(),
+                privateKey: this.el.inputPrivateKey.value.trim() || SecretVault.recall('jwt:qweather:privateKey') || jwt.privateKey ||
+                    SecretVault.recall('jwt:privateKey') || (EditData.weather.provider === provider ? EditData.weather.jwtConfig?.privateKey : '') || ''
+            };
+            return;
+        }
+        config.apiKey = this.el.inputWeatherApiKey.value.trim() || SecretVault.recall(`weather:${provider}:apiKey`) || config.apiKey ||
+            (EditData.weather.provider === provider ? EditData.weather.apiKey || SecretVault.recall('weather:apiKey') : '') || '';
+    },
+
+    loadWeatherProviderFields(provider) {
+        const config = this.getWeatherProviderConfig(provider);
+        const isQWeather = provider === 'qweather';
+        const jwt = config.jwtConfig || (isQWeather ? EditData.weather.jwtConfig || {} : {});
+        this.el.inputApiHost.value = isQWeather
+            ? config.apiHost || SecretVault.recall('weather:qweather:apiHost') || (EditData.weather.provider === provider ? EditData.weather.apiHost : '') || ''
+            : '';
+        this.el.inputKid.value = isQWeather ? jwt.kid || '' : '';
+        this.el.inputSub.value = isQWeather ? jwt.sub || '' : '';
+        this.el.inputIss.value = isQWeather ? jwt.iss || '' : '';
+        this.el.inputPrivateKey.value = '';
+        const savedPrivateKey = isQWeather && Boolean(jwt.privateKey || SecretVault.recall('jwt:qweather:privateKey') || SecretVault.recall('jwt:privateKey'));
+        this.el.inputPrivateKey.placeholder = savedPrivateKey ? '已保存私钥，留空则保持不变' : '-----BEGIN PRIVATE KEY-----...';
+        this.el.inputWeatherApiKey.value = '';
+        const savedApiKey = !isQWeather && Boolean(config.apiKey || SecretVault.recall(`weather:${provider}:apiKey`) ||
+            (EditData.weather.provider === provider && (EditData.weather.apiKey || SecretVault.recall('weather:apiKey'))));
+        this.el.inputWeatherApiKey.placeholder = savedApiKey ? '已保存密钥，留空则保持不变' : '输入 API Key';
+    },
+
+    switchWeatherProvider() {
+        const previous = this.activeWeatherProvider || EditData.weather.provider || 'qweather';
+        this.cacheWeatherProviderFields(previous);
+        const provider = this.el.inputWeatherProvider.value || 'qweather';
+        this.loadWeatherProviderFields(provider);
+        this.activeWeatherProvider = provider;
+        this.updateWeatherProviderFields();
+        this.markSettingsDirty();
+    },
+
+    updateWeatherProviderFields() {
+        const provider = this.el.inputWeatherProvider.value || 'qweather';
+        const isQWeather = provider === 'qweather';
+        const needsApiKey = ['weatherApi', 'openWeatherMap'].includes(provider);
+        this.el.weatherApiHostGroup.hidden = !isQWeather;
+        this.el.weatherQWeatherGuide.hidden = !isQWeather;
+        this.el.weatherJwtSection.hidden = !isQWeather;
+        this.el.weatherApiKeySection.hidden = !needsApiKey;
+        this.el.weatherProviderHint.textContent = {
+            qweather: '和风天气需要 API Host 与 JWT 凭据，并支持天气预警。',
+            openMeteo: '无需密钥；提供当前天气，不包含天气预警。',
+            weatherApi: '需要 API Key；当前天气和预警由 forecast 接口提供。',
+            openWeatherMap: '需要 API Key；当前天气可用，不包含天气预警。'
+        }[provider] || '';
+    },
+
+    async searchWeatherLocations() {
+        const query = this.el.inputLocationQuery.value.trim();
+        if (query.length < 2) {
+            this.el.locationSearchStatus.textContent = '请输入至少两个字符';
+            return;
+        }
+        this.el.btnSearchLocation.disabled = true;
+        this.el.locationSearchStatus.textContent = '正在搜索地区…';
+        try {
+            this.locationResults = await API.searchLocations(query);
+            const options = this.locationResults.map((result, index) => {
+                const parts = [result.name, result.admin1, result.country].filter(Boolean);
+                return { value: String(index), label: [...new Set(parts)].join(' · ') };
+            });
+            CustomSelect.setOptions('select-geocoding-result', options);
+            CustomSelect.setValue('select-geocoding-result', '');
+            this.el.locationSearchStatus.textContent = options.length
+                ? `找到 ${options.length} 个地区，选择匹配项以填入位置`
+                : '没有找到匹配地区';
+        } catch (error) {
+            this.locationResults = [];
+            CustomSelect.setOptions('select-geocoding-result', []);
+            CustomSelect.setValue('select-geocoding-result', '');
+            this.el.locationSearchStatus.textContent = '地区查询失败，请检查网络后重试';
+        } finally {
+            this.el.btnSearchLocation.disabled = false;
+        }
+    },
+
+    applySelectedLocation() {
+        const value = this.el.inputGeocodingResult.value;
+        if (value === '') return;
+        const result = this.locationResults[Number(value)];
+        if (!result || !Number.isFinite(Number(result.longitude)) || !Number.isFinite(Number(result.latitude))) return;
+        this.el.inputLocation.value = `${Number(result.longitude).toFixed(5)},${Number(result.latitude).toFixed(5)}`;
+        this.el.inputRealLocation.value = [...new Set([result.name, result.admin1, result.country].filter(Boolean))].join(' · ');
+        this.el.locationSearchStatus.textContent = '已填入地区和经纬度';
+        this.markSettingsDirty();
+    },
+
+    async openWeatherProvider() {
+        const provider = this.el.inputWeatherProvider.value || 'qweather';
+        const details = APP_CONFIG.weatherProviders[provider] || APP_CONFIG.weatherProviders.qweather;
+        const dialog = Dialog.show({
+            title: `${details.label} 控制台`,
+            html: `<div class="provider-browser"><div class="provider-browser-toolbar"><span>若页面未显示或无法登录，请使用系统浏览器打开。</span><button id="btn-weather-provider-external" class="btn btn-secondary" type="button">在系统浏览器打开</button></div><span id="weather-provider-open-error" role="status"></span><iframe class="provider-browser-frame" src="${this.escapeHtml(details.url)}" title="${this.escapeHtml(details.label)} 控制台" referrerpolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-popups"></iframe></div>`,
+            wide: true,
+            buttons: [{ text: '关闭', value: true, primary: true }]
+        });
+        document.getElementById('btn-weather-provider-external')?.addEventListener('click', async () => {
+            try {
+                await Neutralino.os.open(details.url);
+            } catch (error) {
+                const status = document.getElementById('weather-provider-open-error');
+                if (status) status.textContent = error.message || String(error);
+            }
+        });
+        await dialog;
     },
 
     async closeSettings({ silent = false } = {}) {
@@ -2493,16 +3086,18 @@ const UI = {
     getSettingsSnapshot() {
         const fields = [
             'inputApiHost', 'inputLocation', 'inputRealLocation', 'inputKid', 'inputSub', 'inputIss',
-            'inputPrivateKey', 'inputTheme', 'inputWeatherRefreshMinutes', 'inputCustomBottomText',
+            'inputPrivateKey', 'inputWeatherApiKey', 'inputTheme', 'inputWeatherRefreshMinutes', 'inputCustomBottomText',
             'inputCountdownName', 'inputCountdownDate', 'inputBottomFontSize', 'inputBottomColor',
             'inputCourseFont', 'inputCourseFontSize', 'inputFontFamily', 'inputFontSizeScale',
             'inputCustomOne', 'inputCustomTwo', 'inputCustomThree', 'inputBottomOffset'
         ];
         const values = fields.map((key) => this.el[key]?.value ?? '');
+        values.push(this.el.inputWeatherProvider?.value || 'qweather');
         values.push(this.el.inputAutoStart?.checked === true);
         values.push(this.el.inputShowWeather?.checked === true);
         values.push(this.el.inputShowTimeline?.checked === true);
         values.push(this.el.inputShowBottom?.checked === true);
+        values.push(this.el.inputShowClockSeconds?.checked === true);
         values.push(this.el.inputShowBottomText?.checked === true);
         values.push(this.getBottomAlign());
         return JSON.stringify({ values, editData: EditData });
@@ -2531,6 +3126,16 @@ const UI = {
         await Logger.measure('设置保存', async () => {
             await Store.saveToRegistry(EditData);
             AppData = JSON.parse(JSON.stringify(EditData));
+            delete AppData.weather.jwtConfig.privateKey;
+            delete AppData.weather.apiKey;
+            for (const providerConfig of Object.values(AppData.weather.providers || {})) {
+                if (!providerConfig || typeof providerConfig !== 'object') continue;
+                providerConfig.apiHost = '';
+                providerConfig.apiKey = '';
+                if (providerConfig.jwtConfig) providerConfig.jwtConfig.privateKey = '';
+            }
+            AppData.weather.apiHost = SecretVault.recall('weather:apiHost');
+            AppData.weather.location = SecretVault.recall('weather:location');
         }, {
             module: 'config',
             action: 'save',
@@ -2541,6 +3146,9 @@ const UI = {
                 ...context
             }
         });
+        const privateKeyInput = this.el.inputPrivateKey;
+        if (privateKeyInput) privateKeyInput.value = '';
+        if (EditData.weather?.jwtConfig) EditData.weather.jwtConfig.privateKey = '';
         this.scheduleTrayUpdate();
         await this.closeSettings();
         await App.init();
@@ -2548,13 +3156,22 @@ const UI = {
     },
 
     async saveSettings() {
-        EditData.weather.apiHost = this.el.inputApiHost.value.trim();
+        const provider = this.el.inputWeatherProvider.value || 'qweather';
+        this.cacheWeatherProviderFields(provider);
+        EditData.weather.provider = provider;
+        const providerConfig = this.getWeatherProviderConfig(provider);
+        EditData.weather.apiHost = provider === 'qweather' ? providerConfig.apiHost || '' : '';
+        EditData.weather.apiKey = provider === 'qweather' ? '' : providerConfig.apiKey || '';
+        EditData.weather.jwtConfig = provider === 'qweather' ? { ...providerConfig.jwtConfig } : {};
+        SecretVault.remember('weather:apiHost', EditData.weather.apiHost);
+        SecretVault.remember('weather:apiKey', EditData.weather.apiKey);
+        SecretVault.remember(`weather:${provider}:apiHost`, providerConfig.apiHost || '');
+        SecretVault.remember(`weather:${provider}:apiKey`, providerConfig.apiKey || '');
+        SecretVault.remember('jwt:privateKey', EditData.weather.jwtConfig.privateKey || '');
+        SecretVault.remember(`jwt:${provider}:privateKey`, providerConfig.jwtConfig?.privateKey || '');
         EditData.weather.location = this.el.inputLocation.value.trim();
+        SecretVault.remember('weather:location', EditData.weather.location);
         EditData.weather.realLocation = this.el.inputRealLocation.value.trim();
-        EditData.weather.jwtConfig.kid = this.el.inputKid.value.trim();
-        EditData.weather.jwtConfig.sub = this.el.inputSub.value.trim();
-        EditData.weather.jwtConfig.iss = this.el.inputIss.value.trim();
-        EditData.weather.jwtConfig.privateKey = this.el.inputPrivateKey.value.trim();
         const weatherRefreshMinutes = Number(this.el.inputWeatherRefreshMinutes.value);
         if (!Number.isInteger(weatherRefreshMinutes) || weatherRefreshMinutes < 1 || weatherRefreshMinutes > 1440) {
             await Dialog.alert('天气刷新间隔须为 1 到 1440 分钟', '参数无效', 'warning');
@@ -2574,6 +3191,7 @@ const UI = {
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
         EditData.showWeather = this.el.inputShowWeather.checked;
         EditData.showTimeline = this.el.inputShowTimeline.checked;
+        EditData.showClockSeconds = this.el.inputShowClockSeconds.checked;
         // 主界面缩略开关与文本页开关共享同一字段，任一关闭即隐藏
         EditData.showBottomText = this.el.inputShowBottom.checked && this.el.inputShowBottomText.checked;
         EditData.bottomAlign = this.getBottomAlign();
@@ -2598,6 +3216,7 @@ const UI = {
 
     renderDaySelector() {
         this.el.daySelector.innerHTML = '';
+        this.el.inputCopyCourseDay.innerHTML = '<option value="">复制到星期…</option>';
         Object.keys(DAY_MAP).forEach(dayKey => {
             const btn = document.createElement('button');
             btn.className = `day-btn ${dayKey === CurrentEditDay ? 'active' : ''}`;
@@ -2609,7 +3228,29 @@ const UI = {
                 this.renderCourseList();
             };
             this.el.daySelector.appendChild(btn);
+            if (dayKey !== CurrentEditDay) {
+                const option = document.createElement('option');
+                option.value = dayKey;
+                option.textContent = DAY_MAP[dayKey];
+                this.el.inputCopyCourseDay.appendChild(option);
+            }
         });
+        this.el.btnCopyCourses.disabled = true;
+    },
+
+    async copyCoursesToDay() {
+        const targetDay = this.el.inputCopyCourseDay.value;
+        if (!targetDay || targetDay === CurrentEditDay || !DAY_MAP[targetDay]) return;
+        const courses = EditData.courses?.[CurrentEditDay] || [];
+        const confirmed = await Dialog.confirm(
+            `将${DAY_MAP[CurrentEditDay]}的 ${courses.length} 节课程复制到${DAY_MAP[targetDay]}？目标星期的课程将被替换。`,
+            { title: '复制课表', confirmText: '复制并覆盖' }
+        );
+        if (!confirmed) return;
+        EditData.courses[targetDay] = JSON.parse(JSON.stringify(courses));
+        this.el.inputCopyCourseDay.value = '';
+        this.el.btnCopyCourses.disabled = true;
+        this.markSettingsDirty();
     },
 
     renderCourseList() {
@@ -3133,7 +3774,7 @@ const UI = {
             ${warnHtml}
         `;
         this.renderCustomBottomInfo();
-        this.weatherExtraWidth = 0;
+        this.applyWeatherExtraWidth(0);
         this.scheduleFitWindow();
         return changed;
     }
@@ -3161,7 +3802,6 @@ const App = {
         await this.refreshWeather();
         void Logger.info('应用初始化完成', { module: 'lifecycle', action: 'init' });
         Updater.scheduleStartupCheck();
-        // 首次使用：引导天气配置与基本操作；老用户配置中已有完成标记则跳过
         if (AppData.onboardingCompleted !== true) {
             await Onboarding.start();
         }
@@ -3201,7 +3841,6 @@ const App = {
         clearTimeout(UI.fitWidthTimer);
         clearTimeout(UI.weatherRemeasureTimer);
         UI.windowTransitionToken += 1;
-        // 先移除托盘图标再退出，否则系统托盘中可能残留已失效的图标
         try {
             await Neutralino.os.setTray({ menuItems: [] });
             await Neutralino.os.setTray({});

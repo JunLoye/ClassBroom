@@ -244,7 +244,7 @@
   @keyframes course-state-change { from { opacity: 0.55; filter: brightness(1.25); } to { opacity: 1; filter: brightness(1); } }
   .time-container.seconds-visible .time-clock::after { content: attr(data-seconds); color: var(--text-sub); font-size: 13px; }
 
-  .weather-container { grid-column: 2; grid-row: 1; position: relative; right: auto; bottom: auto; height: 44px; width: 150px; max-width: 150px; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; margin: 0 0 0 auto; z-index: 15; overflow: hidden; }
+  .weather-container { grid-column: 2; grid-row: 1; position: relative; right: auto; bottom: auto; height: 44px; width: 150px; max-width: 150px; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; margin: 0 0 0 auto; border-left: 1px solid var(--border-light); z-index: 15; overflow: hidden; }
   .weather-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
   .weather-icon { color: var(--accent-cyan); display: flex; align-items: center; flex-shrink: 0; }
   .weather-icon svg { width: 24px; height: 24px; }
@@ -516,6 +516,11 @@
   .settings-guide ol { margin: 0; padding-left: 18px; line-height: 1.7; }
   .settings-guide li b { color: var(--text-main); font-family: var(--font-mono); }
   .settings-guide .settings-guide-tip { color: var(--accent-orange); font-weight: 700; }
+  .provider-browser { display: flex; flex-direction: column; gap: 8px; }
+  .provider-browser-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-sub); font-size: 12px; }
+  .provider-browser-frame { width: 100%; height: min(62vh, 560px); min-height: 320px; border: 1px solid var(--border-light); border-radius: 6px; background: #fff; }
+  .weather-location-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .weather-location-search .btn { min-width: 76px; }
 
   .import-preview { display: flex; flex-direction: column; gap: 10px; }
   .import-preview-meta {
@@ -766,6 +771,9 @@
 
   .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
   .day-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+  .course-copy-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .course-copy-controls select { height: 34px; min-width: 104px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); }
+  .course-copy-controls .btn { height: 34px; padding: 6px 10px; }
   .day-btn { background: var(--bg-card); border: 1px solid var(--border-light); padding: 6px 10px; border-radius: 6px; font-size: calc(12px * var(--fs-scale)); cursor: pointer; }
   .day-btn.active { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
   
@@ -951,6 +959,7 @@
               </div>
               <div class="form-group col">
                 <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示自定义文本</label>
+                <label class="switch-row" for="input-show-clock-seconds"><input type="checkbox" id="input-show-clock-seconds" checked>显示时钟秒数</label>
                 <div class="switch-hint">关闭后对应区域不占用主界面空间</div>
               </div>
             </div>
@@ -1000,6 +1009,23 @@
 
       <div class="tab-content" id="tab-weather">
         <section class="settings-section">
+          <h3 class="settings-section-title">天气服务商</h3>
+          <div class="settings-section-body">
+            <div class="form-row">
+              <div class="form-group col">
+                <label for="input-weather-provider">数据来源</label>
+                <div class="custom-select" id="select-weather-provider" data-input="input-weather-provider" data-placeholder="选择服务商"></div>
+                <input type="hidden" id="input-weather-provider" value="qweather">
+              </div>
+              <div class="form-group col">
+                <label>服务商控制台</label>
+                <button id="btn-open-weather-provider" class="btn btn-secondary" type="button">在窗口内打开</button>
+              </div>
+            </div>
+            <div id="weather-provider-hint" class="settings-guide-tip"></div>
+          </div>
+        </section>
+        <section id="weather-qweather-guide" class="settings-section">
           <h3 class="settings-section-title">配置指引</h3>
           <div class="settings-section-body settings-guide">
             <ol>
@@ -1008,13 +1034,23 @@
               <li>API Host 使用控制台显示的 <b>专属域名</b>，只填域名，不带 <b>https://</b> 与路径。</li>
               <li>经纬度按 <b>经度,纬度</b> 顺序填写，中间用英文逗号分隔；地区名称仅用于界面展示。</li>
             </ol>
-            <div class="settings-guide-tip">私钥等同密码，仅保存在本机注册表，请勿截图或外发。</div>
+            <div class="settings-guide-tip">私钥等同密码，会加密保存在本机；天气请求会发送给所选服务商。</div>
           </div>
         </section>
         <section class="settings-section">
           <h3 class="settings-section-title">位置与刷新</h3>
           <div class="settings-section-body">
-            <div class="form-group"><label for="input-api-host">API Host（专属域名）</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: xxx.qweatherapi.com"></div>
+            <div id="weather-api-host-group" class="form-group"><label for="input-api-host">API Host（专属域名）</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: xxx.qweatherapi.com"></div>
+            <div class="form-group">
+              <label for="input-location-query">地区搜索（免密钥）</label>
+              <div class="weather-location-search">
+                <input type="search" id="input-location-query" autocomplete="off" spellcheck="false" placeholder="输入城市或地区名称">
+                <button id="btn-search-location" class="btn btn-secondary" type="button">搜索</button>
+              </div>
+              <div class="custom-select" id="select-geocoding-result" data-input="input-geocoding-result" data-placeholder="选择匹配地区"></div>
+              <input type="hidden" id="input-geocoding-result">
+              <div id="location-search-status" class="switch-hint" role="status" aria-live="polite"></div>
+            </div>
             <div class="form-row">
               <div class="form-group col"><label for="input-location">经纬度（经度,纬度）</label><input type="text" id="input-location" autocomplete="off" spellcheck="false" placeholder="例如: xx.xx,xx.xx"></div>
               <div class="form-group col"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" autocomplete="off" placeholder="用于显示，可留空"></div>
@@ -1023,7 +1059,7 @@
           </div>
         </section>
 
-        <section class="settings-section">
+        <section id="weather-jwt-section" class="settings-section">
           <h3 class="settings-section-title">JWT 凭据</h3>
           <div class="settings-section-body">
             <div class="form-row">
@@ -1034,11 +1070,23 @@
             <div class="form-group"><label for="input-private-key">私钥（PEM）</label><textarea id="input-private-key" autocomplete="off" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----..."></textarea></div>
           </div>
         </section>
+        <section id="weather-api-key-section" class="settings-section" hidden>
+          <h3 class="settings-section-title">API Key</h3>
+          <div class="settings-section-body">
+            <div class="form-group"><label for="input-weather-api-key">服务商密钥</label><input type="password" id="input-weather-api-key" data-secret autocomplete="off" spellcheck="false" placeholder="输入 API Key"></div>
+          </div>
+        </section>
       </div>
 
       <div class="tab-content" id="tab-courses">
         <div class="course-header">
           <div class="day-selector" id="day-selector"></div>
+          <div class="course-copy-controls">
+            <select id="input-copy-course-day" aria-label="复制课程到星期">
+              <option value="">复制到星期…</option>
+            </select>
+            <button id="btn-copy-courses" class="btn btn-secondary" type="button" disabled>复制课表</button>
+          </div>
           <button id="btn-add-course" class="btn btn-secondary" type="button">+ 添加课程</button>
         </div>
         <details class="subject-manager-details">

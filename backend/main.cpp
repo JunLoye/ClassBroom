@@ -1,9 +1,13 @@
 #include <iostream>
 #include <string>
+#include <iterator>
+#include <cstdio>
 #include <windows.h>
 #include <winhttp.h>
+#include <wincrypt.h>
 
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "crypt32.lib")
 
 std::wstring StringToWString(const std::string& str) {
     if (str.empty()) return std::wstring();
@@ -61,8 +65,97 @@ std::string ExtractValue(const std::string& json, const std::string& key) {
     return json.substr(pos, end - pos);
 }
 
+std::string Base64Encode(const BYTE* data, DWORD size) {
+    DWORD outLen = 0;
+    if (!CryptBinaryToStringA(data, size, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, nullptr, &outLen)) return "";
+    std::string out(outLen, '\0');
+    if (!CryptBinaryToStringA(data, size, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &out[0], &outLen)) return "";
+    if (!out.empty() && out.back() == '\0') out.pop_back();
+    return out;
+}
+
+bool Base64Decode(const std::string& text, std::string& out) {
+    DWORD outLen = 0;
+    if (!CryptStringToBinaryA(text.c_str(), (DWORD)text.size(), CRYPT_STRING_BASE64, nullptr, &outLen, nullptr, nullptr)) return false;
+    out.assign(outLen, '\0');
+    if (!CryptStringToBinaryA(text.c_str(), (DWORD)text.size(), CRYPT_STRING_BASE64, (BYTE*)&out[0], &outLen, nullptr, nullptr)) return false;
+    out.resize(outLen);
+    return true;
+}
+
+// 使用当前用户 DPAPI 保护数据，仅同一用户在本机可解密
+std::string DpapiProtect(const std::string& plain) {
+    DATA_BLOB in = { (DWORD)plain.size(), (BYTE*)plain.data() };
+    DATA_BLOB out = { 0, nullptr };
+    if (!CryptProtectData(&in, L"ClassBroom", nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &out)) return "";
+    std::string encoded = Base64Encode(out.pbData, out.cbData);
+    LocalFree(out.pbData);
+    return encoded;
+}
+
+std::string DpapiUnprotect(const std::string& encoded) {
+    std::string raw;
+    if (!Base64Decode(encoded, raw) || raw.empty()) return "";
+    DATA_BLOB in = { (DWORD)raw.size(), (BYTE*)raw.data() };
+    DATA_BLOB out = { 0, nullptr };
+    if (!CryptUnprotectData(&in, nullptr, nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &out)) return "";
+    std::string plain((char*)out.pbData, out.cbData);
+    LocalFree(out.pbData);
+    return plain;
+}
+
+std::string JsonEscape(const std::string& text) {
+    std::string out;
+    out.reserve(text.size() + 16);
+    for (unsigned char c : text) {
+        switch (c) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    char buf[8];
+                    sprintf_s(buf, "\\u%04x", c);
+                    out += buf;
+                } else {
+                    out += (char)c;
+                }
+        }
+    }
+    return out;
+}
+
+// 通过标准输入/输出处理加解密子命令，避免敏感数据出现在进程命令行
+int RunCrypto(const std::string& mode) {
+    std::string input((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
+    while (!input.empty() && (input.back() == '\n' || input.back() == '\r')) input.pop_back();
+    if (input.empty()) {
+        std::cout << R"({"error":"输入为空"})" << std::endl;
+        return 0;
+    }
+    if (mode == "encrypt") {
+        std::string cipher = DpapiProtect(input);
+        if (cipher.empty()) std::cout << R"({"error":"加密失败"})" << std::endl;
+        else std::cout << "{\"data\":\"" << JsonEscape(cipher) << "\"}" << std::endl;
+    } else if (mode == "decrypt") {
+        std::string plain = DpapiUnprotect(input);
+        if (plain.empty()) std::cout << R"({"error":"解密失败"})" << std::endl;
+        else std::cout << "{\"data\":\"" << JsonEscape(plain) << "\"}" << std::endl;
+    } else {
+        std::cout << R"({"error":"未知模式"})" << std::endl;
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     try {
+        if (argc >= 2) {
+            std::string command = argv[1];
+            if (command == "encrypt" || command == "decrypt") return RunCrypto(command);
+        }
+
         if (argc < 4) {
             std::cout << R"({"error":"参数不足"})" << std::endl;
             return 0;
