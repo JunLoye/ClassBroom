@@ -37,3 +37,5 @@ Thumbs.db
 
 *.ps1
 *.iss
+
+tests/

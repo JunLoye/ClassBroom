@@ -31,15 +31,6 @@ body:
   validations:
     required: true
 
-- type: textarea
-  id: benefit
-  attributes:
-    label: "预期收益（可选）"
-    description: "说明该优化能带来什么好处"
-    placeholder: "优化后可以提升 ... / 减少 ... / 使 ... 更清晰"
-  validations:
-    required: false
-
 - type: dropdown
   id: scope
   attributes:

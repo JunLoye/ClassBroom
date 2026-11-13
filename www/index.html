@@ -8,7 +8,6 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  /* 自定义滚动条：细轨道 + 主题色滑块，滚动时加深 */
   * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -21,6 +20,8 @@
   ::-webkit-scrollbar-corner { background: transparent; }
   
   :root {
+    --control-height: 36px;
+    --control-radius: 6px;
     --bg-app: #F8F9FA;
     --bg-card: #FFFFFF;
     --border-light: #E2E8F0;
@@ -99,7 +100,7 @@
   }
 
   .btn {
-    padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    min-height: 36px; height: 36px; padding: 0 12px; border-radius: var(--control-radius); font-size: 13px; font-weight: 600;
     cursor: pointer; border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
     display: inline-flex; align-items: center; justify-content: center;
   }
@@ -238,6 +239,7 @@
   }
   .time-clock { font-size: calc(16px * var(--fs-scale)); font-weight: 800; line-height: 1; color: var(--text-main); font-variant-numeric: tabular-nums; }
   .time-date { margin-top: 4px; font-size: calc(10px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); white-space: nowrap; }
+  .time-date[data-course-mode]:not([data-course-mode=""])::after { content: attr(data-course-mode); margin-left: 5px; padding: 1px 4px; border: 1px solid var(--accent-orange); border-radius: 3px; color: var(--accent-orange); font-size: 9px; vertical-align: 1px; }
   @keyframes time-enter { from { opacity: 0; } to { opacity: 1; } }
   .time-container.course-state-entered { animation: time-enter 500ms ease-out both; }
   .course-state-entered { animation: course-state-change 480ms ease-out both; }
@@ -343,8 +345,8 @@
 
   
   #custom-bottom-info {
-    position: absolute; left: 12px; right: 104px; z-index: 20;
-    top: calc(50% - 8px + var(--bottom-offset, 0px));
+    position: absolute; left: 12px; right: 12px; z-index: 20;
+    top: auto; bottom: calc(4px - var(--bottom-offset, 0px));
     min-height: 16px; text-align: right; pointer-events: none;
     display: flex; align-items: center; justify-content: flex-end;
     color: var(--text-muted); font-size: 10px; line-height: 16px; font-weight: 700;
@@ -383,7 +385,7 @@
   .update-status.has-update { color: var(--accent-orange); }
   .update-status.is-latest { color: var(--accent-cyan); }
   .update-actions { display: flex; gap: 8px; flex-shrink: 0; }
-  .update-actions .btn { min-width: 92px; height: 34px; font-size: calc(12px * var(--fs-scale)); }
+  .update-actions .btn { min-width: 92px; height: var(--control-height); font-size: calc(12px * var(--fs-scale)); }
   .update-dialog { display: flex; flex-direction: column; gap: 8px; }
   .update-meta-line { color: var(--text-sub); font-size: 12px; line-height: 1.7; }
   .update-meta-line b { color: var(--text-main); font-family: var(--font-mono); }
@@ -400,7 +402,7 @@
   .placeholder-group { min-width: 0; }
   .placeholder-group h4 { margin: 0 0 6px; font-size: calc(11px * var(--fs-scale)); font-weight: 800; color: var(--text-muted); letter-spacing: 0.04em; }
   .placeholder-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .placeholder-token { min-height: 30px; max-width: 100%; padding: 4px 9px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); color: var(--accent-cyan); font-family: var(--font-mono); font-size: calc(12px * var(--fs-scale)); font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .placeholder-token { min-height: var(--control-height); height: var(--control-height); max-width: 100%; padding: 0 9px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-app); color: var(--accent-cyan); font-family: var(--font-mono); font-size: calc(12px * var(--fs-scale)); font-weight: 800; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .placeholder-token:hover { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-card)); }
   .placeholder-token:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent-cyan) 40%, transparent); outline-offset: 2px; }
   .placeholder-example { margin: 0; padding: 8px 14px 12px; color: var(--text-muted); font-size: calc(12px * var(--fs-scale)); }
@@ -408,8 +410,8 @@
   .subject-manager-details { margin-bottom: 8px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); }
   .subject-manager-details summary { min-height: 40px; padding: 10px 12px; cursor: pointer; font-size: calc(13px * var(--fs-scale)); font-weight: 800; }
   .subject-manager-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 6px; padding: 0 12px 8px; }
-  .subject-manager-row input { height: 40px; min-width: 0; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 5px; }
-  .subject-manager-row .btn { height: 40px; padding: 6px 10px; }
+  .subject-manager-row input { height: var(--control-height); min-width: 0; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); }
+  .subject-manager-row .btn { height: var(--control-height); padding: 0 12px; }
   .subject-manager-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
   .subject-manager-item { display: inline-flex; align-items: center; border: 1px solid var(--border-light); border-radius: 5px; overflow: hidden; }
   .subject-manager-name { height: 36px; padding: 4px 8px; border: none; background: var(--bg-card); color: var(--text-main); cursor: pointer; }
@@ -449,7 +451,7 @@
   .app-dialog-mask.is-compact .app-dialog-header { padding: 8px 12px 6px; font-size: calc(13px * var(--fs-scale)); }
   .app-dialog-mask.is-compact .app-dialog-body { padding: 0 12px 2px; font-size: calc(12px * var(--fs-scale)); line-height: 1.45; }
   .app-dialog-mask.is-compact .app-dialog-footer { padding: 8px 12px 9px; }
-  .app-dialog-mask.is-compact .app-dialog-footer .btn { min-width: 72px; height: 32px; font-size: calc(12px * var(--fs-scale)); }
+  .app-dialog-mask.is-compact .app-dialog-footer .btn { min-width: 72px; height: var(--control-height); font-size: calc(12px * var(--fs-scale)); }
   @keyframes dialog-pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
   .app-dialog-header {
     display: flex; align-items: center; gap: 8px;
@@ -467,7 +469,7 @@
   .app-dialog-footer {
     display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px;
   }
-  .app-dialog-footer .btn { min-width: 88px; height: 38px; }
+  .app-dialog-footer .btn { min-width: 88px; height: var(--control-height); }
   
   .app-dialog.is-wide { width: min(660px, calc(100% - 40px)); }
   .app-dialog.is-wide .app-dialog-body { white-space: normal; padding: 0 16px 8px; }
@@ -493,7 +495,7 @@
   .onboarding-confirm { display: flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: 12px; cursor: pointer; }
   .onboarding-confirm input { accent-color: var(--accent-cyan); margin: 0; }
   .onboarding-confirm.is-locked { cursor: default; color: var(--text-muted); }
-  .onboarding-weather-open { align-self: flex-start; height: 28px; padding: 0 10px; font-size: 12px; }
+  .onboarding-weather-open { align-self: flex-start; height: var(--control-height); min-height: var(--control-height); padding: 0 12px; font-size: 12px; }
 
   body.onboarding-active #view-main { opacity: 0; pointer-events: none; }
   /* 引导弹窗需要整块可读：窗口已加高到 620px 时取消遮罩内边距压缩，
@@ -519,8 +521,9 @@
   .provider-browser { display: flex; flex-direction: column; gap: 8px; }
   .provider-browser-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-sub); font-size: 12px; }
   .provider-browser-frame { width: 100%; height: min(62vh, 560px); min-height: 320px; border: 1px solid var(--border-light); border-radius: 6px; background: #fff; }
-  .weather-location-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .weather-location-search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
   .weather-location-search .btn { min-width: 76px; }
+  .location-privacy-note { margin: 6px 0 0; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); line-height: 1.5; }
 
   .import-preview { display: flex; flex-direction: column; gap: 10px; }
   .import-preview-meta {
@@ -623,9 +626,9 @@
   
   .custom-select { position: relative; display: inline-block; min-width: 0; width: 100%; }
   .custom-select-trigger {
-    width: 100%; min-height: 36px; padding: 7px 32px 7px 11px;
+    width: 100%; height: var(--control-height); min-height: var(--control-height); padding: 0 32px 0 11px;
     display: flex; align-items: center;
-    border: 1px solid var(--border-light); border-radius: 6px;
+    border: 1px solid var(--border-light); border-radius: var(--control-radius);
     background: var(--bg-card); color: var(--text-main);
     font-size: calc(13px * var(--fs-scale)); font-weight: 700; font-family: inherit;
     cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden;
@@ -661,13 +664,40 @@
   }
   .custom-select-option:hover, .custom-select-option.focused { background: color-mix(in srgb, var(--accent-cyan) 10%, transparent); color: var(--accent-cyan); }
   .custom-select-option.selected { color: var(--accent-cyan); font-weight: 800; }
+  .custom-select-option.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+  .custom-select.disabled .custom-select-trigger { opacity: 0.5; cursor: not-allowed; }
   .custom-select-option.selected::after { content: '✓'; float: right; margin-left: 8px; }
+  .native-select-source, .custom-date-source { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; opacity: 0 !important; pointer-events: none !important; clip-path: inset(50%) !important; }
+  .form-group .native-custom-select { width: 100%; }
+  .course-tools-row label .native-custom-select { width: 156px; }
+  .course-copy-controls .native-custom-select { width: 180px; }
+  .custom-date-picker { position: relative; display: inline-flex; min-width: 144px; }
+  .form-group .custom-date-picker { display: flex; width: 100%; }
+  .course-tools-row label .custom-date-picker { width: 150px; }
+  .custom-date-trigger { width: 100%; height: var(--control-height); min-height: var(--control-height); padding: 0 10px; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: left; cursor: pointer; }
+  .custom-date-trigger:hover, .custom-date-picker.open .custom-date-trigger { border-color: var(--accent-cyan); }
+  .custom-date-trigger::after { content: ''; width: 14px; height: 14px; flex: 0 0 14px; border: 1.5px solid currentColor; border-radius: 2px; opacity: 0.72; box-shadow: inset 0 4px 0 -3px currentColor; }
+  .custom-date-calendar { position: fixed; z-index: 4200; width: 280px; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18); display: none; }
+  .custom-date-picker.open .custom-date-calendar { display: block; }
+  .custom-date-calendar-header { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .custom-date-month { text-align: center; color: var(--text-main); font-size: 13px; font-weight: 800; }
+  .custom-date-nav, .custom-date-day, .custom-date-action { height: var(--control-height); min-height: var(--control-height); border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font: inherit; cursor: pointer; }
+  .custom-date-nav { width: var(--control-height); font-size: 18px; }
+  .custom-date-nav:hover, .custom-date-day:hover, .custom-date-action:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .custom-date-weekdays, .custom-date-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .custom-date-weekday { padding: 5px 0; color: var(--text-muted); font-size: 11px; font-weight: 700; text-align: center; }
+  .custom-date-day { width: 100%; height: var(--control-height); min-height: var(--control-height); border-color: transparent; font-size: 12px; }
+  .custom-date-day.outside-month { color: var(--text-muted); opacity: 0.45; }
+  .custom-date-day.today { border-color: var(--accent-cyan); }
+  .custom-date-day.selected { background: var(--accent-cyan); color: #fff; }
+  .custom-date-actions { display: flex; justify-content: space-between; gap: 6px; margin-top: 8px; }
+  .custom-date-action { flex: 1; padding: 0 8px; font-size: 12px; }
   .settings-actions .custom-select { width: 118px; min-width: 118px; }
   .theme-select .custom-select { width: 132px; }
   .theme-select { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); white-space: nowrap; }
   .startup-toggle { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); white-space: nowrap; cursor: pointer; }
   .startup-toggle input { accent-color: var(--accent-cyan); }
-  .tab-btn { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: none; padding: 7px 14px; font-size: calc(13px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); cursor: pointer; border-radius: 7px; transition: background 140ms ease, color 140ms ease; }
+  .tab-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: var(--control-height); min-height: var(--control-height); background: transparent; border: none; padding: 0 12px; font-size: calc(13px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); cursor: pointer; border-radius: var(--control-radius); transition: background 140ms ease, color 140ms ease; }
   .tab-btn:hover { background: color-mix(in srgb, var(--accent-cyan) 6%, transparent); color: var(--text-main); }
   .tab-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
@@ -683,20 +713,22 @@
     font-weight: 800; letter-spacing: 0.02em; color: var(--text-main);
     background: var(--bg-app); border-bottom: 1px solid var(--border-light);
   }
-  .settings-section-body { padding: 14px; }
+  .settings-section-body { padding: 12px; }
   .settings-section-body > .form-group:last-child,
   .settings-section-body > .form-row:last-child,
   .settings-section-body > .form-row:last-child .form-group { margin-bottom: 0; }
   .settings-footer { flex-shrink: 0; display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border-light); background: var(--bg-app); }
-  .settings-footer .btn { min-width: 96px; height: 40px; }
+  .settings-footer .btn { min-width: 96px; height: var(--control-height); }
   .settings-footer #btn-save-settings { min-width: 160px; }
   .settings-footer .btn:disabled { opacity: 0.45; cursor: default; filter: grayscale(1); }
   
   .tab-content { display: none !important; }
   .tab-content.active { display: block !important; }
-  #tab-courses.active { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; gap: 10px; min-height: 0; }
-  #tab-courses.active .course-header { grid-column: 1; grid-row: 1; margin-bottom: 0; }
-  #tab-courses.active .course-list { grid-column: 1; grid-row: 2; min-height: 0; padding-right: 4px; }
+  #tab-courses.active { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
+  #tab-courses.active .course-schedule-tools { grid-column: 1; grid-row: 1; }
+  #tab-courses.active .course-header { grid-column: 1; grid-row: 2; margin-bottom: 0; }
+  #tab-courses.active .subject-manager-details { grid-column: 1; grid-row: 3; }
+  #tab-courses.active .course-list { grid-column: 1; grid-row: 4; min-height: 0; padding-right: 4px; }
 
   /* 复选开关行与分段按钮（模块显示、文本位置） */
   .switch-row {
@@ -714,9 +746,10 @@
   .segmented-btn:hover { background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); color: var(--text-main); }
   .segmented-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-  .form-group { margin-bottom: 16px; }
+  .form-group { margin-bottom: 12px; }
   .form-group label { display: block; font-size: calc(12px * var(--fs-scale)); font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
   .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 5px; font-size: calc(13px * var(--fs-scale)); outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
+  .form-group select { width: 100%; height: 36px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); }
   .form-group input[type="color"] { padding: 3px; }
   /* 开关行内的复选框不参与输入框的通用尺寸/边框/内边距样式 */
   .form-group label.switch-row {
@@ -749,8 +782,15 @@
   .font-preview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); font-weight: 800; line-height: 1.25; }
   .font-preview-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sub); font-weight: 700; line-height: 1.25; }
   .font-preview-meta { flex-shrink: 0; font-family: var(--font-mono); font-size: calc(11px * var(--fs-scale)); font-weight: 800; color: var(--accent-cyan); }
-  .form-row { display: flex; gap: 12px; }
-  .form-row .col { flex: 1 1 220px; min-width: 0; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: end; gap: 10px 12px; }
+  .form-row .col { min-width: 0; }
+  .profile-save-actions { display: flex; flex-direction: row; align-items: flex-end; gap: 6px; }
+  .profile-save-actions .btn { flex: 1 1 auto; min-width: 92px; height: 36px; }
+  .profile-toggles { margin-bottom: 0; }
+  .display-rule-controls { align-items: flex-end; }
+  .display-rule-list { display: flex; flex-direction: column; gap: 5px; }
+  .display-rule-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 5px; color: var(--text-main); font-size: calc(12px * var(--fs-scale)); }
+  .display-rule-item .btn { min-height: var(--control-height); height: var(--control-height); padding: 0 12px; }
   @media (max-width: 1100px) {
     .settings-header { align-items: flex-start; flex-wrap: wrap; }
     .settings-tabs { width: 100%; }
@@ -759,44 +799,71 @@
     .form-row { flex-wrap: wrap; }
   }
   @media (max-width: 850px) {
-    #tab-courses.active { grid-template-columns: 1fr; grid-template-rows: 52px minmax(240px, 1fr); }
-    #tab-courses.active .course-list { grid-column: 1; grid-row: 2; }
+    #tab-courses.active { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(240px, 1fr); }
+    #tab-courses.active .course-list { grid-column: 1; grid-row: 4; }
   }
   @media (max-width: 620px) {
     .settings-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .settings-actions .btn { width: 100%; }
+    .weather-location-search { grid-template-columns: minmax(0, 1fr) auto; }
+    .weather-location-search #btn-locate-by-ip { grid-column: 1 / -1; }
     .course-item { flex-wrap: wrap; }
     .course-custom-input { min-width: 0; width: 0; }
   }
 
   .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
+  .course-schedule-tools { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
+  .course-tools-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .course-tools-row label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
+  .course-tools-row select, .course-tools-row input { height: var(--control-height); min-width: 92px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); }
+  .course-tools-row .btn { height: var(--control-height); min-height: var(--control-height); padding: 0 12px; }
+  .course-tools-row .switch-hint { margin-left: auto; }
   .day-selector { display: flex; flex-wrap: wrap; gap: 6px; }
+  .course-day-summary { color: var(--text-muted); font-size: calc(12px * var(--fs-scale)); font-weight: 700; white-space: nowrap; }
   .course-copy-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-  .course-copy-controls select { height: 34px; min-width: 104px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); }
-  .course-copy-controls .btn { height: 34px; padding: 6px 10px; }
+  .course-copy-controls select { height: var(--control-height); min-width: 104px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); }
+  .course-copy-controls .btn { height: var(--control-height); min-height: var(--control-height); padding: 0 12px; }
   .day-btn { background: var(--bg-card); border: 1px solid var(--border-light); padding: 6px 10px; border-radius: 6px; font-size: calc(12px * var(--fs-scale)); cursor: pointer; }
   .day-btn.active { background: var(--accent-cyan); color: #fff; border-color: var(--accent-cyan); }
   
   .course-list { display: flex; flex-direction: column; gap: 6px; }
-  .course-item { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(180px, auto) 44px; gap: 8px; align-items: center; min-height: 64px; background: var(--bg-app); padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); cursor: pointer; }
-  .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr) 44px; min-height: 64px; opacity: 0.58; }
-  .course-item:not(.selected):hover { opacity: 0.82; }
-  .course-item.selected { grid-template-columns: minmax(280px, 0.72fr) minmax(520px, 1.28fr) 44px; min-height: 112px; height: auto; opacity: 1; border-color: var(--accent-cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent); align-items: start; padding-top: 8px; padding-bottom: 8px; overflow: visible; }
+  .course-item { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(180px, auto) 36px 36px; gap: 8px; align-items: center; min-height: 64px; background: var(--bg-app); padding: 8px; border-radius: 8px; border: 1px solid var(--border-light); cursor: pointer; }
+  .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr); min-height: 48px; opacity: 0.82; }
+  .course-item:not(.selected):hover { opacity: 1; border-color: color-mix(in srgb, var(--accent-cyan) 45%, var(--border-light)); }
+  .course-item.selected { grid-template-columns: minmax(180px, 0.7fr) minmax(320px, 1.3fr) 36px 36px; grid-template-rows: auto auto; min-height: 112px; height: auto; opacity: 1; border-color: var(--accent-cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent); align-items: start; padding-top: 8px; padding-bottom: 8px; overflow: visible; cursor: default; }
+  .course-editor-form { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; }
+  .course-editor-hint { margin: 0; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); line-height: 1.4; }
+  .course-editor-done { align-self: flex-end; white-space: nowrap; }
+  .course-subject-menu { position: relative; min-width: 0; }
+  .course-subject-menu-trigger { min-height: var(--control-height); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; list-style: none; }
+  .course-subject-menu-trigger::-webkit-details-marker { display: none; }
+  .course-subject-menu-trigger::after { content: '⌄'; color: var(--text-muted); }
   .course-subject-panel { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-  .course-time-panel { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; display: flex; align-items: center; justify-content: end; overflow: visible; }
-  .course-item.selected > .btn-delete { grid-column: 3; grid-row: 1; align-self: start; justify-self: end; margin-left: 0; }
-  .course-item:not(.selected) > .btn-delete { grid-column: 2; grid-row: 1; justify-self: end; margin-left: 0; }
+  .course-time-panel { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; display: flex; align-items: center; justify-content: stretch; overflow: visible; }
+  .course-item.selected > .btn-course-duplicate { grid-column: 3; grid-row: 2; }
+  .course-item.selected > .btn-delete { grid-column: 4; grid-row: 2; align-self: start; justify-self: end; margin-left: 0; }
+  .course-item:not(.selected) > .btn-course-duplicate { grid-column: 2; grid-row: 1; }
+  .course-item:not(.selected) > .btn-delete { grid-column: 3; grid-row: 1; justify-self: end; margin-left: 0; }
   .course-item.selected .btn-delete { margin-left: 0; align-self: start; }
-  .course-name-summary { min-width: 0; font-size: calc(15px * var(--fs-scale)); font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .course-time-summary { min-width: 0; margin-top: 2px; white-space: nowrap; font-family: var(--font-mono); font-size: calc(14px * var(--fs-scale)); font-weight: 800; color: var(--text-sub); }
-  .course-item:not(.selected) .course-subject-panel { grid-column: 1; }
-  .course-subject-options { width: 100%; max-width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(5, minmax(42px, 1fr)); align-items: center; gap: 4px; overflow: visible; }
-  .course-subject-option { min-width: 0; width: 100%; min-height: 32px; height: 32px; padding: 4px 6px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-course-action { width: var(--control-height); height: var(--control-height); min-height: var(--control-height); padding: 0; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
+  .btn-course-action:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .course-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 140px; border: 1px dashed var(--border-light); border-radius: 6px; color: var(--text-muted); text-align: center; }
+  .course-empty-state b { color: var(--text-main); font-size: calc(14px * var(--fs-scale)); }
+  .course-name-summary { min-width: 0; font-size: calc(15px * var(--fs-scale)); font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .course-time-summary { min-width: 0; margin-top: 2px; white-space: nowrap; font-family: var(--font-mono); font-size: calc(14px * var(--fs-scale)); font-weight: 800; color: var(--text-sub); cursor: pointer; }
+  .course-item:not(.selected) .course-subject-panel { grid-column: 1; grid-row: 1; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .course-item:not(.selected) .course-name-summary { flex: 1; }
+  .course-item:not(.selected) .course-time-summary { margin-top: 0; flex-shrink: 0; }
+  .course-item:not(.selected) > .btn-course-duplicate,
+  .course-item:not(.selected) > .btn-delete { display: none; }
+  .course-subject-options { width: 100%; max-height: 220px; overflow: auto; margin-top: 4px; padding: 6px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 4px; }
+  .course-subject-menu[open] .course-subject-options { display: grid; }
+  .course-subject-option { min-width: 0; width: 100%; min-height: var(--control-height); height: var(--control-height); padding: 4px 6px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .course-subject-option:hover, .course-subject-option.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 7%, var(--bg-card)); }
-  .course-custom-button { height: 32px !important; min-height: 32px !important; padding: 4px 6px !important; border: 1px solid var(--border-light) !important; border-radius: 4px !important; background: var(--bg-card); color: var(--text-sub); font-size: calc(13px * var(--fs-scale)); cursor: pointer; white-space: nowrap; }
+  .course-custom-button { height: var(--control-height) !important; min-height: var(--control-height) !important; padding: 4px 6px !important; border: 1px solid var(--border-light) !important; border-radius: var(--control-radius) !important; background: var(--bg-card); color: var(--text-sub); font-size: calc(13px * var(--fs-scale)); cursor: pointer; white-space: nowrap; }
   .course-custom-button:hover { border-color: var(--accent-cyan) !important; color: var(--accent-cyan); }
-  .course-custom-input { flex: 1; min-width: 120px; height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--bg-card); color: var(--text-main); font-size: calc(14px * var(--fs-scale)); }
-  .course-custom-confirm { height: 44px; padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: 6px; background: var(--accent-cyan); color: #fff; font-size: calc(13px * var(--fs-scale)); cursor: pointer; }
+  .course-custom-input { flex: 1; min-width: 120px; height: var(--control-height); padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(14px * var(--fs-scale)); }
+  .course-custom-confirm { height: var(--control-height); min-height: var(--control-height); padding: 0 10px; border: 1px solid var(--accent-cyan); border-radius: var(--control-radius); background: var(--accent-cyan); color: #fff; font-size: calc(13px * var(--fs-scale)); cursor: pointer; }
   .course-time-range { width: min(560px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 6px; }
   .course-time-range-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
   .course-range-value { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 6px; border: 1px solid transparent; border-radius: 8px; background: var(--bg-card); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); line-height: 1.2; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: border-color 120ms ease, background-color 120ms ease; }
@@ -818,34 +885,36 @@
   .course-time-range-thumb:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-cyan) 22%, transparent); }
   .course-time-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
   .course-time-steppers { display: flex; align-items: center; gap: 6px; }
-  .course-time-stepper { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-size: calc(18px * var(--fs-scale)); font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .course-time-stepper { width: var(--control-height); height: var(--control-height); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(16px * var(--fs-scale)); font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
   .course-time-stepper:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
   .course-time-stepper:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
   .course-time-steppers .course-time-step-label { min-width: 62px; text-align: center; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
   .course-time-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .course-time-preset { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-card); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .course-time-preset { height: var(--control-height); min-height: var(--control-height); padding: 0 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
   .course-time-preset:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
   .course-time-preset:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
-  .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: 44px; height: 44px; border-radius: 6px; font-size: 22px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
+  .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: var(--control-height); height: var(--control-height); min-height: var(--control-height); border-radius: var(--control-radius); font-size: 20px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
   .btn-delete:hover { background: var(--accent-red); color: #fff; }
-  .day-btn { min-height: 44px; min-width: 52px; }
-  #btn-add-course { min-height: 44px; }
+  .day-btn { min-height: var(--control-height); min-width: 52px; }
+  #btn-add-course { min-height: var(--control-height); }
   @media (pointer: coarse) {
     .settings-header { min-height: 58px; }
-    .tab-btn { min-height: 44px; }
-    .settings-actions .btn, .startup-toggle input { min-height: 44px; }
+    .settings-actions .btn { min-height: var(--control-height); }
+    .startup-toggle input { min-height: 16px; }
     .course-item { min-height: 64px; }
     .course-time-range { width: 100%; min-width: 280px; }
     .settings-body { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   }
   @media (max-width: 1100px) {
-    .course-item,
-    .course-item.selected { grid-template-columns: minmax(180px, 1fr) 44px; grid-template-rows: auto auto; min-height: 64px; }
+    .course-item.selected { grid-template-columns: minmax(0, 1fr) 36px 36px; grid-template-rows: auto auto auto; min-height: 64px; }
+    .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
     .course-subject-panel { grid-column: 1; grid-row: 1; }
+    .course-editor-form { grid-column: 1 / -1; grid-row: 1; }
     .course-time-panel { grid-column: 1 / -1; grid-row: 2; width: 100%; }
-    .course-subject-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .course-item.selected > .btn-delete,
-    .course-item:not(.selected) > .btn-delete { grid-column: 2; grid-row: 1; }
+    .course-item.selected > .btn-course-duplicate { grid-column: 2; grid-row: 3; }
+    .course-item.selected > .btn-delete { grid-column: 3; grid-row: 3; }
+    .course-item > .btn-course-duplicate { grid-column: 2; grid-row: 1; }
+    .course-item > .btn-delete { grid-column: 3; grid-row: 1; }
   }
   @media (max-width: 760px) {
     .placeholder-groups { grid-template-columns: 1fr; }
@@ -924,7 +993,7 @@
         <button class="tab-btn active" data-target="main" type="button">主界面</button>
         <button class="tab-btn" data-target="weather" type="button">天气</button>
         <button class="tab-btn" data-target="courses" type="button">课表</button>
-        <button class="tab-btn" data-target="bottom" type="button">自定义文本</button>
+        <button class="tab-btn" data-target="bottom" type="button">显示与文本</button>
         <button class="tab-btn" data-target="about" type="button">关于</button>
       </div>
       <div id="settings-actions" class="settings-actions">
@@ -1046,7 +1115,9 @@
               <div class="weather-location-search">
                 <input type="search" id="input-location-query" autocomplete="off" spellcheck="false" placeholder="输入城市或地区名称">
                 <button id="btn-search-location" class="btn btn-secondary" type="button">搜索</button>
+                <button id="btn-locate-by-ip" class="btn btn-secondary" type="button">按 IP 定位</button>
               </div>
+              <p class="location-privacy-note">仅在点击时向 ipwho.is 发送公网 IP；定位结果仅供参考。</p>
               <div class="custom-select" id="select-geocoding-result" data-input="input-geocoding-result" data-placeholder="选择匹配地区"></div>
               <input type="hidden" id="input-geocoding-result">
               <div id="location-search-status" class="switch-hint" role="status" aria-live="polite"></div>
@@ -1079,8 +1150,36 @@
       </div>
 
       <div class="tab-content" id="tab-courses">
+        <div class="course-schedule-tools">
+          <div class="course-tools-row">
+            <label for="input-cycle-week-count">轮换周期
+              <select id="input-cycle-week-count">
+                <option value="1">每周</option><option value="2">单双周</option><option value="3">3 周一轮</option><option value="4">4 周一轮</option>
+                <option value="5">5 周一轮</option><option value="6">6 周一轮</option><option value="7">7 周一轮</option><option value="8">8 周一轮</option>
+              </select>
+            </label>
+            <label for="input-cycle-start-date">轮换起始周一<input id="input-cycle-start-date" type="date"></label>
+            <div class="day-selector" id="cycle-week-selector" aria-label="选择轮换周"></div>
+            <button id="btn-download-course-template" class="btn btn-secondary" type="button">下载 Excel 模板</button>
+            <button id="btn-import-courses" class="btn btn-secondary" type="button">Excel 导入</button>
+            <button id="btn-export-courses" class="btn btn-secondary" type="button">Excel 导出</button>
+          </div>
+          <div class="course-tools-row">
+            <label for="input-course-edit-mode">编辑对象
+              <select id="input-course-edit-mode"><option value="regular">轮换课表</option><option value="override">某日临时覆盖</option></select>
+            </label>
+            <label id="course-override-date-group" for="input-course-override-date">覆盖日期<input id="input-course-override-date" type="date"></label>
+            <label id="course-override-type-group" for="input-course-override-type">事件类型
+              <select id="input-course-override-type"><option value="adjustment">临时调课</option><option value="substitute">代课</option><option value="event">临时活动</option></select>
+            </label>
+            <button id="btn-create-course-override" class="btn btn-secondary" type="button">新建覆盖</button>
+            <button id="btn-remove-course-override" class="btn btn-secondary" type="button">恢复原课表</button>
+            <span id="course-override-status" class="switch-hint" role="status" aria-live="polite"></span>
+          </div>
+        </div>
         <div class="course-header">
           <div class="day-selector" id="day-selector"></div>
+          <span id="course-day-summary" class="course-day-summary"></span>
           <div class="course-copy-controls">
             <select id="input-copy-course-day" aria-label="复制课程到星期">
               <option value="">复制到星期…</option>
@@ -1101,6 +1200,63 @@
       </div>
 
       <div class="tab-content" id="tab-bottom">
+        <section class="settings-section">
+          <h3 class="settings-section-title">显示方案与考试日期</h3>
+          <div class="settings-section-body">
+            <div class="form-row">
+              <div class="form-group col">
+                <label for="select-display-profile-edit">编辑方案</label>
+                <select id="select-display-profile-edit"><option value="">新建方案</option></select>
+              </div>
+              <div class="form-group col">
+                <label for="input-display-profile-name">方案名称</label>
+                <input id="input-display-profile-name" type="text" placeholder="例如：考试模式">
+              </div>
+              <div class="form-group col">
+                <label for="input-display-profile-theme">方案主题</label>
+                <select id="input-display-profile-theme">
+                  <option value="default">默认</option><option value="ocean">海洋蓝</option><option value="forest">森林绿</option>
+                  <option value="midnight">午夜深色</option><option value="high-contrast">高对比度</option><option value="monochrome">纯黑白</option>
+                </select>
+              </div>
+              <div class="form-group col profile-save-actions">
+                <label>&nbsp;</label>
+                <button id="btn-save-display-profile" class="btn btn-secondary" type="button">保存方案</button>
+                <button id="btn-delete-display-profile" class="btn btn-secondary" type="button" hidden>删除方案</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group col profile-toggles">
+                <label class="switch-row" for="input-profile-show-weather"><input type="checkbox" id="input-profile-show-weather" checked>显示天气</label>
+                <label class="switch-row" for="input-profile-show-timeline"><input type="checkbox" id="input-profile-show-timeline" checked>显示课表</label>
+              </div>
+              <div class="form-group col profile-toggles">
+                <label class="switch-row" for="input-profile-show-bottom"><input type="checkbox" id="input-profile-show-bottom" checked>显示底部信息</label>
+                <label class="switch-row" for="input-profile-show-seconds"><input type="checkbox" id="input-profile-show-seconds" checked>显示时钟秒数</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="input-profile-bottom-text">方案底部信息</label>
+              <textarea id="input-profile-bottom-text" placeholder="例如：考试中 · 请保持安静"></textarea>
+            </div>
+            <div class="form-row display-rule-controls">
+              <div class="form-group col">
+                <label for="input-display-rule-date">应用日期</label>
+                <input id="input-display-rule-date" type="date">
+              </div>
+              <div class="form-group col">
+                <label for="select-display-rule-profile">显示方案</label>
+                <select id="select-display-rule-profile"></select>
+              </div>
+              <div class="form-group col profile-save-actions">
+                <label>&nbsp;</label>
+                <button id="btn-add-display-rule" class="btn btn-secondary" type="button">设置日期方案</button>
+              </div>
+            </div>
+            <div id="display-rule-list" class="display-rule-list"></div>
+          </div>
+        </section>
+
         <section class="settings-section">
           <h3 class="settings-section-title">显示内容</h3>
           <div class="settings-section-body">
@@ -1227,7 +1383,6 @@
               <dt>版本</dt><dd id="about-version">--</dd>
               <dt>应用 ID</dt><dd>com.junloye.classbroom</dd>
               <dt>说明</dt><dd>轻量级课程与天气桌面挂件</dd>
-              <dt>数据位置</dt><dd>HKCU\Software\ClassBroom</dd>
             </dl>
           </div>
         </section>
@@ -1251,11 +1406,15 @@
       <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
       <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
       <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
-      <button id="btn-save-settings" class="btn btn-primary" type="button" disabled>保存并退出</button>
+      <button id="btn-save-settings" class="btn btn-primary" type="button">保存并退出</button>
     </div>
   </div>
 
   <script src="js/neutralino.js"></script>
+  <script src="js/schedule.js"></script>
+  <script src="js/course-import.js"></script>
+  <script src="js/vendor/xlsx.full.min.js"></script>
+  <script src="js/course-export.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

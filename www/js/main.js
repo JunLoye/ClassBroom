@@ -14,7 +14,7 @@ const AutoFillGuard = {
             if (type !== 'password' || !element.hasAttribute('data-secret')) element.setAttribute('type', 'text');
         }
         const isTextLike = tag === 'TEXTAREA' || /^(text|search|url|tel|)$/i.test(type);
-        const wanted = isTextLike ? 'new-password' : 'off';
+        const wanted = element.hasAttribute('list') ? 'off' : isTextLike ? 'new-password' : 'off';
         if (element.getAttribute('autocomplete') !== wanted) {
             element.setAttribute('autocomplete', wanted);
         }
@@ -114,6 +114,9 @@ let AppData = { weather: {}, courses: {} };
 let EditData = {}; 
 let CurrentEditDay = 'mon';
 let CurrentEditCourseIndex = null;
+let CurrentEditWeek = 1;
+let CurrentEditMode = 'regular';
+let CurrentOverrideDate = '';
 
 const SecretVault = {
     WRAP_KEY_NAME: 'cb.vault.wrap',
@@ -474,6 +477,13 @@ const Store = {
         }
     },
     async init() {
+        const configPath = await this.getConfigPath();
+        try {
+            const str = await Neutralino.filesystem.readFile(configPath);
+            AppData = await SecretVault.unsealConfig(JSON.parse(str));
+            return;
+        } catch (error) { }
+
         if (window.NL_OS === 'Windows') {
             try {
                 const res = await Neutralino.os.execCommand(`reg query "${REG_PATH}" /v ${REG_KEY}`);
@@ -481,46 +491,47 @@ const Store = {
                     const match = res.stdOut.match(new RegExp(`${REG_KEY}\\s+REG_SZ\\s+(.+)`));
                     if (match && match[1]) {
                         const raw = JSON.parse(Base64Util.decode(match[1].trim()));
-                        const legacy = raw.v !== FORMAT_VERSION;
                         AppData = await SecretVault.unsealConfig(raw);
-                        if (legacy) await this.saveToRegistry(AppData);
+                        try {
+                            const sealed = await SecretVault.sealConfig(AppData);
+                            await Neutralino.filesystem.writeFile(configPath, JSON.stringify(sealed, null, 2));
+                        } catch (error) {
+                            void Logger.warn('迁移注册表配置到文件失败', { module: 'config', action: 'migrate' }, error);
+                        }
                         return;
                     }
                 }
             } catch (e) { }
         }
         try {
-            let configPath = await this.getConfigPath();
-            let str;
-            try {
-                str = await Neutralino.filesystem.readFile(configPath);
-            } catch (error) {
-                if (configPath === 'config.json') throw error;
-                configPath = 'config.json';
-                str = await Neutralino.filesystem.readFile(configPath);
-            }
+            const str = await Neutralino.filesystem.readFile('config.json');
             const raw = JSON.parse(str);
-            const legacy = raw.v !== FORMAT_VERSION;
             AppData = await SecretVault.unsealConfig(raw);
-            if (legacy || configPath === 'config.json') await this.saveToRegistry(AppData);
+            await this.saveToRegistry(AppData);
         } catch (e) {
             AppData = { weather: { jwtConfig: {} }, courses: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] } };
         }
     },
     async saveToRegistry(data) {
         const sealed = await SecretVault.sealConfig(data);
+        const serialized = JSON.stringify(sealed, null, 2);
+        const configPath = await this.getConfigPath();
+        await Neutralino.filesystem.writeFile(configPath, serialized);
         if (window.NL_OS !== 'Windows') {
-            const configPath = await this.getConfigPath();
-            return Neutralino.filesystem.writeFile(configPath, JSON.stringify(sealed, null, 2));
+            return;
         }
-        const b64Str = Base64Util.encode(JSON.stringify(sealed));
-        const res = await Neutralino.os.execCommand(`reg add "${REG_PATH}" /v ${REG_KEY} /t REG_SZ /d "${b64Str}" /f`);
-        if (res.exitCode !== 0) throw new Error(res.stdErr);
+        const b64Str = Base64Util.encode(serialized);
+        if (b64Str.length > 15000) return;
+        try {
+            const res = await Neutralino.os.execCommand(`reg add "${REG_PATH}" /v ${REG_KEY} /t REG_SZ /d "${b64Str}" /f`);
+            if (res.exitCode !== 0) void Logger.warn('注册表兼容镜像写入失败，配置文件已保存', { module: 'config', action: 'registry-mirror' });
+        } catch (error) {
+            void Logger.warn('注册表兼容镜像写入失败，配置文件已保存', { module: 'config', action: 'registry-mirror' }, error);
+        }
     },
     getWeatherConfig() { return AppData.weather || {}; },
     getTodayCourses() {
-        const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        return (AppData.courses || {})[dayMap[new Date().getDay()]] || [];
+        return Schedule.resolveCourses(new Date(), AppData).courses;
     }
 };
 
@@ -714,9 +725,15 @@ const API = {
         return response.json();
     },
     async searchLocations(query) {
-        const params = new URLSearchParams({ name: query, count: '8', language: 'zh', format: 'json' });
+        const params = new URLSearchParams({ name: query, count: '20', language: 'zh', format: 'json' });
         const data = await this.fetchJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
         return Array.isArray(data.results) ? data.results : [];
+    },
+    async locateByIp() {
+        const params = new URLSearchParams({ fields: 'success,message,city,region,country,latitude,longitude' });
+        const data = await this.fetchJson(`https://ipwho.is/?${params}`);
+        if (data.success === false) throw new Error(data.message || 'IP 定位不可用');
+        return data;
     },
     async fetchQWeather(config) {
         if (!config.apiHost || !SecretVault.recall('jwt:privateKey')) return this.notConfigured();
@@ -1175,6 +1192,31 @@ const CustomSelect = {
     registry: new Map(),
     initAll() {
         document.querySelectorAll('.custom-select[data-input]').forEach((el) => this.init(el));
+        document.querySelectorAll('select[id]').forEach((select) => {
+            if (select.dataset.customSelectSource === '1') return;
+            const root = document.createElement('div');
+            root.id = `custom-select-${select.id}`;
+            root.className = 'custom-select native-custom-select';
+            root.dataset.input = select.id;
+            const label = select.labels?.[0];
+            const labelText = label
+                ? Array.from(label.childNodes).filter((node) => node !== select).map((node) => node.textContent.trim()).join(' ').trim()
+                : '';
+            if (labelText) root.dataset.placeholder = labelText;
+            select.classList.add('native-select-source');
+            select.dataset.customSelectSource = '1';
+            select.tabIndex = -1;
+            select.setAttribute('aria-hidden', 'true');
+            select.insertAdjacentElement('afterend', root);
+            const instance = this.init(root);
+            if (instance) {
+                instance.nativeSelect = true;
+                instance.refreshNativeOptions();
+                instance.trigger.id = `custom-trigger-${select.id}`;
+                instance.trigger.setAttribute('aria-label', select.getAttribute('aria-label') || labelText || '选择选项');
+                select.labels?.forEach((item) => { item.htmlFor = instance.trigger.id; });
+            }
+        });
     },
     init(root) {
         if (!root || root.dataset.customSelectBound === '1') return null;
@@ -1187,6 +1229,7 @@ const CustomSelect = {
         const trigger = document.createElement('button');
         trigger.type = 'button';
         trigger.className = 'custom-select-trigger';
+        trigger.setAttribute('role', 'combobox');
         trigger.setAttribute('aria-haspopup', 'listbox');
         trigger.setAttribute('aria-expanded', 'false');
         const label = document.createElement('span');
@@ -1197,32 +1240,48 @@ const CustomSelect = {
 
         const panel = document.createElement('div');
         panel.className = 'custom-select-panel';
+        panel.id = `${root.id || inputId}-options`;
+        trigger.setAttribute('aria-controls', panel.id);
         panel.setAttribute('role', 'listbox');
         root.append(trigger, panel);
 
         const instance = {
             root, trigger, label, panel, hidden, placeholder,
+            nativeSelect: false,
+            focusedIndex: -1,
             options: [],
             setOptions(options) {
                 this.options = Array.isArray(options) ? options.slice() : [];
                 this.render();
             },
             render() {
+                if (this.nativeSelect && hidden) {
+                    this.options = Array.from(hidden.options).map((option) => ({
+                        value: option.value,
+                        label: option.textContent.trim(),
+                        disabled: option.disabled
+                    }));
+                }
                 panel.innerHTML = '';
                 const current = this.getValue();
-                this.options.forEach((option) => {
+                this.options.forEach((option, index) => {
                     const item = document.createElement('div');
                     item.className = 'custom-select-option';
+                    item.id = `${panel.id}-option-${index}`;
+                    item.dataset.optionIndex = String(index);
                     item.setAttribute('role', 'option');
                     item.dataset.value = option.value;
                     item.textContent = option.label;
+                    item.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');
+                    if (option.disabled) item.classList.add('disabled');
                     const selected = option.value === current;
                     if (selected) {
                         item.classList.add('selected');
-                        item.setAttribute('aria-selected', 'true');
                     }
+                    item.setAttribute('aria-selected', selected ? 'true' : 'false');
                     item.addEventListener('click', (event) => {
                         event.stopPropagation();
+                        if (option.disabled || hidden?.disabled) return;
                         this.setValue(option.value, true);
                         this.close();
                         trigger.focus({ preventScroll: true });
@@ -1230,6 +1289,10 @@ const CustomSelect = {
                     panel.appendChild(item);
                 });
                 this.syncLabel();
+                this.syncDisabled();
+            },
+            refreshNativeOptions() {
+                if (this.nativeSelect) this.render();
             },
             getValue() {
                 return hidden ? hidden.value : '';
@@ -1252,10 +1315,43 @@ const CustomSelect = {
                 label.textContent = matched ? matched.label : placeholder;
                 label.classList.toggle('placeholder', !matched);
             },
+            syncDisabled() {
+                const disabled = Boolean(hidden?.disabled);
+                trigger.disabled = disabled;
+                root.classList.toggle('disabled', disabled);
+                trigger.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+            },
+            focusOption(direction) {
+                const options = Array.from(panel.querySelectorAll('.custom-select-option:not(.disabled)'));
+                if (!options.length) return;
+                const current = options.findIndex((option) => Number(option.dataset.optionIndex) === this.focusedIndex);
+                const next = current < 0
+                    ? (direction > 0 ? 0 : options.length - 1)
+                    : (current + direction + options.length) % options.length;
+                options.forEach((option) => option.classList.remove('focused'));
+                const active = options[next];
+                this.focusedIndex = Number(active.dataset.optionIndex);
+                active.classList.add('focused');
+                trigger.setAttribute('aria-activedescendant', active.id);
+                active.scrollIntoView({ block: 'nearest' });
+            },
+            selectFocusedOption() {
+                const active = panel.querySelector(`[data-option-index="${this.focusedIndex}"]`);
+                active?.click();
+            },
             open() {
+                this.render();
+                if (trigger.disabled) return;
                 CustomSelect.closeAll(instance);
                 root.classList.add('open');
                 trigger.setAttribute('aria-expanded', 'true');
+                const selected = this.options.findIndex((option) => option.value === this.getValue() && !option.disabled);
+                this.focusedIndex = selected >= 0 ? selected : -1;
+                if (selected >= 0) {
+                    const active = panel.querySelector(`[data-option-index="${selected}"]`);
+                    active?.classList.add('focused');
+                    if (active) trigger.setAttribute('aria-activedescendant', active.id);
+                }
                 this.position();
             },
 
@@ -1273,18 +1369,24 @@ const CustomSelect = {
                 const spaceAbove = rect.top - gap - edge;
                 const dropUp = spaceBelow < panelHeight && spaceAbove > spaceBelow;
                 const height = Math.min(panelHeight, dropUp ? spaceAbove : spaceBelow, maxAvailable);
+                const maxWidth = Math.max(0, viewportWidth - edge * 2);
+                panel.style.width = 'max-content';
+                panel.style.maxWidth = `${maxWidth}px`;
+                const panelWidth = Math.min(maxWidth, Math.max(rect.width, panel.getBoundingClientRect().width));
                 root.classList.toggle('drop-up', dropUp);
-                panel.style.width = `${Math.round(rect.width)}px`;
+                panel.style.width = `${Math.round(panelWidth)}px`;
                 panel.style.maxHeight = `${Math.max(72, Math.round(height))}px`;
                 panel.style.top = dropUp
                     ? `${Math.max(edge, Math.round(rect.top - gap - height))}px`
                     : `${Math.round(rect.bottom + gap)}px`;
-                const left = Math.min(Math.max(edge, Math.round(rect.left)), viewportWidth - Math.round(rect.width) - edge);
+                const left = Math.min(Math.max(edge, Math.round(rect.left)), viewportWidth - Math.round(panelWidth) - edge);
                 panel.style.left = `${Math.max(edge, left)}px`;
             },
             close() {
                 root.classList.remove('open', 'drop-up');
                 trigger.setAttribute('aria-expanded', 'false');
+                trigger.removeAttribute('aria-activedescendant');
+                this.focusedIndex = -1;
             },
             toggle() {
                 if (root.classList.contains('open')) this.close();
@@ -1297,16 +1399,26 @@ const CustomSelect = {
             instance.toggle();
         });
         trigger.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
-                instance.toggle();
+                if (!root.classList.contains('open')) instance.open();
+                instance.focusOption(event.key === 'ArrowDown' ? 1 : -1);
+            } else if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                if (root.classList.contains('open')) instance.selectFocusedOption();
+                else instance.open();
             } else if (event.key === 'Escape') {
                 instance.close();
             }
         });
         panel.addEventListener('click', (event) => event.stopPropagation());
+        hidden?.addEventListener('change', () => {
+            instance.syncLabel();
+            instance.syncDisabled();
+        });
 
         this.registry.set(root.id || inputId, instance);
+        if (inputId) this.registry.set(inputId, instance);
         instance.syncLabel();
         return instance;
     },
@@ -1320,6 +1432,27 @@ const CustomSelect = {
     setValue(key, value, emit = false) {
         const instance = this.registry.get(key);
         if (instance) instance.setValue(value, emit);
+    },
+    refreshNativeSelect(key) {
+        this.registry.get(key)?.refreshNativeOptions();
+    },
+    sync(key) {
+        const instance = this.registry.get(key);
+        if (!instance) return;
+        if (instance.nativeSelect) instance.refreshNativeOptions();
+        else {
+            instance.syncLabel();
+            instance.syncDisabled();
+        }
+    },
+    syncAll() {
+        new Set(this.registry.values()).forEach((instance) => {
+            if (instance.nativeSelect) instance.refreshNativeOptions();
+            else {
+                instance.syncLabel();
+                instance.syncDisabled();
+            }
+        });
     },
     closeAll(except = null) {
         this.registry.forEach((instance) => {
@@ -1341,6 +1474,194 @@ const CustomSelect = {
             if (event.target instanceof Node && event.target.nodeType === 1 && event.target.closest?.('.custom-select-panel')) return;
             this.closeAll();
         }, true);
+    }
+};
+
+const CustomDatePicker = {
+    instances: new Map(),
+    bound: false,
+    initAll() {
+        document.querySelectorAll('input[type="date"][id]').forEach((input) => this.init(input));
+        if (this.bound) return;
+        this.bound = true;
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.custom-date-picker')) this.closeAll();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') this.closeAll();
+        });
+    },
+    parse(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    },
+    formatDate(value) {
+        return Schedule.formatDisplayDate(value);
+    },
+    dateKey(date) {
+        const pad = (part) => String(part).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    },
+    init(input) {
+        if (input.dataset.customDatePicker === '1') return this.instances.get(input.id);
+        input.dataset.customDatePicker = '1';
+        input.classList.add('custom-date-source');
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+
+        const root = document.createElement('span');
+        root.className = 'custom-date-picker';
+        const trigger = document.createElement('button');
+        trigger.id = `custom-date-${input.id}`;
+        trigger.type = 'button';
+        trigger.className = 'custom-date-trigger';
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.setAttribute('aria-expanded', 'false');
+        const label = input.labels?.[0]?.textContent.trim().replace(/\s+/g, ' ');
+        trigger.setAttribute('aria-label', label || '选择日期');
+
+        const calendar = document.createElement('div');
+        calendar.className = 'custom-date-calendar';
+        calendar.setAttribute('role', 'dialog');
+        calendar.setAttribute('aria-label', '选择日期');
+        root.append(trigger, calendar);
+        input.insertAdjacentElement('afterend', root);
+        input.labels?.forEach((item) => {
+            item.htmlFor = trigger.id;
+        });
+
+        const instance = {
+            input, root, trigger, calendar,
+            viewDate: this.parse(input.value) || new Date(),
+            sync() {
+                const date = CustomDatePicker.parse(input.value);
+                trigger.textContent = date
+                    ? CustomDatePicker.formatDate(date)
+                    : '选择日期';
+                this.render();
+            },
+            render() {
+                calendar.replaceChildren();
+                const year = this.viewDate.getFullYear();
+                const month = this.viewDate.getMonth();
+                const header = document.createElement('div');
+                header.className = 'custom-date-calendar-header';
+                const previous = document.createElement('button');
+                previous.type = 'button';
+                previous.className = 'custom-date-nav';
+                previous.textContent = '‹';
+                previous.setAttribute('aria-label', '上个月');
+                previous.addEventListener('click', () => this.changeMonth(-1));
+                const monthLabel = document.createElement('span');
+                monthLabel.className = 'custom-date-month';
+                monthLabel.textContent = `${year}年${month + 1}月`;
+                const next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'custom-date-nav';
+                next.textContent = '›';
+                next.setAttribute('aria-label', '下个月');
+                next.addEventListener('click', () => this.changeMonth(1));
+                header.append(previous, monthLabel, next);
+
+                const weekdays = document.createElement('div');
+                weekdays.className = 'custom-date-weekdays';
+                ['一', '二', '三', '四', '五', '六', '日'].forEach((day) => {
+                    const item = document.createElement('span');
+                    item.className = 'custom-date-weekday';
+                    item.textContent = day;
+                    weekdays.appendChild(item);
+                });
+                const days = document.createElement('div');
+                days.className = 'custom-date-days';
+                const firstDay = new Date(year, month, 1);
+                const startOffset = (firstDay.getDay() + 6) % 7;
+                const todayKey = CustomDatePicker.dateKey(new Date());
+                for (let index = 0; index < 42; index += 1) {
+                    const date = new Date(year, month, index - startOffset + 1);
+                    const key = CustomDatePicker.dateKey(date);
+                    const dayButton = document.createElement('button');
+                    dayButton.type = 'button';
+                    dayButton.className = 'custom-date-day';
+                    dayButton.textContent = String(date.getDate());
+                    dayButton.setAttribute('aria-label', key);
+                    if (date.getMonth() !== month) dayButton.classList.add('outside-month');
+                    if (key === todayKey) dayButton.classList.add('today');
+                    if (key === input.value) {
+                        dayButton.classList.add('selected');
+                        dayButton.setAttribute('aria-pressed', 'true');
+                    }
+                    dayButton.addEventListener('click', () => this.select(key));
+                    days.appendChild(dayButton);
+                }
+
+                const actions = document.createElement('div');
+                actions.className = 'custom-date-actions';
+                [['今天', () => this.select(todayKey)], ['清除', () => this.select('')]].forEach(([text, action]) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'custom-date-action';
+                    button.textContent = text;
+                    button.addEventListener('click', action);
+                    actions.appendChild(button);
+                });
+                calendar.append(header, weekdays, days, actions);
+            },
+            changeMonth(offset) {
+                this.viewDate = new Date(this.viewDate.getFullYear(), this.viewDate.getMonth() + offset, 1);
+                this.render();
+            },
+            select(value) {
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                this.sync();
+                this.close();
+            },
+            position() {
+                const rect = trigger.getBoundingClientRect();
+                const width = 280;
+                const height = calendar.offsetHeight || 330;
+                const left = Math.max(6, Math.min(rect.left, window.innerWidth - width - 6));
+                const top = rect.bottom + height <= window.innerHeight - 6
+                    ? rect.bottom + 4
+                    : Math.max(6, rect.top - height - 4);
+                calendar.style.left = `${left}px`;
+                calendar.style.top = `${top}px`;
+            },
+            open() {
+                CustomDatePicker.closeAll(this);
+                this.viewDate = CustomDatePicker.parse(input.value) || new Date();
+                this.render();
+                root.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+                this.position();
+            },
+            close() {
+                root.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        };
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (root.classList.contains('open')) instance.close();
+            else instance.open();
+        });
+        input.addEventListener('change', () => setTimeout(() => instance.sync(), 0));
+        window.addEventListener('resize', () => {
+            if (root.classList.contains('open')) instance.position();
+        });
+        instance.sync();
+        this.instances.set(input.id, instance);
+        return instance;
+    },
+    closeAll(except = null) {
+        this.instances.forEach((instance) => {
+            if (instance !== except) instance.close();
+        });
+    },
+    syncAll() {
+        this.instances.forEach((instance) => instance.sync());
     }
 };
 
@@ -1370,6 +1691,7 @@ const UI = {
         inputWeatherProvider: document.getElementById('input-weather-provider'),
         inputLocationQuery: document.getElementById('input-location-query'),
         btnSearchLocation: document.getElementById('btn-search-location'),
+        btnLocateByIp: document.getElementById('btn-locate-by-ip'),
         inputGeocodingResult: document.getElementById('input-geocoding-result'),
         locationSearchStatus: document.getElementById('location-search-status'),
         inputWeatherApiKey: document.getElementById('input-weather-api-key'),
@@ -1395,6 +1717,20 @@ const UI = {
         inputShowBottom: document.getElementById('input-show-bottom'),
         inputShowClockSeconds: document.getElementById('input-show-clock-seconds'),
         inputShowBottomText: document.getElementById('input-show-bottom-text'),
+        displayProfileEdit: document.getElementById('select-display-profile-edit'),
+        inputDisplayProfileName: document.getElementById('input-display-profile-name'),
+        inputDisplayProfileTheme: document.getElementById('input-display-profile-theme'),
+        inputProfileShowWeather: document.getElementById('input-profile-show-weather'),
+        inputProfileShowTimeline: document.getElementById('input-profile-show-timeline'),
+        inputProfileShowBottom: document.getElementById('input-profile-show-bottom'),
+        inputProfileShowSeconds: document.getElementById('input-profile-show-seconds'),
+        inputProfileBottomText: document.getElementById('input-profile-bottom-text'),
+        btnSaveDisplayProfile: document.getElementById('btn-save-display-profile'),
+        btnDeleteDisplayProfile: document.getElementById('btn-delete-display-profile'),
+        inputDisplayRuleDate: document.getElementById('input-display-rule-date'),
+        displayRuleProfile: document.getElementById('select-display-rule-profile'),
+        btnAddDisplayRule: document.getElementById('btn-add-display-rule'),
+        displayRuleList: document.getElementById('display-rule-list'),
         inputBottomOffset: document.getElementById('input-bottom-offset'),
         bottomOffsetLabel: document.getElementById('bottom-offset-label'),
         bottomAlignGroup: document.getElementById('bottom-align-group'),
@@ -1425,10 +1761,22 @@ const UI = {
         btnCheckUpdate: document.getElementById('btn-check-update'),
         btnOpenReleases: document.getElementById('btn-open-releases'),
         daySelector: document.getElementById('day-selector'),
+        cycleWeekCount: document.getElementById('input-cycle-week-count'),
+        cycleStartDate: document.getElementById('input-cycle-start-date'),
+        cycleWeekSelector: document.getElementById('cycle-week-selector'),
+        courseEditMode: document.getElementById('input-course-edit-mode'),
+        overrideDate: document.getElementById('input-course-override-date'),
+        overrideType: document.getElementById('input-course-override-type'),
+        btnCreateOverride: document.getElementById('btn-create-course-override'),
+        btnRemoveOverride: document.getElementById('btn-remove-course-override'),
+        overrideStatus: document.getElementById('course-override-status'),
+        courseDaySummary: document.getElementById('course-day-summary'),
         inputCopyCourseDay: document.getElementById('input-copy-course-day'),
         btnCopyCourses: document.getElementById('btn-copy-courses'),
         courseList: document.getElementById('course-list'),
-
+        btnDownloadCourseTemplate: document.getElementById('btn-download-course-template'),
+        btnImportCourses: document.getElementById('btn-import-courses'),
+        btnExportCourses: document.getElementById('btn-export-courses'),
         btnAddCourse: document.getElementById('btn-add-course')
     },
 
@@ -1440,6 +1788,7 @@ const UI = {
 
         Dialog.bindKeys();
         this.initCustomSelects();
+        CustomDatePicker.initAll();
         CustomSelect.bindGlobal();
         this.bindDragHandle();
         this.bindMainDrag();
@@ -1447,13 +1796,14 @@ const UI = {
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
         this.el.btnSettings.addEventListener('click', () => this.openSettings());
-        this.el.btnCancelSettings.addEventListener('click', () => this.closeSettings());
+        this.el.btnCancelSettings.addEventListener('click', () => this.cancelSettings());
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
         this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
         this.el.btnExportConfig.addEventListener('click', () => this.exportConfig());
         this.el.inputWeatherProvider.addEventListener('change', () => this.switchWeatherProvider());
         this.el.btnOpenWeatherProvider.addEventListener('click', () => this.openWeatherProvider());
         this.el.btnSearchLocation.addEventListener('click', () => this.searchWeatherLocations());
+        this.el.btnLocateByIp.addEventListener('click', () => this.locateWeatherByIp());
         this.el.inputLocationQuery.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
@@ -1478,7 +1828,13 @@ const UI = {
         window.addEventListener('dragover', (event) => this.handleDragOver(event));
         window.addEventListener('dragleave', (event) => this.handleDragLeave(event));
         window.addEventListener('drop', (event) => this.handleDrop(event));
-        await Neutralino.events.on('windowClose', () => this.hideMainWindow('window-close'));
+        await Neutralino.events.on('windowClose', () => {
+            if (App.shuttingDown) {
+                void Logger.info('退出期间允许窗口关闭', { module: 'window', action: 'close-during-shutdown' });
+                return;
+            }
+            this.hideMainWindow('window-close');
+        });
         
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1486,7 +1842,6 @@ const UI = {
             });
         });
         this.el.btnRestartGuide?.addEventListener('click', async () => {
-            // 重开引导：先让设置页内容继续挂载，仅隐藏窗口视图，避免宽度测量把引导窗口改窄
             this.el.viewSettings.classList.add('hidden');
             this.el.viewMain.classList.add('hidden');
             await Onboarding.start({ returnTab: 'about' });
@@ -1498,6 +1853,20 @@ const UI = {
         });
         this.el.btnCopyCourses.addEventListener('click', () => this.copyCoursesToDay());
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
+        this.el.cycleWeekCount.addEventListener('change', () => this.updateCourseRotationWeekCount());
+        this.el.cycleStartDate.addEventListener('change', () => this.updateCourseRotationStartDate());
+        this.el.courseEditMode.addEventListener('change', () => this.changeCourseEditMode());
+        this.el.overrideDate.addEventListener('change', () => this.changeCourseOverrideDate());
+        this.el.overrideType.addEventListener('change', () => this.changeCourseOverrideType());
+        this.el.btnCreateOverride.addEventListener('click', () => this.createCourseOverride());
+        this.el.btnRemoveOverride.addEventListener('click', () => this.removeCourseOverride());
+        this.el.btnImportCourses.addEventListener('click', () => this.importCoursesSpreadsheet());
+        this.el.btnDownloadCourseTemplate.addEventListener('click', () => this.downloadCourseTemplate());
+        this.el.btnExportCourses.addEventListener('click', () => this.exportCoursesSpreadsheet());
+        this.el.displayProfileEdit.addEventListener('change', () => this.loadDisplayProfileForm());
+        this.el.btnSaveDisplayProfile.addEventListener('click', () => this.saveDisplayProfile());
+        this.el.btnDeleteDisplayProfile.addEventListener('click', () => this.deleteDisplayProfile());
+        this.el.btnAddDisplayRule.addEventListener('click', () => this.addDisplayRule());
         this.el.btnAddSubject.addEventListener('click', () => this.addSubject());
         this.el.inputNewSubject.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); this.addSubject(); }
@@ -1624,8 +1993,7 @@ const UI = {
     },
 
     getCurrentCourse() {
-        const dayMap = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        const courses = (AppData.courses || {})[dayMap[new Date().getDay()]] || [];
+        const courses = Schedule.resolveCourses(new Date(), AppData).courses;
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         let currentCourse = null;
@@ -1645,7 +2013,8 @@ const UI = {
 
     renderCustomBottomInfo() {
         if (!this.el.customBottomText) return;
-        const template = AppData.customBottomText || '';
+        const displayConfig = this.getEffectiveDisplayConfig();
+        const template = displayConfig.customBottomText || '';
         if (!template || !this.isBottomTextVisible()) {
             this.el.customBottomText.textContent = '';
             return;
@@ -1653,7 +2022,6 @@ const UI = {
 
         const now = new Date();
         const pad = value => String(value).padStart(2, '0');
-        const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         const courseState = this.getCurrentCourse();
         const temperature = document.querySelector('#weather .temp')?.textContent?.trim() || '--°';
         const weatherDesc = document.querySelector('#weather .desc')?.textContent?.trim() || '';
@@ -1671,9 +2039,9 @@ const UI = {
         };
         const values = {
             time: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-            date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
-            datetime: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-            weekday: weekdayNames[now.getDay()],
+            date: CustomDatePicker.formatDate(now),
+            datetime: `${CustomDatePicker.formatDate(now)} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+            weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()],
             location,
             real_location: realLocation,
             custom1: customTexts.one || '',
@@ -1684,7 +2052,7 @@ const UI = {
             course: courseState.current?.course || '无课程',
             nextCourse: courseState.next?.course || '无后续课程',
             targetName,
-            targetDate: targetDate || '未设置',
+            targetDate: CustomDatePicker.formatDate(targetDate) || '未设置',
             daysTo: getDaysTo(targetDate),
             daysToTarget: getDaysTo(targetDate),
             appName: 'ClassBroom',
@@ -1716,11 +2084,10 @@ const UI = {
         const hours = pad(now.getHours());
         const minutes = pad(now.getMinutes());
         const seconds = pad(now.getSeconds());
-        const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         this.el.timeClock.textContent = `${hours}:${minutes}`;
         this.el.timeClock.dataset.seconds = `:${seconds}`;
-        this.el.timeDate.textContent = `${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${weekdayNames[now.getDay()]}`;
-        this.el.timeDisplay.title = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${hours}:${minutes}:${seconds}`;
+        this.el.timeDate.textContent = CustomDatePicker.formatDate(now);
+        this.el.timeDisplay.title = `${CustomDatePicker.formatDate(now)} ${hours}:${minutes}:${seconds}`;
         this.renderCustomBottomInfo();
 
         const delay = 1000 - now.getMilliseconds() + 5;
@@ -1732,6 +2099,26 @@ const UI = {
         const supportedThemes = ['monochrome', 'midnight', 'ocean', 'forest', 'high-contrast'];
         if (supportedThemes.includes(theme)) document.documentElement.dataset.theme = theme;
         else document.documentElement.removeAttribute('data-theme');
+    },
+
+    getEffectiveDisplayConfig(date = new Date()) {
+        const profileId = AppData.displayRules?.[Schedule.getDateKey(date)];
+        const profiles = Array.isArray(AppData.displayProfiles) ? AppData.displayProfiles : [];
+        const profile = profiles.find((item) => item.id === profileId);
+        return profile ? { ...AppData, ...profile } : AppData;
+    },
+
+    applyActiveDisplayProfile(force = false) {
+        const dateKey = Schedule.getDateKey(new Date());
+        const profileId = AppData.displayRules?.[dateKey] || '';
+        const key = `${dateKey}:${profileId}`;
+        if (!force && this.activeDisplayProfileKey === key) return false;
+        this.activeDisplayProfileKey = key;
+        const config = this.getEffectiveDisplayConfig();
+        this.applyTheme(config.theme);
+        this.applyDisplayOptions(config);
+        this.renderCustomBottomInfo();
+        return true;
     },
 
     applyFontStyles() {
@@ -1794,23 +2181,23 @@ const UI = {
         return Math.max(-20, Math.min(20, Number(this.el.inputBottomOffset?.value) || 0));
     },
 
-    applyDisplayOptions() {
+    applyDisplayOptions(config = this.getEffectiveDisplayConfig()) {
         const viewMain = this.el.viewMain;
         if (viewMain) {
-            viewMain.classList.toggle('hide-weather', AppData.showWeather === false);
-            viewMain.classList.toggle('hide-timeline', AppData.showTimeline === false);
+            viewMain.classList.toggle('hide-weather', config.showWeather === false);
+            viewMain.classList.toggle('hide-timeline', config.showTimeline === false);
         }
-        this.el.timeDisplay?.classList.toggle('seconds-visible', AppData.showClockSeconds !== false);
+        this.el.timeDisplay?.classList.toggle('seconds-visible', config.showClockSeconds !== false);
         const bottomText = this.el.customBottomText;
         if (bottomText) {
-            const align = ['left', 'center', 'right'].includes(AppData.bottomAlign) ? AppData.bottomAlign : 'right';
+            const align = ['left', 'center', 'right'].includes(config.bottomAlign) ? config.bottomAlign : 'right';
             bottomText.classList.toggle('pos-left', align === 'left');
             bottomText.classList.toggle('pos-center', align === 'center');
             bottomText.classList.toggle('pos-right', align === 'right');
-            bottomText.classList.toggle('force-hidden', AppData.showBottomText === false);
+            bottomText.classList.toggle('force-hidden', config.showBottomText === false);
         }
         const root = document.documentElement;
-        const offset = Math.max(-20, Math.min(20, Number(AppData.bottomOffset) || 0));
+        const offset = Math.max(-20, Math.min(20, Number(config.bottomOffset) || 0));
         root.style.setProperty('--bottom-offset', `${offset}px`);
         this.appliedMainWidth = null;
         this.scheduleFitWindow(200);
@@ -1818,7 +2205,7 @@ const UI = {
 
     /** 自定义文本当前是否可见（总开关关闭时不参与宽度测量） */
     isBottomTextVisible() {
-        return AppData.showBottomText !== false;
+        return this.getEffectiveDisplayConfig().showBottomText !== false;
     },
 
     /** 设置关于页的更新状态文本与配色 */
@@ -2056,82 +2443,112 @@ const UI = {
     hideMainWindow(source = 'unknown') {
         // 引导未完成时不允许隐藏窗口，否则托盘重新调出后引导状态与窗口尺寸会错乱
         if (typeof Onboarding !== 'undefined' && Onboarding.active) {
-            void Logger.info(`忽略隐藏主窗口请求（引导进行中）: ${source}`, { module: 'window', action: 'hide-skip' });
+            void Logger.info('忽略隐藏主窗口请求（引导进行中）', {
+                module: 'window', action: 'hide-skip', context: { source, visible: this.windowVisible }
+            });
             try { void Neutralino.window.focus(); } catch (error) { }
             return;
         }
-        void Logger.info(`隐藏主窗口: ${source}`);
+        void Logger.info('收到隐藏主窗口请求', {
+            module: 'window', action: 'hide-request', context: { source, visible: this.windowVisible }
+        });
         const apply = () => {
+            const changed = this.windowVisible;
             this.windowVisible = false;
-            this.scheduleTrayUpdate(60);
+            if (changed) this.scheduleTrayUpdate(60, 'window-hidden');
+            void Logger.info('主窗口已隐藏', { module: 'window', action: 'hide-complete', context: { source } });
         };
         try {
             const task = Neutralino.window.hide();
             if (task && typeof task.then === 'function') task.then(apply).catch((error) => {
-                void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide' }, error);
+                void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide', context: { source } }, error);
             });
             else apply();
         } catch (error) {
-            void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide' }, error);
+            void Logger.error('隐藏窗口失败', { module: 'window', action: 'hide', context: { source } }, error);
         }
     },
 
     async showMainWindow() {
+        void Logger.info('收到显示主窗口请求', { module: 'window', action: 'show-request', context: { visible: this.windowVisible } });
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
         this.appliedMainWidth = APP_CONFIG.windowSize.width;
-        await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
-        await this.setWindowDragRegion('main');
-        await Neutralino.window.show();
-        await Neutralino.window.focus();
-        this.windowVisible = true;
-        this.scheduleTrayUpdate(60);
-        this.scheduleFitWindow(200);
+        try {
+            await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            await this.setWindowDragRegion('main');
+            await Neutralino.window.show();
+            this.windowVisible = true;
+            this.scheduleTrayUpdate(60, 'window-shown');
+            await Neutralino.window.focus();
+            this.scheduleFitWindow(200);
+            void Logger.info('主窗口已显示', { module: 'window', action: 'show-complete' });
+        } catch (error) {
+            void Logger.error('显示窗口失败', { module: 'window', action: 'show' }, error);
+            throw error;
+        }
     },
 
     trayBound: false,
     trayUpdateTimer: null,
+    trayUpdatePromise: Promise.resolve(),
+    trayMenuSignature: null,
+    trayIconPathCache: new Map(),
     async initTray() {
         if (this.trayBound) {
-            this.scheduleTrayUpdate();
+            this.scheduleTrayUpdate(0, 'initialize-again');
             return;
         }
-        this.trayBound = true;
+        void Logger.info('初始化托盘菜单', { module: 'tray', action: 'init', context: { os: window.NL_OS } });
         try {
             const handleTrayAction = async (event) => {
                 const rawDetail = event.detail;
                 const menuItemId = typeof rawDetail === 'string'
                     ? rawDetail
                     : rawDetail?.id || rawDetail?.menuItemId || rawDetail?.itemId;
-                switch (menuItemId) {
-                    case 'show':
-                        await this.showMainWindow();
-                        break;
-                    case 'hide':
-                        this.hideMainWindow('tray-hide');
-                        break;
-                    case 'settings':
-                        await Neutralino.window.show();
-                        this.windowVisible = true;
-                        await this.openSettings();
-                        this.scheduleTrayUpdate(60);
-                        break;
-                    case 'refresh':
-                        await this.handleRefresh();
-                        break;
-                    case 'check-update':
-                        await Updater.check({ silent: false });
-                        break;
-                    case 'autostart':
-                        await this.toggleAutoStart();
-                        break;
-                    case 'exit':
-                        await App.shutdown();
-                        break;
+                void Logger.info('收到托盘菜单操作', {
+                    module: 'tray', action: 'menu-action',
+                    context: { menuItemId: menuItemId || '', visible: this.windowVisible }
+                });
+                try {
+                    switch (menuItemId) {
+                        case 'show':
+                            await this.showMainWindow();
+                            break;
+                        case 'hide':
+                            this.hideMainWindow('tray-hide');
+                            break;
+                        case 'settings':
+                            await this.showMainWindow();
+                            await this.openSettings();
+                            break;
+                        case 'refresh':
+                            await this.handleRefresh();
+                            break;
+                        case 'check-update':
+                            await Updater.check({ silent: false });
+                            break;
+                        case 'autostart':
+                            await this.toggleAutoStart();
+                            break;
+                        case 'exit':
+                            await App.shutdown('tray-menu');
+                            break;
+                        default:
+                            void Logger.warn('忽略未知托盘菜单项', {
+                                module: 'tray', action: 'unknown-menu-action', context: { menuItemId: String(menuItemId || '') }
+                            });
+                    }
+                } catch (error) {
+                    void Logger.error('托盘菜单操作失败', {
+                        module: 'tray', action: 'menu-action', context: { menuItemId: String(menuItemId || '') }
+                    }, error);
                 }
             };
             await Neutralino.events.on('trayMenuItemClicked', handleTrayAction);
-            await this.updateTrayMenu();
+            this.trayBound = true;
+            await this.updateTrayMenu('initialize');
+            void Logger.info('托盘菜单初始化完成', { module: 'tray', action: 'init-complete' });
         } catch (error) {
             void Logger.error('托盘菜单初始化失败', { module: 'tray', action: 'init' }, error);
             try {
@@ -2140,15 +2557,30 @@ const UI = {
         }
     },
 
-    scheduleTrayUpdate(delay = 150) {
+    scheduleTrayUpdate(delay = 150, reason = 'state-change') {
         clearTimeout(this.trayUpdateTimer);
         this.trayUpdateTimer = setTimeout(() => {
-            this.updateTrayMenu();
+            void this.updateTrayMenu(reason).catch((error) => {
+                void Logger.error('托盘菜单更新任务失败', { module: 'tray', action: 'schedule-update', context: { reason } }, error);
+            });
         }, delay);
     },
 
-    async updateTrayMenu() {
+    updateTrayMenu(reason = 'manual') {
+        const update = this.trayUpdatePromise.catch(() => {}).then(() => this.applyTrayMenu(reason));
+        this.trayUpdatePromise = update;
+        return update;
+    },
+
+    async applyTrayMenu(reason = 'manual') {
         const visible = this.windowVisible === true;
+        const stateSignature = JSON.stringify({ visible, autoStart: AppData.autoStart === true });
+        if (stateSignature === this.trayMenuSignature) {
+            void Logger.info('托盘菜单状态未变化，跳过重建', {
+                module: 'tray', action: 'menu-update-skip', context: { reason, visible }
+            });
+            return;
+        }
         const menuItems = [
             ...(visible
                 ? [
@@ -2172,24 +2604,32 @@ const UI = {
         for (const iconName of iconCandidates) {
             try {
                 const iconPath = await this.getTrayIconPath(iconName);
-                await Neutralino.os.setTray({ icon: iconPath });
                 await Neutralino.os.setTray({ icon: iconPath, menuItems });
+                this.trayMenuSignature = stateSignature;
+                void Logger.info('托盘菜单更新完成', {
+                    module: 'tray', action: 'menu-update', context: { reason, visible, iconName }
+                });
                 return;
             } catch (error) {
                 errors.push(`${iconName}: ${error?.message || error}`);
             }
         }
-        void Logger.error('托盘创建失败', { module: 'tray', action: 'set', context: { attempted: errors } }, new Error(errors.join(' | ')));
+        void Logger.error('托盘创建失败', {
+            module: 'tray', action: 'set', context: { reason, visible, attempted: errors }
+        }, new Error(errors.join(' | ')));
     },
 
     async getTrayIconPath(fileName) {
+        if (this.trayIconPathCache.has(fileName)) return this.trayIconPathCache.get(fileName);
         const errors = [];
         const candidates = this.getTrayIconCandidates(fileName);
         for (const candidate of candidates) {
             try {
                 const stats = await Neutralino.filesystem.getStats(candidate);
                 if (!stats.isFile) continue;
-                return await Neutralino.filesystem.getAbsolutePath(candidate);
+                const absolutePath = await Neutralino.filesystem.getAbsolutePath(candidate);
+                this.trayIconPathCache.set(fileName, absolutePath);
+                return absolutePath;
             } catch (error) {
                 errors.push(`${candidate} => ${error?.message || error}`);
             }
@@ -2205,7 +2645,9 @@ const UI = {
                 const tempPath = await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, fileName);
                 if (typeof content === 'string') await Neutralino.filesystem.writeFile(tempPath, content);
                 else await Neutralino.filesystem.writeBinaryFile(tempPath, content);
-                return await Neutralino.filesystem.getAbsolutePath(tempPath);
+                const absolutePath = await Neutralino.filesystem.getAbsolutePath(tempPath);
+                this.trayIconPathCache.set(fileName, absolutePath);
+                return absolutePath;
             } catch (error) {
                 errors.push(`${resourcePath} => ${error?.message || error}`);
             }
@@ -2343,6 +2785,91 @@ const UI = {
                 }
             }
         }
+        const validateCourseMap = (courseMap, label) => {
+            if (!courseMap || typeof courseMap !== 'object' || Array.isArray(courseMap)) {
+                throw new Error(`${label}必须是按星期组织的对象`);
+            }
+            for (const day of Object.keys(DAY_MAP)) {
+                if (courseMap[day] !== undefined && !Array.isArray(courseMap[day])) {
+                    throw new Error(`${label}的${DAY_MAP[day]}课程必须是数组`);
+                }
+                for (const course of courseMap[day] || []) {
+                    if (!course || typeof course !== 'object' ||
+                        !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.start || '') ||
+                        !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.end || '')) {
+                        throw new Error(`${label}包含无效课程时间`);
+                    }
+                }
+            }
+        };
+        if (config.courseRotation !== undefined) {
+            if (!config.courseRotation || typeof config.courseRotation !== 'object' || Array.isArray(config.courseRotation)) {
+                throw new Error('课表轮换配置无效');
+            }
+            if (config.courseRotation.startDate !== undefined &&
+                Schedule.getDateKey(config.courseRotation.startDate) !== config.courseRotation.startDate) {
+                throw new Error('轮换起始日期格式无效');
+            }
+            if (config.courseRotation.weeks !== undefined &&
+                (!Array.isArray(config.courseRotation.weeks) || config.courseRotation.weeks.length > 7)) {
+                throw new Error('轮换周期最多支持 8 周');
+            }
+            (config.courseRotation.weeks || []).forEach((week, index) => validateCourseMap(week, `第 ${index + 2} 周`));
+        }
+        if (config.courseOverrides !== undefined) {
+            if (!config.courseOverrides || typeof config.courseOverrides !== 'object' || Array.isArray(config.courseOverrides)) {
+                throw new Error('临时覆盖配置无效');
+            }
+            Object.entries(config.courseOverrides).forEach(([date, override]) => {
+                if (Schedule.getDateKey(date) !== date || !override || typeof override !== 'object' ||
+                    !Array.isArray(override.courses)) {
+                    throw new Error(`临时覆盖日期或内容无效：${date}`);
+                }
+                if (override.type && !['adjustment', 'substitute', 'event'].includes(override.type)) {
+                    throw new Error(`临时覆盖类型无效：${date}`);
+                }
+                override.courses.forEach((course) => {
+                    if (!course || typeof course !== 'object' ||
+                        !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.start || '') ||
+                        !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.end || '')) {
+                        throw new Error(`临时覆盖课程时间无效：${date}`);
+                    }
+                });
+            });
+        }
+        if (config.displayProfiles !== undefined && !Array.isArray(config.displayProfiles)) {
+            throw new Error('显示方案必须是数组');
+        }
+        const profileIds = new Set();
+        (config.displayProfiles || []).forEach((profile) => {
+            if (!profile || typeof profile.id !== 'string' || !profile.id ||
+                typeof profile.name !== 'string' || !profile.name.trim()) {
+                throw new Error('显示方案缺少有效的名称或标识');
+            }
+            if (profileIds.has(profile.id)) throw new Error(`显示方案标识重复：${profile.id}`);
+            profileIds.add(profile.id);
+            if (profile.theme && !['default', 'ocean', 'forest', 'midnight', 'high-contrast', 'monochrome'].includes(profile.theme)) {
+                throw new Error(`显示方案主题无效：${profile.name}`);
+            }
+            if (profile.customBottomText !== undefined && typeof profile.customBottomText !== 'string') {
+                throw new Error(`显示方案底部信息必须是文本：${profile.name}`);
+            }
+            for (const field of ['showWeather', 'showTimeline', 'showBottomText', 'showClockSeconds']) {
+                if (profile[field] !== undefined && typeof profile[field] !== 'boolean') {
+                    throw new Error(`显示方案 ${field} 必须是布尔值：${profile.name}`);
+                }
+            }
+        });
+        if (config.displayRules !== undefined) {
+            if (!config.displayRules || typeof config.displayRules !== 'object' || Array.isArray(config.displayRules)) {
+                throw new Error('显示方案日期规则无效');
+            }
+            Object.entries(config.displayRules).forEach(([date, profileId]) => {
+                if (Schedule.getDateKey(date) !== date || !profileIds.has(profileId)) {
+                    throw new Error(`显示方案日期规则无效：${date}`);
+                }
+            });
+        }
     },
 
     maskSecret(value) {
@@ -2449,7 +2976,7 @@ const UI = {
             item('显示自定义文本', config?.showBottomText === false ? '已隐藏' : '显示'),
             item('显示时钟秒数', config?.showClockSeconds === false ? '关闭' : '开启'),
             item('倒计时名称', config?.countdownName),
-            item('目标日期', config?.countdownDate),
+                item('目标日期', CustomDatePicker.formatDate(config?.countdownDate)),
             item('文本 1', config?.customTexts?.one),
             item('文本 2', config?.customTexts?.two),
             item('文本 3', config?.customTexts?.three)
@@ -2676,6 +3203,127 @@ const UI = {
         }
     },
 
+    async downloadCourseTemplate() {
+        try {
+            if (typeof XLSX === 'undefined') throw new Error('Excel 组件尚未加载');
+            const workbook = XLSX.utils.book_new();
+            const rows = [
+                ['周次', '星期', '开始时间', '结束时间', '课程', '备注'],
+                [1, '周一', '08:00', '08:45', '语文', ''],
+                [2, '周一', '08:00', '08:45', '数学', '可选；不填写时按第 1 周处理']
+            ];
+            XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), '课程表');
+            const path = await Neutralino.os.showSaveDialog('保存 Excel 课表模板', {
+                forceOverwrite: true,
+                defaultPath: 'classbroom-course-template.xlsx',
+                filters: [{ name: 'Excel 工作簿', extensions: ['xlsx'] }]
+            });
+            if (!path) return;
+            const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            await Neutralino.filesystem.writeBinaryFile(path, bytes);
+            await Dialog.alert(path, '模板已保存');
+        } catch (error) {
+            await Dialog.alert(error.message || String(error), '模板生成失败', 'danger');
+        }
+    },
+
+    async exportCoursesSpreadsheet() {
+        try {
+            if (typeof XLSX === 'undefined') throw new Error('Excel 组件尚未加载');
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(
+                workbook,
+                XLSX.utils.aoa_to_sheet(CourseExport.buildRotationRows(EditData, DAY_MAP)),
+                '轮换课表'
+            );
+            XLSX.utils.book_append_sheet(
+                workbook,
+                XLSX.utils.aoa_to_sheet(CourseExport.buildOverrideRows(EditData)),
+                '临时覆盖'
+            );
+            const path = await Neutralino.os.showSaveDialog('导出 Excel 课表', {
+                forceOverwrite: true,
+                defaultPath: 'classbroom-courses.xlsx',
+                filters: [{ name: 'Excel 工作簿', extensions: ['xlsx'] }]
+            });
+            if (!path) return;
+            const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            await Neutralino.filesystem.writeBinaryFile(path, bytes);
+            await Dialog.alert(path, '课表已导出');
+        } catch (error) {
+            await Dialog.alert(error.message || String(error), '课表导出失败', 'danger');
+        }
+    },
+
+    async importCoursesSpreadsheet() {
+        try {
+            const paths = await Neutralino.os.showOpenDialog('导入 Excel 课表', {
+                multiSelections: false,
+                filters: [{ name: 'Excel / CSV 课表', extensions: ['xlsx', 'xls', 'csv'] }]
+            });
+            if (!paths?.length) return;
+            if (typeof XLSX === 'undefined') throw new Error('Excel 组件尚未加载');
+            const filePath = paths[0];
+            const isCsv = /\.csv$/i.test(filePath);
+            const fileData = isCsv
+                ? await Neutralino.filesystem.readFile(filePath)
+                : await Neutralino.filesystem.readBinaryFile(filePath);
+            const workbook = XLSX.read(fileData, { type: isCsv ? 'string' : 'array', cellDates: false });
+            const sheetName = workbook.SheetNames[0];
+            if (!sheetName) throw new Error('工作簿中没有工作表');
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: false });
+            const parsed = CourseImport.parseRows(rows);
+            if (parsed.errors.length) {
+                await Dialog.alert(parsed.errors.slice(0, 12).join('\n'), '课表内容有误', 'warning');
+                return;
+            }
+            const groups = new Map();
+            parsed.entries.forEach((entry) => {
+                const key = `${entry.week}:${entry.day}`;
+                groups.set(key, (groups.get(key) || 0) + 1);
+            });
+            const summary = [...groups.entries()].map(([key, count]) => {
+                const [week, day] = key.split(':');
+                return `第${week}周 ${DAY_MAP[day]}：${count} 节`;
+            }).join('\n');
+            const confirmed = await Dialog.confirm(
+                `共识别 ${parsed.entries.length} 节课程，将替换文件中出现的轮换周和星期，其他安排不变。\n\n${summary}`,
+                { title: '确认导入课表', confirmText: '导入并替换' }
+            );
+            if (!confirmed) return;
+
+            const maxWeek = Math.max(...parsed.entries.map((entry) => entry.week));
+            while (EditData.courseRotation.weeks.length < maxWeek - 1) EditData.courseRotation.weeks.push({});
+            const replacements = new Map();
+            parsed.entries.forEach((entry) => {
+                const key = `${entry.week}:${entry.day}`;
+                if (!replacements.has(key)) replacements.set(key, []);
+                replacements.get(key).push({ start: entry.start, end: entry.end, course: entry.course, note: entry.note });
+            });
+            replacements.forEach((courses, key) => {
+                const [week, day] = key.split(':');
+                const weekCourses = Number(week) === 1 ? EditData.courses : EditData.courseRotation.weeks[Number(week) - 2];
+                weekCourses[day] = courses;
+            });
+            this.el.cycleWeekCount.value = String(EditData.courseRotation.weeks.length + 1);
+            CurrentEditMode = 'regular';
+            this.el.courseEditMode.value = CurrentEditMode;
+            CurrentEditWeek = 1;
+            CurrentEditDay = parsed.entries[0].day;
+            CurrentEditCourseIndex = null;
+            CustomSelect.syncAll();
+            CustomDatePicker.syncAll();
+            this.renderCourseCycleSelector();
+            this.renderDaySelector();
+            this.renderCourseList();
+            this.markSettingsDirty();
+            await Dialog.alert(`已导入 ${parsed.entries.length} 节课程，请保存设置以应用。`, '导入完成');
+        } catch (error) {
+            void Logger.error('Excel 课表导入失败', { module: 'course', action: 'spreadsheet-import' }, error);
+            await Dialog.alert(error.message || String(error), '导入失败', 'danger');
+        }
+    },
+
     async importConfig() {
         try {
             const paths = await Neutralino.os.showOpenDialog('导入 ClassBroom 配置', {
@@ -2853,6 +3501,22 @@ const UI = {
         if (!EditData.weather) EditData.weather = { jwtConfig: {} };
         if (!EditData.weather.jwtConfig) EditData.weather.jwtConfig = {};
         if (!EditData.courses) EditData.courses = {};
+        if (!EditData.courseRotation || typeof EditData.courseRotation !== 'object' || Array.isArray(EditData.courseRotation)) EditData.courseRotation = {};
+        if (!Array.isArray(EditData.courseRotation.weeks)) EditData.courseRotation.weeks = [];
+        if (!EditData.courseRotation.startDate) {
+            EditData.courseRotation.startDate = Schedule.getDateKey(Schedule.getMonday(new Date()));
+        }
+        if (!EditData.courseOverrides || typeof EditData.courseOverrides !== 'object' || Array.isArray(EditData.courseOverrides)) EditData.courseOverrides = {};
+        if (!Array.isArray(EditData.displayProfiles)) EditData.displayProfiles = [];
+        if (!EditData.displayRules || typeof EditData.displayRules !== 'object') EditData.displayRules = {};
+        CurrentEditWeek = 1;
+        CurrentEditMode = 'regular';
+        CurrentOverrideDate = Schedule.getDateKey(new Date());
+        this.el.cycleWeekCount.value = String(EditData.courseRotation.weeks.length + 1);
+        this.el.cycleStartDate.value = EditData.courseRotation.startDate;
+        this.el.courseEditMode.value = CurrentEditMode;
+        this.el.overrideDate.value = CurrentOverrideDate;
+        this.el.inputDisplayRuleDate.value = '';
 
         const activeProvider = EditData.weather.provider || 'qweather';
         const hasProviderConfigs = EditData.weather.providers && typeof EditData.weather.providers === 'object';
@@ -2901,6 +3565,11 @@ const UI = {
         this.el.inputCustomTwo.value = EditData.customTexts?.two || '';
         this.el.inputCustomThree.value = EditData.customTexts?.three || '';
         this.renderSubjectList();
+        this.renderDisplayProfileEditor();
+        this.renderCourseCycleSelector();
+        this.renderCourseModeControls();
+        CustomSelect.syncAll();
+        CustomDatePicker.syncAll();
         if (this.el.aboutVersion) this.el.aboutVersion.textContent = window.NL_APPVERSION || '--';
         this.renderAboutUpdateState();
 
@@ -2910,7 +3579,6 @@ const UI = {
         this.el.viewSettings.classList.remove('hidden');
         this.bindSettingsDirtyTracking();
         this.settingsSnapshot = this.getSettingsSnapshot();
-        this.el.btnSaveSettings.disabled = true;
 
         await this.animateWindowSize(APP_CONFIG.settingsSize);
         await this.setWindowDragRegion('settings');
@@ -3013,6 +3681,15 @@ const UI = {
         }[provider] || '';
     },
 
+    normalizeLocationText(value) {
+        return String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[\s·,，、]/g, '');
+    },
+
+    formatLocationLabel(result) {
+        const parts = [result.name, result.admin3, result.admin2, result.admin1, result.country].filter(Boolean);
+        return parts.filter((part, index) => parts.findIndex((candidate) => this.normalizeLocationText(candidate) === this.normalizeLocationText(part)) === index).join(' · ');
+    },
+
     async searchWeatherLocations() {
         const query = this.el.inputLocationQuery.value.trim();
         if (query.length < 2) {
@@ -3022,10 +3699,34 @@ const UI = {
         this.el.btnSearchLocation.disabled = true;
         this.el.locationSearchStatus.textContent = '正在搜索地区…';
         try {
-            this.locationResults = await API.searchLocations(query);
+            const queryText = this.normalizeLocationText(query);
+            const results = await API.searchLocations(query);
+            const rankedResults = results.filter((result) => result.name &&
+                result.latitude !== null && result.latitude !== undefined && Number.isFinite(Number(result.latitude)) &&
+                result.longitude !== null && result.longitude !== undefined && Number.isFinite(Number(result.longitude)));
+            rankedResults.sort((resultA, resultB) => {
+                const rank = (result) => {
+                    const name = this.normalizeLocationText(result.name);
+                    if (name === queryText) return 0;
+                    if (name.startsWith(queryText)) return 1;
+                    if (name.includes(queryText)) return 2;
+                    return 3;
+                };
+                return rank(resultA) - rank(resultB) || (Number(resultB.population) || 0) - (Number(resultA.population) || 0);
+            });
+            const seenCoordinates = new Set();
+            this.locationResults = rankedResults.filter((result) => {
+                const coordinateKey = `${Number(result.latitude).toFixed(5)},${Number(result.longitude).toFixed(5)}`;
+                if (seenCoordinates.has(coordinateKey)) return false;
+                seenCoordinates.add(coordinateKey);
+                return true;
+            });
+            const labels = this.locationResults.map((result) => this.formatLocationLabel(result));
+            const labelCounts = new Map(labels.map((label) => [label, labels.filter((item) => item === label).length]));
             const options = this.locationResults.map((result, index) => {
-                const parts = [result.name, result.admin1, result.country].filter(Boolean);
-                return { value: String(index), label: [...new Set(parts)].join(' · ') };
+                const label = labels[index];
+                const coordinates = `(${Number(result.latitude).toFixed(4)}, ${Number(result.longitude).toFixed(4)})`;
+                return { value: String(index), label: labelCounts.get(label) > 1 ? `${label} ${coordinates}` : label };
             });
             CustomSelect.setOptions('select-geocoding-result', options);
             CustomSelect.setValue('select-geocoding-result', '');
@@ -3042,13 +3743,39 @@ const UI = {
         }
     },
 
+    async locateWeatherByIp() {
+        this.el.btnLocateByIp.disabled = true;
+        this.el.locationSearchStatus.textContent = '正在根据公网 IP 推测位置…';
+        try {
+            const result = await API.locateByIp();
+            if (result.latitude === null || result.latitude === undefined || result.longitude === null || result.longitude === undefined ||
+                !Number.isFinite(Number(result.latitude)) || !Number.isFinite(Number(result.longitude))) {
+                throw new Error('定位服务未返回有效坐标');
+            }
+            const location = {
+                name: result.city,
+                admin1: result.region,
+                country: result.country
+            };
+            this.el.inputLocation.value = `${Number(result.longitude).toFixed(5)},${Number(result.latitude).toFixed(5)}`;
+            this.el.inputRealLocation.value = this.formatLocationLabel(location);
+            this.el.locationSearchStatus.textContent = `已填入：${this.el.inputRealLocation.value}（IP 定位仅供参考）`;
+            this.markSettingsDirty();
+        } catch (error) {
+            this.el.locationSearchStatus.textContent = 'IP 定位失败，可改用地区搜索或手动填写经纬度';
+            void Logger.warn('IP 地区定位失败', { module: 'weather', action: 'ip-geolocation' }, error);
+        } finally {
+            this.el.btnLocateByIp.disabled = false;
+        }
+    },
+
     applySelectedLocation() {
         const value = this.el.inputGeocodingResult.value;
         if (value === '') return;
         const result = this.locationResults[Number(value)];
         if (!result || !Number.isFinite(Number(result.longitude)) || !Number.isFinite(Number(result.latitude))) return;
         this.el.inputLocation.value = `${Number(result.longitude).toFixed(5)},${Number(result.latitude).toFixed(5)}`;
-        this.el.inputRealLocation.value = [...new Set([result.name, result.admin1, result.country].filter(Boolean))].join(' · ');
+        this.el.inputRealLocation.value = this.formatLocationLabel(result);
         this.el.locationSearchStatus.textContent = '已填入地区和经纬度';
         this.markSettingsDirty();
     },
@@ -3083,6 +3810,15 @@ const UI = {
         if (!silent) this.scheduleFitWindow(200);
     },
 
+    async cancelSettings() {
+        const hasChanges = this.getSettingsSnapshot() !== this.settingsSnapshot;
+        const confirmed = await Dialog.confirm(
+            hasChanges ? '有尚未保存的修改，确定放弃并退出设置吗？' : '确定退出设置吗？',
+            { title: '取消设置', confirmText: hasChanges ? '放弃修改' : '退出设置' }
+        );
+        if (confirmed) await this.closeSettings();
+    },
+
     getSettingsSnapshot() {
         const fields = [
             'inputApiHost', 'inputLocation', 'inputRealLocation', 'inputKid', 'inputSub', 'inputIss',
@@ -3100,18 +3836,39 @@ const UI = {
         values.push(this.el.inputShowClockSeconds?.checked === true);
         values.push(this.el.inputShowBottomText?.checked === true);
         values.push(this.getBottomAlign());
+        values.push(
+            this.el.displayProfileEdit?.value || '',
+            this.el.inputDisplayProfileName?.value || '',
+            this.el.inputDisplayProfileTheme?.value || '',
+            this.el.inputProfileShowWeather?.checked === true,
+            this.el.inputProfileShowTimeline?.checked === true,
+            this.el.inputProfileShowBottom?.checked === true,
+            this.el.inputProfileShowSeconds?.checked === true,
+            this.el.inputProfileBottomText?.value || '',
+            this.el.inputDisplayRuleDate?.value || '',
+            this.el.displayRuleProfile?.value || '',
+            this.el.cycleWeekCount?.value || '',
+            this.el.cycleStartDate?.value || ''
+        );
         return JSON.stringify({ values, editData: EditData });
     },
 
     markSettingsDirty() {
-        const dirty = this.getSettingsSnapshot() !== this.settingsSnapshot;
-        if (this.el.btnSaveSettings) this.el.btnSaveSettings.disabled = !dirty;
+        if (this.el.btnSaveSettings) this.el.btnSaveSettings.disabled = false;
     },
 
     bindSettingsDirtyTracking() {
         if (!this.el.viewSettings || this.settingsDirtyBound) return;
         this.el.viewSettings.addEventListener('input', () => this.markSettingsDirty());
-        this.el.viewSettings.addEventListener('change', () => this.markSettingsDirty());
+        this.el.viewSettings.addEventListener('change', (event) => {
+            if (event.target === this.el.inputShowBottom || event.target === this.el.inputShowBottomText) {
+                const synchronizedInput = event.target === this.el.inputShowBottom
+                    ? this.el.inputShowBottomText
+                    : this.el.inputShowBottom;
+                synchronizedInput.checked = event.target.checked;
+            }
+            this.markSettingsDirty();
+        });
         this.settingsDirtyBound = true;
     },
 
@@ -3192,10 +3949,10 @@ const UI = {
         EditData.showWeather = this.el.inputShowWeather.checked;
         EditData.showTimeline = this.el.inputShowTimeline.checked;
         EditData.showClockSeconds = this.el.inputShowClockSeconds.checked;
-        // 主界面缩略开关与文本页开关共享同一字段，任一关闭即隐藏
-        EditData.showBottomText = this.el.inputShowBottom.checked && this.el.inputShowBottomText.checked;
+        EditData.showBottomText = this.el.inputShowBottom.checked;
         EditData.bottomAlign = this.getBottomAlign();
         EditData.bottomOffset = this.getBottomOffset();
+        EditData.courseRotation.startDate = Schedule.getDateKey(Schedule.getMonday(this.el.cycleStartDate.value));
         EditData.customTexts = {
             one: this.el.inputCustomOne.value.trim(),
             two: this.el.inputCustomTwo.value.trim(),
@@ -3214,8 +3971,294 @@ const UI = {
         }
     },
 
+    renderDisplayProfileEditor() {
+        const profiles = EditData.displayProfiles || [];
+        const selectedId = this.el.displayProfileEdit.value;
+        this.el.displayProfileEdit.innerHTML = '<option value="">新建方案</option>';
+        this.el.displayRuleProfile.innerHTML = '';
+        profiles.forEach((profile) => {
+            const editOption = document.createElement('option');
+            editOption.value = profile.id;
+            editOption.textContent = profile.name;
+            this.el.displayProfileEdit.appendChild(editOption);
+            const ruleOption = editOption.cloneNode(true);
+            this.el.displayRuleProfile.appendChild(ruleOption);
+        });
+        this.el.displayProfileEdit.value = profiles.some((profile) => profile.id === selectedId) ? selectedId : '';
+        this.el.displayRuleProfile.disabled = profiles.length === 0;
+        this.el.btnAddDisplayRule.disabled = profiles.length === 0;
+        CustomSelect.refreshNativeSelect('select-display-profile-edit');
+        CustomSelect.refreshNativeSelect('select-display-rule-profile');
+        CustomSelect.sync('select-display-profile-edit');
+        CustomSelect.sync('select-display-rule-profile');
+        this.loadDisplayProfileForm();
+        this.renderDisplayRules();
+    },
+
+    loadDisplayProfileForm() {
+        const profile = EditData.displayProfiles?.find((item) => item.id === this.el.displayProfileEdit.value);
+        this.el.inputDisplayProfileName.value = profile?.name || '';
+        this.el.inputDisplayProfileTheme.value = profile?.theme || EditData.theme || 'default';
+        CustomSelect.sync('input-display-profile-theme');
+        this.el.inputProfileShowWeather.checked = profile?.showWeather ?? EditData.showWeather !== false;
+        this.el.inputProfileShowTimeline.checked = profile?.showTimeline ?? EditData.showTimeline !== false;
+        this.el.inputProfileShowBottom.checked = profile?.showBottomText ?? EditData.showBottomText !== false;
+        this.el.inputProfileShowSeconds.checked = profile?.showClockSeconds ?? EditData.showClockSeconds !== false;
+        this.el.inputProfileBottomText.value = profile?.customBottomText ?? EditData.customBottomText ?? '';
+        this.el.btnDeleteDisplayProfile.hidden = !profile;
+    },
+
+    saveDisplayProfile() {
+        const name = this.el.inputDisplayProfileName.value.trim();
+        if (!name) {
+            void Dialog.alert('请填写方案名称', '信息不完整', 'warning');
+            return;
+        }
+        const profile = {
+            id: this.el.displayProfileEdit.value || `display-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            theme: this.el.inputDisplayProfileTheme.value,
+            showWeather: this.el.inputProfileShowWeather.checked,
+            showTimeline: this.el.inputProfileShowTimeline.checked,
+            showBottomText: this.el.inputProfileShowBottom.checked,
+            showClockSeconds: this.el.inputProfileShowSeconds.checked,
+            customBottomText: this.el.inputProfileBottomText.value.trim()
+        };
+        const index = EditData.displayProfiles.findIndex((item) => item.id === profile.id);
+        if (index < 0) EditData.displayProfiles.push(profile);
+        else EditData.displayProfiles[index] = profile;
+        this.renderDisplayProfileEditor();
+        this.el.displayProfileEdit.value = profile.id;
+        this.loadDisplayProfileForm();
+        CustomSelect.sync('select-display-profile-edit');
+        this.markSettingsDirty();
+    },
+
+    async deleteDisplayProfile() {
+        const profileId = this.el.displayProfileEdit.value;
+        if (!profileId) return;
+        const profile = EditData.displayProfiles.find((item) => item.id === profileId);
+        const confirmed = await Dialog.confirm(`删除“${profile?.name || '未命名方案'}”并移除关联的日期规则？`, {
+            title: '删除显示方案', confirmText: '删除'
+        });
+        if (!confirmed) return;
+        EditData.displayProfiles = EditData.displayProfiles.filter((item) => item.id !== profileId);
+        Object.keys(EditData.displayRules).forEach((date) => {
+            if (EditData.displayRules[date] === profileId) delete EditData.displayRules[date];
+        });
+        this.renderDisplayProfileEditor();
+        this.markSettingsDirty();
+    },
+
+    async addDisplayRule() {
+        const date = this.el.inputDisplayRuleDate.value;
+        const profileId = this.el.displayRuleProfile.value;
+        if (!date || !profileId) {
+            await Dialog.alert('请选择日期和显示方案', '信息不完整', 'warning');
+            return;
+        }
+        const oldProfileId = EditData.displayRules[date];
+        if (oldProfileId && oldProfileId !== profileId) {
+            const confirmed = await Dialog.confirm(`${date} 已关联其他方案，是否替换？`, {
+                title: '替换日期方案', confirmText: '替换'
+            });
+            if (!confirmed) return;
+        }
+        EditData.displayRules[date] = profileId;
+        this.renderDisplayRules();
+        this.markSettingsDirty();
+    },
+
+    renderDisplayRules() {
+        this.el.displayRuleList.innerHTML = '';
+        const profiles = new Map((EditData.displayProfiles || []).map((profile) => [profile.id, profile.name]));
+        Object.entries(EditData.displayRules || {}).sort(([left], [right]) => left.localeCompare(right)).forEach(([date, profileId]) => {
+            const row = document.createElement('div');
+            row.className = 'display-rule-item';
+            const label = document.createElement('span');
+            label.textContent = `${CustomDatePicker.formatDate(date)} · ${profiles.get(profileId) || '已删除方案'}`;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-secondary';
+            remove.textContent = '移除';
+            remove.addEventListener('click', () => {
+                delete EditData.displayRules[date];
+                this.renderDisplayRules();
+                this.markSettingsDirty();
+            });
+            row.append(label, remove);
+            this.el.displayRuleList.appendChild(row);
+        });
+    },
+
+    getSelectedCourseOverride() {
+        return EditData.courseOverrides?.[CurrentOverrideDate] || null;
+    },
+
+    getEditCoursesForDay(day) {
+        if (CurrentEditMode === 'override') {
+            const override = this.getSelectedCourseOverride();
+            return override?.courses || null;
+        }
+        if (!EditData.courses) EditData.courses = {};
+        let weekCourses = EditData.courses;
+        if (CurrentEditWeek > 1) {
+            if (!EditData.courseRotation) EditData.courseRotation = { weeks: [] };
+            if (!Array.isArray(EditData.courseRotation.weeks)) EditData.courseRotation.weeks = [];
+            while (EditData.courseRotation.weeks.length < CurrentEditWeek - 1) {
+                EditData.courseRotation.weeks.push({});
+            }
+            weekCourses = EditData.courseRotation.weeks[CurrentEditWeek - 2];
+        }
+        if (!Array.isArray(weekCourses[day])) weekCourses[day] = [];
+        return weekCourses[day];
+    },
+
+    renderCourseCycleSelector() {
+        if (!this.el.cycleWeekSelector) return;
+        this.el.cycleWeekSelector.innerHTML = '';
+        const weekCount = (EditData.courseRotation?.weeks?.length || 0) + 1;
+        for (let week = 1; week <= weekCount; week += 1) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `day-btn ${CurrentEditWeek === week ? 'active' : ''}`;
+            button.textContent = weekCount === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
+            button.disabled = CurrentEditMode === 'override';
+            button.addEventListener('click', () => {
+                CurrentEditWeek = week;
+                CurrentEditCourseIndex = null;
+                this.renderCourseCycleSelector();
+                this.renderCourseList();
+            });
+            this.el.cycleWeekSelector.appendChild(button);
+        }
+        this.el.cycleWeekSelector.hidden = weekCount <= 1 || CurrentEditMode === 'override';
+    },
+
+    renderCourseModeControls() {
+        const isOverrideMode = CurrentEditMode === 'override';
+        const override = this.getSelectedCourseOverride();
+        this.el.cycleWeekSelector.hidden = isOverrideMode || (EditData.courseRotation?.weeks?.length || 0) === 0;
+        this.el.cycleWeekCount.disabled = isOverrideMode;
+        this.el.cycleStartDate.disabled = isOverrideMode;
+        CustomSelect.sync('input-cycle-week-count');
+        this.el.courseEditMode.value = CurrentEditMode;
+        CustomSelect.sync('input-course-edit-mode');
+        this.el.overrideDate.hidden = !isOverrideMode;
+        this.el.overrideType.hidden = !isOverrideMode;
+        CustomSelect.sync('input-course-override-type');
+        this.el.overrideDate.closest('label').hidden = !isOverrideMode;
+        this.el.overrideType.closest('label').hidden = !isOverrideMode;
+        this.el.btnCreateOverride.hidden = !isOverrideMode;
+        this.el.btnRemoveOverride.hidden = !isOverrideMode || !override;
+        this.el.btnImportCourses.hidden = isOverrideMode;
+        this.el.btnDownloadCourseTemplate.hidden = isOverrideMode;
+        this.el.btnCreateOverride.disabled = Boolean(override);
+        this.el.inputCopyCourseDay.closest('.course-copy-controls').hidden = isOverrideMode;
+        this.el.overrideStatus.textContent = !isOverrideMode
+            ? ''
+            : override
+                ? `已启用${{ adjustment: '临时调课', substitute: '代课', event: '临时活动' }[override.type] || '临时覆盖'}，原轮换课表保留`
+                : '尚无临时覆盖，主界面仍显示轮换课表';
+    },
+
+    async updateCourseRotationWeekCount() {
+        const oldWeeks = EditData.courseRotation.weeks;
+        const nextCount = Math.max(1, Math.min(8, Number(this.el.cycleWeekCount.value) || 1));
+        const nextWeeks = nextCount - 1;
+        if (nextWeeks < oldWeeks.length) {
+            const removedWeeks = oldWeeks.slice(nextWeeks);
+            const hasCourses = removedWeeks.some((week) => Object.values(week || {}).some((courses) => courses?.length));
+            if (hasCourses && !await Dialog.confirm('缩短周期会删除被移除轮换周的课程，是否继续？', { title: '缩短轮换周期', confirmText: '删除并缩短' })) {
+                this.el.cycleWeekCount.value = String(oldWeeks.length + 1);
+                CustomSelect.sync('input-cycle-week-count');
+                return;
+            }
+            oldWeeks.length = nextWeeks;
+        } else {
+            while (oldWeeks.length < nextWeeks) oldWeeks.push({});
+        }
+        CurrentEditWeek = Math.min(CurrentEditWeek, nextCount);
+        this.renderCourseCycleSelector();
+        this.renderCourseList();
+        this.markSettingsDirty();
+    },
+
+    updateCourseRotationStartDate() {
+        const monday = Schedule.getDateKey(Schedule.getMonday(this.el.cycleStartDate.value));
+        this.el.cycleStartDate.value = monday;
+        EditData.courseRotation.startDate = monday;
+        this.markSettingsDirty();
+    },
+
+    changeCourseEditMode() {
+        CurrentEditMode = this.el.courseEditMode.value;
+        if (CurrentEditMode === 'override') {
+            if (!CurrentOverrideDate) CurrentOverrideDate = Schedule.getDateKey(new Date());
+            this.el.overrideDate.value = CurrentOverrideDate;
+            const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+            CurrentEditDay = resolved.day;
+            CurrentEditWeek = resolved.week;
+            if (resolved.override) this.el.overrideType.value = resolved.override.type || 'adjustment';
+        }
+        CurrentEditCourseIndex = null;
+        this.renderDaySelector();
+        this.renderCourseCycleSelector();
+        this.renderCourseList();
+    },
+
+    changeCourseOverrideDate() {
+        CurrentOverrideDate = this.el.overrideDate.value || Schedule.getDateKey(new Date());
+        this.el.overrideDate.value = CurrentOverrideDate;
+        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+        CurrentEditDay = resolved.day;
+        CurrentEditWeek = resolved.week;
+        if (resolved.override) this.el.overrideType.value = resolved.override.type || 'adjustment';
+        CustomSelect.sync('input-course-override-type');
+        CurrentEditCourseIndex = null;
+        this.renderDaySelector();
+        this.renderCourseList();
+    },
+
+    changeCourseOverrideType() {
+        const override = this.getSelectedCourseOverride();
+        if (!override) return;
+        override.type = this.el.overrideType.value;
+        this.renderCourseModeControls();
+        this.markSettingsDirty();
+    },
+
+    createCourseOverride() {
+        if (this.getSelectedCourseOverride()) return;
+        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+        EditData.courseOverrides[CurrentOverrideDate] = {
+            type: this.el.overrideType.value,
+            courses: JSON.parse(JSON.stringify(resolved.courses))
+        };
+        CurrentEditDay = resolved.day;
+        CurrentEditWeek = resolved.week;
+        CurrentEditCourseIndex = null;
+        this.renderCourseModeControls();
+        this.renderDaySelector();
+        this.renderCourseList();
+        this.markSettingsDirty();
+    },
+
+    async removeCourseOverride() {
+        if (!this.getSelectedCourseOverride()) return;
+        const confirmed = await Dialog.confirm(`删除 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的临时覆盖并恢复轮换课表？`, {
+            title: '恢复原课表', confirmText: '恢复'
+        });
+        if (!confirmed) return;
+        delete EditData.courseOverrides[CurrentOverrideDate];
+        this.renderCourseModeControls();
+        this.renderCourseList();
+        this.markSettingsDirty();
+    },
+
     renderDaySelector() {
         this.el.daySelector.innerHTML = '';
+        this.el.daySelector.hidden = CurrentEditMode === 'override';
         this.el.inputCopyCourseDay.innerHTML = '<option value="">复制到星期…</option>';
         Object.keys(DAY_MAP).forEach(dayKey => {
             const btn = document.createElement('button');
@@ -3235,44 +4278,174 @@ const UI = {
                 this.el.inputCopyCourseDay.appendChild(option);
             }
         });
+        CustomSelect.refreshNativeSelect('input-copy-course-day');
         this.el.btnCopyCourses.disabled = true;
     },
 
     async copyCoursesToDay() {
+        if (CurrentEditMode !== 'regular') return;
         const targetDay = this.el.inputCopyCourseDay.value;
         if (!targetDay || targetDay === CurrentEditDay || !DAY_MAP[targetDay]) return;
-        const courses = EditData.courses?.[CurrentEditDay] || [];
+        const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
         const confirmed = await Dialog.confirm(
             `将${DAY_MAP[CurrentEditDay]}的 ${courses.length} 节课程复制到${DAY_MAP[targetDay]}？目标星期的课程将被替换。`,
             { title: '复制课表', confirmText: '复制并覆盖' }
         );
         if (!confirmed) return;
-        EditData.courses[targetDay] = JSON.parse(JSON.stringify(courses));
+        const targetCourses = CurrentEditWeek === 1
+            ? EditData.courses
+            : EditData.courseRotation.weeks[CurrentEditWeek - 2];
+        targetCourses[targetDay] = JSON.parse(JSON.stringify(courses));
         this.el.inputCopyCourseDay.value = '';
         this.el.btnCopyCourses.disabled = true;
         this.markSettingsDirty();
     },
 
+    createCourseEditForm(course, courseIndex) {
+        const form = document.createElement('div');
+        form.className = 'course-editor-form';
+        const subjectMenu = document.createElement('details');
+        subjectMenu.className = 'course-subject-menu';
+        subjectMenu.id = `course-subject-menu-${courseIndex}`;
+        const menuTrigger = document.createElement('summary');
+        menuTrigger.className = 'course-subject-menu-trigger';
+        menuTrigger.textContent = course.course || '选择课程名称';
+        menuTrigger.setAttribute('aria-label', `选择课程名称，当前为${course.course || '未设置'}`);
+
+        const subjectOptions = document.createElement('div');
+        subjectOptions.className = 'course-subject-options';
+        const subjects = Array.isArray(EditData.subjects) && EditData.subjects.length
+            ? [...new Set(EditData.subjects)]
+            : ['语文', '数学', '英语'];
+        if (course.course && !subjects.includes(course.course)) subjects.push(course.course);
+        subjects.forEach((subject) => {
+            const subjectButton = document.createElement('button');
+            subjectButton.type = 'button';
+            subjectButton.className = 'course-subject-option';
+            subjectButton.textContent = subject;
+            subjectButton.classList.toggle('active', course.course === subject);
+            subjectButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                course.course = subject;
+                this.renderCourseList();
+                this.markSettingsDirty();
+            });
+            subjectOptions.appendChild(subjectButton);
+        });
+
+        const customButton = document.createElement('button');
+        customButton.type = 'button';
+        customButton.className = 'course-subject-option course-custom-button';
+        customButton.textContent = '自定义';
+        customButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            subjectOptions.innerHTML = '';
+            const customInput = document.createElement('input');
+            customInput.type = 'text';
+            customInput.className = 'course-custom-input';
+            customInput.placeholder = '输入自定义课程名称';
+            customInput.value = course.course || '';
+            AutoFillGuard.apply(customInput);
+            customInput.addEventListener('click', (inputEvent) => inputEvent.stopPropagation());
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'button';
+            confirmButton.className = 'course-custom-confirm';
+            confirmButton.textContent = '确定';
+            confirmButton.addEventListener('click', (confirmEvent) => {
+                confirmEvent.stopPropagation();
+                const customName = customInput.value.trim();
+                if (!customName) return;
+                course.course = customName;
+                if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
+                if (!EditData.subjects.includes(customName)) EditData.subjects.push(customName);
+                this.renderSubjectList();
+                this.renderCourseList();
+                this.markSettingsDirty();
+            });
+            subjectOptions.append(customInput, confirmButton);
+            customInput.focus();
+            customInput.setSelectionRange(customInput.value.length, customInput.value.length);
+        });
+        subjectOptions.appendChild(customButton);
+        subjectMenu.append(menuTrigger, subjectOptions);
+
+        const doneButton = document.createElement('button');
+        doneButton.type = 'button';
+        doneButton.className = 'btn btn-secondary course-editor-done';
+        doneButton.textContent = '完成';
+        doneButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            CurrentEditCourseIndex = null;
+            this.renderCourseList();
+        });
+
+        const editorHint = document.createElement('p');
+        editorHint.className = 'course-editor-hint';
+        editorHint.textContent = '选择课程名称，或打开菜单添加自定义名称；拖动时间滑块调整时间，最后保存设置。';
+        form.append(subjectMenu, editorHint, doneButton);
+        return form;
+    },
+
+    createCourseActionButtons(course, index, courses) {
+        const duplicate = document.createElement('button');
+        duplicate.type = 'button';
+        duplicate.className = 'btn-course-action btn-course-duplicate';
+        duplicate.textContent = '复制';
+        duplicate.title = '复制课程';
+        duplicate.setAttribute('aria-label', `复制${course.course || '未命名课程'}`);
+        duplicate.addEventListener('click', (event) => {
+            event.stopPropagation();
+            courses.splice(index + 1, 0, JSON.parse(JSON.stringify(course)));
+            CurrentEditCourseIndex = index + 1;
+            this.renderCourseList();
+            this.markSettingsDirty();
+        });
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn-delete';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', `删除${course.course || '未命名课程'}`);
+        remove.addEventListener('click', (event) => {
+            event.stopPropagation();
+            courses.splice(index, 1);
+            CurrentEditCourseIndex = null;
+            this.renderCourseList();
+            this.markSettingsDirty();
+        });
+        return [duplicate, remove];
+    },
+
     renderCourseList() {
         this.el.courseList.innerHTML = '';
-        if (!EditData.courses) EditData.courses = {};
-        if (!EditData.courses[CurrentEditDay]) EditData.courses[CurrentEditDay] = [];
-        if (CurrentEditCourseIndex !== null && CurrentEditCourseIndex >= EditData.courses[CurrentEditDay].length) CurrentEditCourseIndex = null;
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        this.renderCourseModeControls();
+        this.el.btnAddCourse.disabled = !courses;
+        const weekLabel = CurrentEditMode !== 'regular' || !(EditData.courseRotation?.weeks?.length || 0)
+            ? ''
+            : `${EditData.courseRotation.weeks.length + 1 === 2 ? (CurrentEditWeek === 1 ? 'A周' : 'B周') : `第${CurrentEditWeek}周`} · `;
+        this.el.courseDaySummary.textContent = `${weekLabel}${DAY_MAP[CurrentEditDay]} · ${courses?.length || 0} 节`;
+        if (courses && CurrentEditCourseIndex !== null && CurrentEditCourseIndex >= courses.length) CurrentEditCourseIndex = null;
+        if (!courses?.length) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'course-empty-state';
+            emptyState.innerHTML = courses
+                ? '<b>本日暂无课程</b><span>点击“添加课程”开始安排今天的课表。</span>'
+                : '<b>本日尚无临时覆盖</b><span>新建后可编辑当天安排，原轮换课表会保留。</span>';
+            this.el.courseList.appendChild(emptyState);
+            return;
+        }
 
-        EditData.courses[CurrentEditDay].forEach((course, index) => {
+        courses.forEach((course, index) => {
             const row = document.createElement('div');
             row.className = 'course-item';
+            row.tabIndex = -1;
+            row.title = course.note || '';
             row.classList.toggle('selected', CurrentEditCourseIndex === index);
             row.dataset.courseIndex = String(index);
             row.addEventListener('click', (event) => {
-                if (event.target.closest('.btn-delete') || event.target.closest('.course-time-range-track')) return;
-                if (CurrentEditCourseIndex === index) {
-                    CurrentEditCourseIndex = null;
-                    this.renderCourseList();
-                    this.markSettingsDirty();
-                    return;
-                }
-                CurrentEditCourseIndex = index;
+                if (event.target.closest('button, input, textarea, select, details, .custom-select, .custom-date-picker, .course-editor-form, .course-time-panel')) return;
+                CurrentEditCourseIndex = CurrentEditCourseIndex === index ? null : index;
                 this.renderCourseList();
             });
 
@@ -3357,8 +4530,8 @@ const UI = {
                     endThumb.setAttribute('aria-valuemax', String(MAX_COURSE_TIME));
                     endThumb.setAttribute('aria-valuenow', String(endMinutes));
                     endThumb.setAttribute('aria-valuetext', endTime);
-                    EditData.courses[CurrentEditDay][index].start = startTime;
-                    EditData.courses[CurrentEditDay][index].end = endTime;
+                    courses[index].start = startTime;
+                    courses[index].end = endTime;
                     if (activeThumb) activeThumb.focus({ preventScroll: true });
                     this.markSettingsDirty();
                 };
@@ -3507,95 +4680,60 @@ const UI = {
 
             const subjectPanel = document.createElement('div');
             subjectPanel.className = 'course-subject-panel';
-            const subjectOptions = document.createElement('div');
-            subjectOptions.className = 'course-subject-options';
-            const subjects = Array.isArray(EditData.subjects) && EditData.subjects.length
-                ? EditData.subjects
-                : ['语文', '数学', '英语'];
-            subjects.forEach((subject) => {
-                const subjectButton = document.createElement('button');
-                subjectButton.type = 'button';
-                subjectButton.className = 'course-subject-option';
-                subjectButton.textContent = subject;
-                subjectButton.classList.toggle('active', course.course === subject);
-                subjectButton.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    CurrentEditCourseIndex = index;
-                    EditData.courses[CurrentEditDay][index].course = subject;
-                    this.renderCourseList();
-                    this.markSettingsDirty();
-                });
-                subjectOptions.appendChild(subjectButton);
-            });
-
-            const customButton = document.createElement('button');
-            customButton.type = 'button';
-            customButton.className = 'course-subject-option course-custom-button';
-            customButton.textContent = '自定义';
-            customButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                CurrentEditCourseIndex = index;
-                subjectOptions.innerHTML = '';
-                const customInput = document.createElement('input');
-                customInput.type = 'text';
-                customInput.className = 'course-custom-input';
-                customInput.placeholder = '输入自定义课程名称';
-                customInput.value = course.course || '';
-                AutoFillGuard.apply(customInput);
-                customInput.addEventListener('click', (inputEvent) => inputEvent.stopPropagation());
-                const confirmButton = document.createElement('button');
-                confirmButton.type = 'button';
-                confirmButton.className = 'course-custom-confirm';
-                confirmButton.textContent = '确定';
-                confirmButton.addEventListener('click', (confirmEvent) => {
-                    confirmEvent.stopPropagation();
-                    const customName = customInput.value.trim();
-                    if (customName) {
-                        EditData.courses[CurrentEditDay][index].course = customName;
-                        if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
-                        if (!EditData.subjects.includes(customName)) EditData.subjects.push(customName);
-                    }
-                    this.renderCourseList();
-                    this.markSettingsDirty();
-                });
-                subjectOptions.append(customInput, confirmButton);
-                customInput.focus();
-                customInput.setSelectionRange(customInput.value.length, customInput.value.length);
-            });
-            subjectOptions.appendChild(customButton);
-            subjectPanel.appendChild(subjectOptions);
-
-            const btnDelete = document.createElement('button');
-            btnDelete.className = 'btn-delete';
-            btnDelete.innerHTML = '×';
-            btnDelete.onclick = () => {
-                EditData.courses[CurrentEditDay].splice(index, 1);
-                if (CurrentEditCourseIndex === index) CurrentEditCourseIndex = null;
-                else if (CurrentEditCourseIndex !== null && CurrentEditCourseIndex > index) CurrentEditCourseIndex -= 1;
-                this.renderCourseList();
-                this.markSettingsDirty();
-            };
+            const [btnDuplicate, btnDelete] = this.createCourseActionButtons(course, index, courses);
 
             const timePanel = document.createElement('div');
             timePanel.className = 'course-time-panel';
             if (timeRangeEditor) timePanel.appendChild(timeRangeEditor);
 
+            if (CurrentEditCourseIndex === index) {
+                row.append(this.createCourseEditForm(course, index), timePanel, btnDuplicate, btnDelete);
+                this.el.courseList.appendChild(row);
+                return;
+            }
+
             let compactTime = null;
             let compactName = null;
             if (CurrentEditCourseIndex !== index) {
-                subjectOptions.classList.add('hidden');
                 compactName = document.createElement('span');
                 compactName.className = 'course-name-summary';
                 compactName.textContent = course.course || '未设置课程';
+                compactName.tabIndex = 0;
+                compactName.setAttribute('role', 'button');
+                compactName.title = '点击编辑课程';
+                compactName.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    CurrentEditCourseIndex = index;
+                    this.renderCourseList();
+                });
+                compactName.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    CurrentEditCourseIndex = index;
+                    this.renderCourseList();
+                });
                 compactTime = document.createElement('span');
                 compactTime.className = 'course-time-summary';
                 compactTime.textContent = `${course.start || '--:--'}–${course.end || '--:--'}`;
+                compactTime.tabIndex = 0;
+                compactTime.setAttribute('role', 'button');
+                compactTime.title = '点击编辑课程';
+                compactTime.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    CurrentEditCourseIndex = index;
+                    this.renderCourseList();
+                });
+                compactTime.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    CurrentEditCourseIndex = index;
+                    this.renderCourseList();
+                });
                 subjectPanel.append(compactName, compactTime);
             }
 
             row.appendChild(subjectPanel);
-            if (CurrentEditCourseIndex === index) row.appendChild(timePanel);
-            row.appendChild(btnDelete);
+            row.append(btnDuplicate, btnDelete);
             this.el.courseList.appendChild(row);
         });
     },
@@ -3613,8 +4751,9 @@ const UI = {
             name.className = 'subject-manager-name';
             name.textContent = subject;
             name.addEventListener('click', () => {
-                if (CurrentEditCourseIndex !== null && EditData.courses[CurrentEditDay]?.[CurrentEditCourseIndex]) {
-                    EditData.courses[CurrentEditDay][CurrentEditCourseIndex].course = subject;
+                const courses = this.getEditCoursesForDay(CurrentEditDay);
+                if (CurrentEditCourseIndex !== null && courses?.[CurrentEditCourseIndex]) {
+                    courses[CurrentEditCourseIndex].course = subject;
                     this.renderCourseList();
                     this.markSettingsDirty();
                 }
@@ -3645,18 +4784,23 @@ const UI = {
     },
 
     addCourseRow() {
-        if (!EditData.courses[CurrentEditDay]) EditData.courses[CurrentEditDay] = [];
-        EditData.courses[CurrentEditDay].push({ start: '08:00', end: '08:45', course: '' });
-        CurrentEditCourseIndex = EditData.courses[CurrentEditDay].length - 1;
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        if (!courses) return;
+        courses.push({ start: '08:00', end: '08:45', course: '' });
+        CurrentEditCourseIndex = courses.length - 1;
         setTimeout(() => { this.el.courseList.scrollTop = this.el.courseList.scrollHeight; }, 10);
         this.renderCourseList();
         this.markSettingsDirty();
     },
 
     timelineSignature: null,
-    renderTimeline(courses) {        const now = new Date();
-        const courseSignature = JSON.stringify(courses || []);
+    renderTimeline(courses, override = null) {
+        const now = new Date();
+        const overrideLabels = { adjustment: '临时调课', substitute: '代课', event: '临时活动' };
+        const overrideLabel = overrideLabels[override?.type] || '';
+        const courseSignature = JSON.stringify({ courses: courses || [], override: override?.type || '' });
         const courseChanged = this.timelineSignature !== courseSignature;
+        if (this.el.timeDate) this.el.timeDate.dataset.courseMode = overrideLabel;
         if (courseChanged) {
             this.timelineSignature = courseSignature;
             this.el.timeline.innerHTML = '';
@@ -3689,6 +4833,7 @@ const UI = {
 
             let statusClass = 'upcoming';
             let displayName = item.course || '无';
+            if (index === 0 && overrideLabel) displayName = `${overrideLabel} · ${displayName}`;
             const endingAnimationStart = new Date(actualEndTime.getTime() - 60 * 1000);
             if (now >= actualEndTime) statusClass = 'done';
             else if (now >= endingAnimationStart && now < actualEndTime) statusClass = 'ending';
@@ -3709,13 +4854,22 @@ const UI = {
             el.setAttribute('aria-current', statusClass === 'now' || statusClass === 'ending' ? 'true' : 'false');
             if (!existingNode) {
                 el.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
-                el.innerHTML = `<div class="dot"></div><div class="time">${displayTime}</div><div class="name" title="${displayName}">${displayName}</div>`;
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                const time = document.createElement('div');
+                time.className = 'time';
+                time.textContent = displayTime;
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = displayName;
+                name.title = item.note ? `${displayName}\n${item.note}` : displayName;
+                el.append(dot, time, name);
                 this.el.timeline.appendChild(el);
             } else {
                 el.querySelector('.time').textContent = displayTime;
                 const nameEl = el.querySelector('.name');
                 nameEl.textContent = displayName;
-                nameEl.title = displayName;
+                nameEl.title = item.note ? `${displayName}\n${item.note}` : displayName;
                 if (previousStatus !== statusClass && ['now', 'ending', 'done'].includes(statusClass)) {
                     el.classList.remove('course-state-entered');
                     void el.offsetWidth;
@@ -3782,6 +4936,8 @@ const UI = {
 
 const App = {
     trayInitialized: false,
+    shuttingDown: false,
+    shutdownPromise: null,
     courseRefreshTimer: null,
     weatherRefreshTimer: null,
     weatherRefreshInFlight: null,
@@ -3789,12 +4945,12 @@ const App = {
     async init() {
         await Logger.init();
         await Store.init();
-        UI.applyTheme(AppData.theme);
+        UI.activeDisplayProfileKey = null;
         UI.applyFontStyles();
-        UI.applyDisplayOptions();
+        UI.applyActiveDisplayProfile(true);
         if (!this.trayInitialized) {
             await UI.initTray();
-            this.trayInitialized = true;
+            this.trayInitialized = UI.trayBound;
         }
         this.refreshCourses();
         UI.renderCustomBottomInfo();
@@ -3809,8 +4965,10 @@ const App = {
     refreshCourses() {
         const startedAt = performance.now();
         try {
-            const courses = Store.getTodayCourses();
-            UI.renderTimeline(courses);
+            UI.applyActiveDisplayProfile();
+            const schedule = Schedule.resolveCourses(new Date(), AppData);
+            const courses = schedule.courses;
+            UI.renderTimeline(courses, schedule.override);
             UI.renderCustomBottomInfo();
             void Logger.info('课程刷新完成', { module: 'course', action: 'refresh', durationMs: Math.round(performance.now() - startedAt), context: { courseCount: courses.length } });
         } catch (error) {
@@ -3833,22 +4991,37 @@ const App = {
         this.nextWeatherRefreshAt = Date.now() + weatherRefreshMinutes * 60 * 1000;
         this.weatherRefreshTimer = setInterval(() => this.refreshWeather(), weatherRefreshMinutes * 60 * 1000);
     },
-    async shutdown() {
-        UI.stopClock();
-        clearInterval(this.courseRefreshTimer);
-        clearInterval(this.weatherRefreshTimer);
-        clearTimeout(UI.trayUpdateTimer);
-        clearTimeout(UI.fitWidthTimer);
-        clearTimeout(UI.weatherRemeasureTimer);
-        UI.windowTransitionToken += 1;
-        try {
-            await Neutralino.os.setTray({ menuItems: [] });
-            await Neutralino.os.setTray({});
-        } catch (error) {
-            void Logger.warn('移除托盘图标失败', { module: 'tray', action: 'remove' }, error);
+    async shutdown(source = 'unknown') {
+        if (this.shutdownPromise) {
+            void Logger.info('忽略重复退出请求', { module: 'lifecycle', action: 'shutdown-duplicate', context: { source } });
+            return this.shutdownPromise;
         }
-        await Logger.info('应用退出', { module: 'lifecycle', action: 'shutdown' });
-        await Neutralino.app.exit();
+        this.shuttingDown = true;
+        this.shutdownPromise = (async () => {
+            void Logger.info('开始退出应用', { module: 'lifecycle', action: 'shutdown-start', context: { source } });
+            UI.stopClock();
+            clearInterval(this.courseRefreshTimer);
+            clearInterval(this.weatherRefreshTimer);
+            clearTimeout(UI.trayUpdateTimer);
+            clearTimeout(UI.fitWidthTimer);
+            clearTimeout(UI.weatherRemeasureTimer);
+            UI.windowTransitionToken += 1;
+            try {
+                await UI.trayUpdatePromise;
+            } catch (error) {
+                await Logger.warn('退出时托盘菜单更新未完成', { module: 'tray', action: 'shutdown-wait' }, error);
+            }
+            await Logger.info('应用退出', { module: 'lifecycle', action: 'shutdown', context: { source } });
+            await Neutralino.app.exit();
+        })();
+        try {
+            await this.shutdownPromise;
+        } catch (error) {
+            this.shuttingDown = false;
+            this.shutdownPromise = null;
+            await Logger.error('应用退出失败', { module: 'lifecycle', action: 'shutdown', context: { source } }, error);
+            throw error;
+        }
     },
     async refreshWeather() {
         if (this.weatherRefreshInFlight) return this.weatherRefreshInFlight;
