@@ -17,30 +17,30 @@ test('should export courses from each rotation week in the import-compatible for
     ]);
 });
 
-test('should export dated overrides in date order with translated event types', () => {
+test('should export dated overrides in date order', () => {
     const rows = CourseExport.buildOverrideRows({
         courseOverrides: {
-            '2026-11-10': { type: 'substitute', courses: [{ course: '英语' }] },
-            '2026-11-09': { type: 'adjustment', courses: [{ start: '10:00', end: '10:45', course: '物理' }] }
+            '2026-11-10': { courses: [{ course: '英语' }] },
+            '2026-11-09': { courses: [{ start: '10:00', end: '10:45', course: '物理' }] }
         }
     });
 
     assert.deepEqual(rows, [
-        ['日期', '事件类型', '开始时间', '结束时间', '课程', '备注'],
-        ['2026-11-09', '临时调课', '10:00', '10:45', '物理', ''],
-        ['2026-11-10', '代课', '', '', '英语', '']
+        ['日期', '开始时间', '结束时间', '课程', '备注'],
+        ['2026-11-09', '10:00', '10:45', '物理', ''],
+        ['2026-11-10', '', '', '英语', '']
     ]);
 });
 
 test('should preserve overrides with no courses as empty rows', () => {
     const rows = CourseExport.buildOverrideRows({
         courseOverrides: {
-            '2026-11-13': { type: 'event', courses: [] }
+            '2026-11-13': { courses: [] }
         }
     });
 
     assert.deepEqual(rows, [
-        ['日期', '事件类型', '开始时间', '结束时间', '课程', '备注'],
-        ['2026-11-13', '临时活动', '', '', '', '']
+        ['日期', '开始时间', '结束时间', '课程', '备注'],
+        ['2026-11-13', '', '', '', '']
     ]);
 });

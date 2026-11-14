@@ -21,21 +21,18 @@ const CourseExport = {
     },
 
     buildOverrideRows(config) {
-        const rows = [['日期', '事件类型', '开始时间', '结束时间', '课程', '备注']];
-        const typeLabels = { adjustment: '临时调课', substitute: '代课', event: '临时活动' };
+        const rows = [['日期', '开始时间', '结束时间', '课程', '备注']];
         Object.entries(config?.courseOverrides || {})
             .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
             .forEach(([date, override]) => {
                 if (!Array.isArray(override?.courses)) return;
-                const eventType = typeLabels[override.type] || override.type || '';
                 if (!override.courses.length) {
-                    rows.push([date, eventType, '', '', '', '']);
+                    rows.push([date, '', '', '', '']);
                     return;
                 }
                 override.courses.forEach((course) => {
                     rows.push([
                         date,
-                        eventType,
                         course.start || '',
                         course.end || '',
                         course.course || '',

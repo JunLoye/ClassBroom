@@ -116,7 +116,6 @@ let EditData = {};
 let CurrentEditDay = 'mon';
 let CurrentEditCourseIndex = null;
 let CurrentEditWeek = 1;
-let CurrentEditMode = 'regular';
 let CurrentOverrideDate = '';
 
 const SecretVault = {
@@ -1227,6 +1226,7 @@ const CustomSelect = {
             const instance = this.init(root);
             if (instance) {
                 instance.nativeSelect = true;
+                instance.reference = select;
                 instance.refreshNativeOptions();
                 instance.trigger.id = `custom-trigger-${select.id}`;
                 instance.trigger.setAttribute('aria-label', select.getAttribute('aria-label') || labelText || '选择选项');
@@ -1264,6 +1264,7 @@ const CustomSelect = {
         const instance = {
             root, trigger, label, panel, hidden, placeholder,
             nativeSelect: false,
+            reference: null,
             focusedIndex: -1,
             options: [],
             setOptions(options) {
@@ -1297,7 +1298,10 @@ const CustomSelect = {
                     item.setAttribute('aria-selected', selected ? 'true' : 'false');
                     item.addEventListener('click', (event) => {
                         event.stopPropagation();
-                        if (option.disabled || hidden?.disabled) return;
+                        if (option.disabled || hidden?.disabled) {
+                            this.close();
+                            return;
+                        }
                         this.setValue(option.value, true);
                         this.close();
                         trigger.focus({ preventScroll: true });
@@ -1306,6 +1310,7 @@ const CustomSelect = {
                 });
                 this.syncLabel();
                 this.syncDisabled();
+                if (root.classList.contains('open')) this.position();
             },
             refreshNativeOptions() {
                 if (this.nativeSelect) this.render();
@@ -1360,6 +1365,7 @@ const CustomSelect = {
                 if (trigger.disabled) return;
                 CustomSelect.closeAll(instance);
                 root.classList.add('open');
+                CustomSelect.syncBodyState();
                 trigger.setAttribute('aria-expanded', 'true');
                 const selected = this.options.findIndex((option) => option.value === this.getValue() && !option.disabled);
                 this.focusedIndex = selected >= 0 ? selected : -1;
@@ -1373,6 +1379,7 @@ const CustomSelect = {
 
             position() {
                 if (!root.classList.contains('open')) return;
+                panel.hidden = false;
                 const rect = root.getBoundingClientRect();
                 const viewportHeight = window.innerHeight;
                 const viewportWidth = window.innerWidth;
@@ -1385,10 +1392,12 @@ const CustomSelect = {
                 const spaceAbove = rect.top - gap - edge;
                 const dropUp = spaceBelow < panelHeight && spaceAbove > spaceBelow;
                 const height = Math.min(panelHeight, dropUp ? spaceAbove : spaceBelow, maxAvailable);
+                const anchor = this.reference;
+                const anchorWidth = anchor ? anchor.getBoundingClientRect().width : rect.width;
                 const maxWidth = Math.max(0, viewportWidth - edge * 2);
                 panel.style.width = 'max-content';
                 panel.style.maxWidth = `${maxWidth}px`;
-                const panelWidth = Math.min(maxWidth, Math.max(rect.width, panel.getBoundingClientRect().width));
+                const panelWidth = Math.min(maxWidth, Math.max(rect.width, anchorWidth, panel.getBoundingClientRect().width));
                 root.classList.toggle('drop-up', dropUp);
                 panel.style.width = `${Math.round(panelWidth)}px`;
                 panel.style.maxHeight = `${Math.max(72, Math.round(height))}px`;
@@ -1400,9 +1409,11 @@ const CustomSelect = {
             },
             close() {
                 root.classList.remove('open', 'drop-up');
+                panel.hidden = true;
                 trigger.setAttribute('aria-expanded', 'false');
                 trigger.removeAttribute('aria-activedescendant');
                 this.focusedIndex = -1;
+                CustomSelect.syncBodyState();
             },
             toggle() {
                 if (root.classList.contains('open')) this.close();
@@ -1474,6 +1485,12 @@ const CustomSelect = {
         this.registry.forEach((instance) => {
             if (instance !== except) instance.close();
         });
+        this.syncBodyState();
+    },
+    syncBodyState() {
+        const anyOpen = Array.from(new Set(this.registry.values()))
+            .some((instance) => instance.root.classList.contains('open'));
+        document.body.classList.toggle('custom-select-open', anyOpen);
     },
     repositionOpen() {
         this.registry.forEach((instance) => {
@@ -1481,10 +1498,17 @@ const CustomSelect = {
         });
     },
     bindGlobal() {
-        document.addEventListener('click', () => this.closeAll());
+        if (this.globalBound) return;
+        this.globalBound = true;
+        // 捕获阶段监听：目标元素即使 stopPropagation，点击面板外仍能关闭
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target instanceof Element && target.closest('.custom-select.open')) return;
+            this.closeAll();
+        }, true);
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') this.closeAll();
-        });
+        }, true);
         window.addEventListener('resize', () => this.repositionOpen());
         document.addEventListener('scroll', (event) => {
             if (event.target instanceof Node && event.target.nodeType === 1 && event.target.closest?.('.custom-select-panel')) return;
@@ -1501,8 +1525,10 @@ const CustomDatePicker = {
         if (this.bound) return;
         this.bound = true;
         document.addEventListener('click', (event) => {
-            if (!event.target.closest('.custom-date-picker')) this.closeAll();
-        });
+            const target = event.target;
+            if (target instanceof Element && target.closest('.custom-date-picker')) return;
+            this.closeAll();
+        }, true);
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') this.closeAll();
         });
@@ -1565,7 +1591,7 @@ const CustomDatePicker = {
                 const previous = document.createElement('button');
                 previous.type = 'button';
                 previous.className = 'custom-date-nav';
-                previous.textContent = '‹';
+                previous.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
                 previous.setAttribute('aria-label', '上个月');
                 previous.addEventListener('click', () => this.changeMonth(-1));
                 const monthLabel = document.createElement('span');
@@ -1574,7 +1600,7 @@ const CustomDatePicker = {
                 const next = document.createElement('button');
                 next.type = 'button';
                 next.className = 'custom-date-nav';
-                next.textContent = '›';
+                next.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
                 next.setAttribute('aria-label', '下个月');
                 next.addEventListener('click', () => this.changeMonth(1));
                 header.append(previous, monthLabel, next);
@@ -1700,7 +1726,6 @@ const UI = {
         timeClock: document.getElementById('time-clock'),
         timeDate: document.getElementById('time-date'),
         timeDateRow: document.getElementById('time-date-row'),
-        timeCourseBadge: document.getElementById('time-course-badge'),
         weather: document.getElementById('weather'),
         btnSettings: document.getElementById('btn-settings'),
         btnRefresh: document.getElementById('btn-refresh'),
@@ -1736,12 +1761,6 @@ const UI = {
         inputTheme: document.getElementById('input-theme'),
         inputWeatherRefreshMinutes: document.getElementById('input-weather-refresh-minutes'),
         customBottomText: document.getElementById('custom-bottom-info'),
-        inputCustomBottomText: document.getElementById('input-custom-bottom-text'),
-        inputShowWeather: document.getElementById('input-show-weather'),
-        inputShowTimeline: document.getElementById('input-show-timeline'),
-        inputShowBottom: document.getElementById('input-show-bottom'),
-        inputShowClockSeconds: document.getElementById('input-show-clock-seconds'),
-        placeholderTargetHint: document.getElementById('placeholder-target-hint'),
         displayProfileEdit: document.getElementById('select-display-profile-edit'),
         inputDisplayProfileName: document.getElementById('input-display-profile-name'),
         inputDisplayProfileTheme: document.getElementById('input-display-profile-theme'),
@@ -1767,8 +1786,6 @@ const UI = {
         inputFontFamily: document.getElementById('input-font-family'),
         inputFontSizeScale: document.getElementById('input-font-size-scale'),
         fontSizeScaleLabel: document.getElementById('font-size-scale-label'),
-        inputMainWindowWidth: document.getElementById('input-main-window-width'),
-        mainWindowWidthLabel: document.getElementById('main-window-width-label'),
         inputUiScale: document.getElementById('input-ui-scale'),
         uiScaleLabel: document.getElementById('ui-scale-label'),
         courseFontSizeLabel: document.getElementById('course-font-size-label'),
@@ -1779,9 +1796,7 @@ const UI = {
         fontPreviewUi: document.getElementById('font-preview-ui'),
         fontPreviewUiMeta: document.getElementById('font-preview-ui-meta'),
         inputBottomColor: document.getElementById('input-bottom-color'),
-        inputCustomOne: document.getElementById('input-custom-one'),
-        inputCustomTwo: document.getElementById('input-custom-two'),
-        inputCustomThree: document.getElementById('input-custom-three'),
+        inputBottomOffset: document.getElementById('input-bottom-offset'),
         subjectList: document.getElementById('subject-list'),
         inputNewSubject: document.getElementById('input-new-subject'),
         btnAddSubject: document.getElementById('btn-add-subject'),
@@ -1793,17 +1808,29 @@ const UI = {
         cycleWeekCount: document.getElementById('input-cycle-week-count'),
         cycleStartDate: document.getElementById('input-cycle-start-date'),
         cycleWeekSelector: document.getElementById('cycle-week-selector'),
-        courseEditMode: document.getElementById('input-course-edit-mode'),
-        overrideDate: document.getElementById('input-course-override-date'),
-        overrideType: document.getElementById('input-course-override-type'),
-        btnCreateOverride: document.getElementById('btn-create-course-override'),
-        btnRemoveOverride: document.getElementById('btn-remove-course-override'),
-        overrideStatus: document.getElementById('course-override-status'),
+        overrideMode: document.getElementById('input-override-mode'),
+        overrideDate: document.getElementById('input-override-date'),
+        overrideDateRow: document.querySelector('.course-override-date'),
+        overrideStatus: document.getElementById('override-status'),
+        btnRestoreOverride: document.getElementById('btn-restore-override'),
+        overrideHint: document.querySelector('.course-override-hint'),
+        btnSettingsMore: document.getElementById('btn-settings-more'),
+        settingsMoreMenu: document.getElementById('settings-more-menu'),
+        btnCopyCoursesToggle: document.getElementById('btn-copy-courses-toggle'),
+        courseCopyPopover: document.getElementById('course-copy-popover'),
+        courseCopyControls: document.querySelector('.course-copy-controls'),
         courseDaySummary: document.getElementById('course-day-summary'),
         inputCopyCourseWeek: document.getElementById('input-copy-course-week'),
         inputCopyCourseDay: document.getElementById('input-copy-course-day'),
         btnCopyCourses: document.getElementById('btn-copy-courses'),
         courseList: document.getElementById('course-list'),
+        btnBulkMode: document.getElementById('btn-bulk-mode'),
+        courseBulkBar: document.getElementById('course-bulk-bar'),
+        inputBulkSelectAll: document.getElementById('input-bulk-select-all'),
+        courseBulkCount: document.getElementById('course-bulk-count'),
+        btnBulkRename: document.getElementById('btn-bulk-rename'),
+        btnBulkDelete: document.getElementById('btn-bulk-delete'),
+        btnBulkExit: document.getElementById('btn-bulk-exit'),
         btnDownloadCourseTemplate: document.getElementById('btn-download-course-template'),
         btnImportCourses: document.getElementById('btn-import-courses'),
         btnExportCourses: document.getElementById('btn-export-courses'),
@@ -1815,6 +1842,8 @@ const UI = {
     settingsReadOnly: false,
     pinInputRevision: 0,
     locationResults: [],
+    bulkMode: false,
+    bulkSelected: new Set(),
     async init() {
         await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
         await this.setWindowDragRegion('main');
@@ -1829,12 +1858,21 @@ const UI = {
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
         this.el.btnSettings.addEventListener('click', () => this.openSettings());
-        this.el.btnSettingsUnlock.addEventListener('click', () => this.applySettingsReadOnly(false));
+        this.el.btnSettingsUnlock.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.applySettingsReadOnly(false);
+        });
         this.el.inputSettingsLockMode.addEventListener('change', () => this.updateSettingsLockFields());
         this.el.btnCancelSettings.addEventListener('click', () => this.cancelSettings());
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
-        this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
-        this.el.btnExportConfig.addEventListener('click', () => this.exportConfig());
+        this.el.btnImportConfig.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.importConfig();
+        });
+        this.el.btnExportConfig.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.exportConfig();
+        });
         this.el.inputWeatherProvider.addEventListener('change', () => this.switchWeatherProvider());
         this.el.btnOpenWeatherProvider.addEventListener('click', () => this.openWeatherProvider());
         this.el.btnSearchLocation.addEventListener('click', () => this.searchWeatherLocations());
@@ -1877,6 +1915,7 @@ const UI = {
             });
         });
         this.el.btnRestartGuide?.addEventListener('click', async () => {
+            this.closeSettingsMoreMenu();
             this.el.viewSettings.classList.add('hidden');
             this.el.viewMain.classList.add('hidden');
             await Onboarding.start({ returnTab: 'about' });
@@ -1887,13 +1926,38 @@ const UI = {
         this.el.inputCopyCourseWeek.addEventListener('change', () => this.updateCopyCourseButton());
         this.el.btnCopyCourses.addEventListener('click', () => this.copyCoursesToDay());
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
+        this.el.btnBulkMode.addEventListener('click', () => this.toggleBulkMode());
+        this.el.btnBulkExit.addEventListener('click', () => this.toggleBulkMode(false));
+        this.el.inputBulkSelectAll.addEventListener('change', () => this.toggleBulkSelectAll());
+        this.el.btnBulkDelete.addEventListener('click', () => this.bulkDeleteCourses());
+        this.el.btnBulkRename.addEventListener('click', () => this.bulkRenameCourses());
         this.el.cycleWeekCount.addEventListener('change', () => this.updateCourseRotationWeekCount());
         this.el.cycleStartDate.addEventListener('change', () => this.updateCourseRotationStartDate());
-        this.el.courseEditMode.addEventListener('change', () => this.changeCourseEditMode());
-        this.el.overrideDate.addEventListener('change', () => this.changeCourseOverrideDate());
-        this.el.overrideType.addEventListener('change', () => this.changeCourseOverrideType());
-        this.el.btnCreateOverride.addEventListener('click', () => this.createCourseOverride());
-        this.el.btnRemoveOverride.addEventListener('click', () => this.removeCourseOverride());
+        this.el.overrideMode.addEventListener('change', () => this.changeOverrideMode());
+        this.el.overrideDate.addEventListener('change', () => this.changeOverrideDate());
+        this.el.btnRestoreOverride?.addEventListener('click', () => this.removeCourseOverride());
+        this.el.btnSettingsMore?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.toggleSettingsMoreMenu();
+        });
+        this.el.btnCopyCoursesToggle?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.toggleCourseCopyPopover();
+        });
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (!target.closest('#settings-more')) this.closeSettingsMoreMenu();
+            if (!target.closest('.course-copy-controls')) this.closeCourseCopyPopover();
+        }, true);
+        window.addEventListener('resize', () => {
+            if (this.el.settingsMoreMenu && !this.el.settingsMoreMenu.hidden) {
+                this.positionFloatingPanel(this.el.settingsMoreMenu, this.el.btnSettingsMore);
+            }
+            if (this.el.courseCopyPopover && !this.el.courseCopyPopover.hidden) {
+                this.positionFloatingPanel(this.el.courseCopyPopover, this.el.btnCopyCoursesToggle);
+            }
+        });
         this.el.btnImportCourses.addEventListener('click', () => this.importCoursesSpreadsheet());
         this.el.btnDownloadCourseTemplate.addEventListener('click', () => this.downloadCourseTemplate());
         this.el.btnExportCourses.addEventListener('click', () => this.exportCoursesSpreadsheet());
@@ -1905,21 +1969,6 @@ const UI = {
         this.el.inputNewSubject.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); this.addSubject(); }
         });
-        const rememberCaret = () => {
-            this.customBottomTextSelection = this.el.inputCustomBottomText.selectionStart;
-            this.placeholderTarget = 'custom';
-            this.syncPlaceholderTargetHint();
-        };
-        this.el.inputCustomBottomText.addEventListener('focus', rememberCaret);
-        this.el.inputCustomBottomText.addEventListener('click', rememberCaret);
-        this.el.inputCustomBottomText.addEventListener('keyup', rememberCaret);
-        this.el.inputCustomBottomText.addEventListener('blur', rememberCaret);
-        const rememberProfileCaret = () => {
-            this.placeholderTarget = 'profile';
-            this.syncPlaceholderTargetHint();
-        };
-        this.el.inputProfileBottomText.addEventListener('focus', rememberProfileCaret);
-        this.el.inputProfileBottomText.addEventListener('click', rememberProfileCaret);
         document.querySelectorAll('.placeholder-token').forEach(button => {
             button.addEventListener('mousedown', (event) => event.preventDefault());
             button.addEventListener('click', () => {
@@ -1933,7 +1982,6 @@ const UI = {
                 document.documentElement.style.setProperty('--fs-scale', String(preview));
                 this.updateFontPreview();
             });
-            this.el.inputMainWindowWidth.addEventListener('input', () => this.syncMainWindowWidthLabel());
             this.el.inputUiScale.addEventListener('input', () => {
                 this.syncUiScaleLabel();
                 this.applyUiScale(this.el.inputUiScale.value);
@@ -2024,8 +2072,7 @@ const UI = {
 
     appendPlaceholder(placeholder) {
         if (!placeholder) return;
-        const preferProfile = this.placeholderTarget === 'profile' && this.el.inputProfileBottomText;
-        const textArea = preferProfile ? this.el.inputProfileBottomText : this.el.inputCustomBottomText;
+        const textArea = this.el.inputProfileBottomText;
         if (!textArea) return;
         const value = textArea.value;
         let start = Number.isInteger(textArea.selectionStart) ? textArea.selectionStart : value.length;
@@ -2038,17 +2085,7 @@ const UI = {
         const caret = start + insertText.length;
         textArea.focus({ preventScroll: true });
         textArea.setSelectionRange(caret, caret);
-        if (textArea === this.el.inputCustomBottomText) this.customBottomTextSelection = caret;
         textArea.dispatchEvent(new Event('input', { bubbles: true }));
-    },
-
-    syncPlaceholderTargetHint() {
-        const hint = this.el.placeholderTargetHint;
-        if (!hint) return;
-        const usingProfile = this.placeholderTarget === 'profile' && this.el.inputProfileBottomText;
-        hint.textContent = usingProfile
-            ? '将插入到：方案底部信息模板'
-            : '将插入到：底部信息模板（全局默认）';
     },
 
     getCurrentCourse() {
@@ -2086,7 +2123,6 @@ const UI = {
         const weatherDesc = document.querySelector('#weather .desc')?.textContent?.trim() || '';
         const location = AppData.weather?.location || '未设置位置';
         const realLocation = AppData.weather?.realLocation || location;
-        const customTexts = AppData.customTexts || {};
         const targetName = AppData.countdownName || '目标';
         const targetDate = AppData.countdownDate || '';
         const getDaysTo = (dateText) => {
@@ -2103,9 +2139,6 @@ const UI = {
             weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()],
             location,
             real_location: realLocation,
-            custom1: customTexts.one || '',
-            custom2: customTexts.two || '',
-            custom3: customTexts.three || '',
             temperature,
             weather: weatherDesc,
             course: courseState.current?.course || '无课程',
@@ -2207,11 +2240,6 @@ const UI = {
         if (!input || !this.el.fontSizeScaleLabel) return;
         const value = Math.max(80, Math.min(150, Number(input.value) || 100));
         this.el.fontSizeScaleLabel.textContent = `${value}%`;
-    },
-
-    syncMainWindowWidthLabel() {
-        const width = DisplaySettings.normalizeWindowWidth(this.el.inputMainWindowWidth.value);
-        this.el.mainWindowWidthLabel.textContent = `${width} px`;
     },
 
     syncUiScaleLabel() {
@@ -2958,16 +2986,13 @@ const UI = {
             Object.entries(config.courseOverrides).forEach(([date, override]) => {
                 if (Schedule.getDateKey(date) !== date || !override || typeof override !== 'object' ||
                     !Array.isArray(override.courses)) {
-                    throw new Error(`单日临时安排日期或内容无效：${date}`);
-                }
-                if (override.type && !['adjustment', 'substitute', 'event'].includes(override.type)) {
-                    throw new Error(`单日安排类型无效：${date}`);
+                    throw new Error(`自定义课程日期或内容无效：${date}`);
                 }
                 override.courses.forEach((course) => {
                     if (!course || typeof course !== 'object' ||
                         !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.start || '') ||
                         !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.end || '')) {
-                        throw new Error(`单日安排课程时间无效：${date}`);
+                        throw new Error(`自定义课程时间无效：${date}`);
                     }
                 });
             });
@@ -3111,10 +3136,7 @@ const UI = {
             item('显示底部信息', config?.showBottomText === false ? '已隐藏' : '显示'),
             item('显示时钟秒数', config?.showClockSeconds === false ? '关闭' : '开启'),
             item('倒计时名称', config?.countdownName),
-                item('目标日期', CustomDatePicker.formatDate(config?.countdownDate)),
-            item('文本 1', config?.customTexts?.one),
-            item('文本 2', config?.customTexts?.two),
-            item('文本 3', config?.customTexts?.three)
+                item('目标日期', CustomDatePicker.formatDate(config?.countdownDate))
         ].join('');
 
         const subjects = Array.isArray(config?.subjects) ? config.subjects : [];
@@ -3156,7 +3178,7 @@ const UI = {
         const noteHtml = versionMatch
             ? `<div class="import-preview-note">配置版本与当前应用一致，点击「导入并保存」将立即生效。</div>`
             : `<div class="import-preview-warn">
-                   <strong>⚠ 版本不一致，请谨慎导入</strong>
+                   <strong><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> 版本不一致，请谨慎导入</strong>
                    <span>文件版本：${this.escapeHtml(fileVersion ? `v${fileVersion}` : '无版本信息')} · 当前版本：v${this.escapeHtml(currentVersion || '未知')}</span>
                    <span>部分设置可能无法正确读取或丢失，导入后建议逐项核对。</span>
                </div>`;
@@ -3442,8 +3464,6 @@ const UI = {
                 weekCourses[day] = courses;
             });
             this.el.cycleWeekCount.value = String(EditData.courseRotation.weeks.length + 1);
-            CurrentEditMode = 'regular';
-            this.el.courseEditMode.value = CurrentEditMode;
             CurrentEditWeek = 1;
             CurrentEditDay = parsed.entries[0].day;
             CurrentEditCourseIndex = null;
@@ -3482,7 +3502,6 @@ const UI = {
         const clone = JSON.parse(JSON.stringify(source || {}));
         const weather = clone.weather || {};
         const jwt = weather.jwtConfig || {};
-        const customTexts = clone.customTexts || {};
         const activeProvider = weather.provider || 'qweather';
         const weatherProviders = {};
         Object.keys(APP_CONFIG.weatherProviders).forEach((provider) => {
@@ -3532,11 +3551,6 @@ const UI = {
             showClockSeconds: clone.showClockSeconds !== false,
             countdownName: clone.countdownName || '',
             countdownDate: clone.countdownDate || '',
-            customTexts: {
-                one: customTexts.one || '',
-                two: customTexts.two || '',
-                three: customTexts.three || ''
-            },
             weatherRefreshMinutes: Number(clone.weatherRefreshMinutes) || 10,
             autoStart: clone.autoStart === true,
             subjects: Array.isArray(clone.subjects) ? clone.subjects : [],
@@ -3558,7 +3572,7 @@ const UI = {
         };
         const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'mainWindowWidth', 'uiScale', 'courseFont',
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
-            'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
+            'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
             'bottomAlign', 'bottomOffset', 'showWeather', 'showTimeline', 'showBottomText',
             'showClockSeconds',
             'lastUpdateCheckAt', 'latestKnownVersion',
@@ -3706,12 +3720,18 @@ const UI = {
         }
         delete EditData.showBottom;
         CurrentEditWeek = 1;
-        CurrentEditMode = 'regular';
-        CurrentOverrideDate = Schedule.getDateKey(new Date());
+        const todayOverrideDate = Schedule.getDateKey(new Date());
+        const hasTodayOverride = Array.isArray(EditData.courseOverrides?.[todayOverrideDate]?.courses);
+        CurrentOverrideDate = hasTodayOverride ? todayOverrideDate : '';
         this.el.cycleWeekCount.value = String(EditData.courseRotation.weeks.length + 1);
         this.el.cycleStartDate.value = EditData.courseRotation.startDate;
-        this.el.courseEditMode.value = CurrentEditMode;
-        this.el.overrideDate.value = CurrentOverrideDate;
+        this.el.overrideMode.checked = hasTodayOverride;
+        this.el.overrideDate.value = todayOverrideDate;
+        if (hasTodayOverride) {
+            const resolved = Schedule.resolveCourses(todayOverrideDate, EditData);
+            CurrentEditDay = resolved.day;
+            CurrentEditWeek = resolved.week;
+        }
         this.el.inputDisplayRuleDate.value = '';
 
         const activeProvider = EditData.weather.provider || 'qweather';
@@ -3732,15 +3752,10 @@ const UI = {
         this.el.inputAutoStart.checked = EditData.autoStart === true;
         this.el.inputTheme.value = EditData.theme || 'default';
         this.el.inputWeatherRefreshMinutes.value = EditData.weatherRefreshMinutes || 10;
-        this.el.inputCustomBottomText.value = EditData.customBottomText || '';
         CurrentEditCourseIndex = null;
         this.el.inputCountdownName.value = EditData.countdownName || '';
         this.el.inputCountdownDate.value = EditData.countdownDate || '';
         this.el.inputBottomFontSize.value = EditData.bottomFontSize || 10;
-        this.el.inputShowWeather.checked = EditData.showWeather !== false;
-        this.el.inputShowTimeline.checked = EditData.showTimeline !== false;
-        this.el.inputShowBottom.checked = EditData.showBottomText !== false;
-        this.el.inputShowClockSeconds.checked = EditData.showClockSeconds !== false;
         this.el.inputSettingsLockMode.value = ['off', 'readonly', 'pin'].includes(EditData.settingsLock?.mode)
             ? EditData.settingsLock.mode
             : 'off';
@@ -3755,12 +3770,8 @@ const UI = {
         this.el.inputCourseFontSize.value = EditData.courseFontSize || 15;
         this.el.inputFontFamily.value = EditData.fontFamily || '';
         this.el.inputFontSizeScale.value = EditData.fontSizeScale || 100;
-        this.el.inputMainWindowWidth.value = DisplaySettings.normalizeWindowWidth(
-            EditData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
-        );
         this.el.inputUiScale.value = DisplaySettings.normalizeUiScale(EditData.uiScale);
         this.syncFontSizeScaleLabel();
-        this.syncMainWindowWidthLabel();
         this.syncUiScaleLabel();
         this.applyUiScale(this.el.inputUiScale.value);
         this.syncRangeLabels();
@@ -3769,9 +3780,6 @@ const UI = {
         CustomSelect.setValue('select-font-family', this.el.inputFontFamily.value);
         CustomSelect.setValue('select-course-font', this.el.inputCourseFont.value);
         this.el.inputBottomColor.value = EditData.bottomColor || '#64748b';
-        this.el.inputCustomOne.value = EditData.customTexts?.one || '';
-        this.el.inputCustomTwo.value = EditData.customTexts?.two || '';
-        this.el.inputCustomThree.value = EditData.customTexts?.three || '';
         this.renderSubjectList();
         this.renderDisplayProfileEditor();
         this.renderCourseCycleSelector();
@@ -4010,6 +4018,8 @@ const UI = {
     },
 
     async closeSettings({ silent = false } = {}) {
+        this.closeSettingsMoreMenu();
+        this.closeCourseCopyPopover();
         this.settingsAccessGranted = false;
         this.applySettingsReadOnly(false);
         this.el.inputSettingsLockPin.value = '';
@@ -4036,19 +4046,15 @@ const UI = {
     getSettingsSnapshot() {
         const fields = [
             'inputApiHost', 'inputLocation', 'inputRealLocation', 'inputKid', 'inputSub', 'inputIss',
-            'inputPrivateKey', 'inputWeatherApiKey', 'inputTheme', 'inputWeatherRefreshMinutes', 'inputCustomBottomText',
+            'inputPrivateKey', 'inputWeatherApiKey', 'inputTheme', 'inputWeatherRefreshMinutes',
             'inputCountdownName', 'inputCountdownDate', 'inputBottomFontSize', 'inputBottomColor',
             'inputCourseFont', 'inputCourseFontSize', 'inputFontFamily', 'inputFontSizeScale',
-            'inputMainWindowWidth', 'inputUiScale', 'inputSettingsLockMode',
-            'inputCustomOne', 'inputCustomTwo', 'inputCustomThree', 'inputBottomOffset'
+            'inputUiScale', 'inputSettingsLockMode',
+            'inputBottomOffset'
         ];
         const values = fields.map((key) => this.el[key]?.value ?? '');
         values.push(this.el.inputWeatherProvider?.value || 'qweather');
         values.push(this.el.inputAutoStart?.checked === true);
-        values.push(this.el.inputShowWeather?.checked === true);
-        values.push(this.el.inputShowTimeline?.checked === true);
-        values.push(this.el.inputShowBottom?.checked === true);
-        values.push(this.el.inputShowClockSeconds?.checked === true);
         values.push(this.pinInputRevision);
         values.push(this.getBottomAlign());
         values.push(
@@ -4186,7 +4192,6 @@ const UI = {
         EditData.weatherRefreshMinutes = weatherRefreshMinutes;
         EditData.autoStart = this.el.inputAutoStart.checked;
         EditData.theme = this.el.inputTheme.value;
-        EditData.customBottomText = this.el.inputCustomBottomText.value.trim();
         EditData.countdownName = this.el.inputCountdownName.value.trim();
         EditData.countdownDate = this.el.inputCountdownDate.value;
         EditData.bottomFontSize = Math.max(8, Math.min(30, Number(this.el.inputBottomFontSize.value) || 10));
@@ -4194,23 +4199,11 @@ const UI = {
         EditData.courseFontSize = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize.value) || 15));
         EditData.fontFamily = this.el.inputFontFamily.value || '';
         EditData.fontSizeScale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100));
-        EditData.mainWindowWidth = DisplaySettings.normalizeWindowWidth(
-            this.el.inputMainWindowWidth.value, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
-        );
         EditData.uiScale = DisplaySettings.normalizeUiScale(this.el.inputUiScale.value);
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
-        EditData.showWeather = this.el.inputShowWeather.checked;
-        EditData.showTimeline = this.el.inputShowTimeline.checked;
-        EditData.showClockSeconds = this.el.inputShowClockSeconds.checked;
-        EditData.showBottomText = this.el.inputShowBottom.checked;
         EditData.bottomAlign = this.getBottomAlign();
         EditData.bottomOffset = this.getBottomOffset();
         EditData.courseRotation.startDate = Schedule.getDateKey(Schedule.getMonday(this.el.cycleStartDate.value));
-        EditData.customTexts = {
-            one: this.el.inputCustomOne.value.trim(),
-            two: this.el.inputCustomTwo.value.trim(),
-            three: this.el.inputCustomThree.value.trim()
-        };
         if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
 
         try {
@@ -4252,10 +4245,6 @@ const UI = {
 
     loadDisplayProfileForm() {
         const profile = EditData.displayProfiles?.find((item) => item.id === this.el.displayProfileEdit.value);
-        if (this.placeholderTarget === 'profile') {
-            this.placeholderTarget = 'custom';
-            this.syncPlaceholderTargetHint();
-        }
         this.el.inputDisplayProfileName.value = profile?.name || '';
         this.el.inputDisplayProfileTheme.value = profile?.theme || EditData.theme || 'default';
         CustomSelect.sync('input-display-profile-theme');
@@ -4291,6 +4280,24 @@ const UI = {
         this.loadDisplayProfileForm();
         CustomSelect.sync('select-display-profile-edit');
         this.markSettingsDirty();
+        // 方案保存即落盘并即时生效，省去再点一次底部“保存设置”
+        void this.persistDisplayProfiles(profile.name);
+    },
+
+    /** 仅持久化显示方案与日期规则，不关闭设置面板。 */
+    async persistDisplayProfiles(name) {
+        try {
+            await Store.saveToRegistry(EditData);
+            AppData.displayProfiles = JSON.parse(JSON.stringify(EditData.displayProfiles || []));
+            AppData.displayRules = JSON.parse(JSON.stringify(EditData.displayRules || {}));
+            this.settingsSnapshot = this.getSettingsSnapshot();
+            this.applySettingsReadOnly(this.getSettingsLockMode() === 'readonly');
+            this.activeDisplayProfileKey = null;
+            void Logger.info('显示方案已保存', { module: 'display', action: 'save-profile', context: { name } });
+        } catch (error) {
+            void Logger.error('显示方案保存失败', { module: 'display', action: 'save-profile' }, error);
+            await Dialog.alert(`方案保存失败：${error.message || error}`, '保存失败', 'danger');
+        }
     },
 
     async deleteDisplayProfile() {
@@ -4363,9 +4370,8 @@ const UI = {
     },
 
     getEditCoursesForDay(day) {
-        if (CurrentEditMode === 'override') {
-            const override = this.getSelectedCourseOverride();
-            return override?.courses || null;
+        if (CurrentOverrideDate) {
+            return this.ensureCourseOverride().courses;
         }
         if (!EditData.courses) EditData.courses = {};
         let weekCourses = EditData.courses;
@@ -4390,7 +4396,6 @@ const UI = {
             button.type = 'button';
             button.className = `day-btn ${CurrentEditWeek === week ? 'active' : ''}`;
             button.textContent = weekCount === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
-            button.disabled = CurrentEditMode === 'override';
             button.addEventListener('click', () => {
                 CurrentEditWeek = week;
                 CurrentEditCourseIndex = null;
@@ -4401,36 +4406,91 @@ const UI = {
             });
             this.el.cycleWeekSelector.appendChild(button);
         }
-        this.el.cycleWeekSelector.hidden = weekCount <= 1 || CurrentEditMode === 'override';
+        this.el.cycleWeekSelector.hidden = CurrentOverrideDate ? true : weekCount <= 1;
+    },
+
+    ensureCourseOverride() {
+        if (!CurrentOverrideDate) return null;
+        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+        return CourseOverride.ensure(EditData.courseOverrides, CurrentOverrideDate, resolved);
+    },
+
+    changeOverrideMode() {
+        const enabled = this.el.overrideMode.checked;
+        CurrentOverrideDate = enabled
+            ? (this.el.overrideDate.value || Schedule.getDateKey(new Date()))
+            : '';
+        CurrentEditCourseIndex = null;
+        if (enabled) {
+            const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+            CurrentEditDay = resolved.day;
+            CurrentEditWeek = resolved.week;
+            this.el.overrideDate.value = CurrentOverrideDate;
+            this.ensureCourseOverride();
+        }
+        this.renderDaySelector();
+        this.renderCourseCycleSelector();
+        this.renderCourseList();
     },
 
     renderCourseModeControls() {
-        const isOverrideMode = CurrentEditMode === 'override';
-        const override = this.getSelectedCourseOverride();
-        this.el.cycleWeekSelector.hidden = isOverrideMode || (EditData.courseRotation?.weeks?.length || 0) === 0;
-        this.el.cycleWeekCount.disabled = isOverrideMode;
-        this.el.cycleStartDate.disabled = isOverrideMode;
+        const isOverride = Boolean(CurrentOverrideDate);
+        const override = isOverride ? this.getSelectedCourseOverride() : null;
+        this.el.overrideMode.checked = isOverride;
+        this.el.cycleWeekSelector.hidden = isOverride
+            ? true
+            : (EditData.courseRotation?.weeks?.length || 0) === 0;
         CustomSelect.sync('input-cycle-week-count');
-        this.el.courseEditMode.value = CurrentEditMode;
-        CustomSelect.sync('input-course-edit-mode');
-        this.el.overrideDate.hidden = !isOverrideMode;
-        this.el.overrideType.hidden = !isOverrideMode;
-        CustomSelect.sync('input-course-override-type');
-        this.el.overrideDate.closest('label').hidden = !isOverrideMode;
-        this.el.overrideType.closest('label').hidden = !isOverrideMode;
-        this.el.btnCreateOverride.hidden = !isOverrideMode;
-        this.el.btnRemoveOverride.hidden = !isOverrideMode || !override;
-        this.el.btnImportCourses.hidden = isOverrideMode;
-        this.el.btnDownloadCourseTemplate.hidden = isOverrideMode;
-        this.el.btnCreateOverride.disabled = Boolean(override);
-        this.el.inputCopyCourseDay.closest('.course-copy-controls').hidden = isOverrideMode;
-        this.el.inputCopyCourseWeek.closest('.course-copy-controls').hidden = isOverrideMode;
-        if (isOverrideMode) this.el.btnCopyCourses.disabled = true;
-        this.el.overrideStatus.textContent = !isOverrideMode
-            ? ''
-            : override
-                ? `已设为${{ adjustment: '临时调课', substitute: '代课', event: '临时活动' }[override.type] || '单日安排'}，本日使用此安排；常规课表保留`
-                : '尚无单日安排，本日按常规课表显示';
+        if (this.el.overrideDateRow) this.el.overrideDateRow.hidden = !isOverride;
+        if (this.el.overrideDate && isOverride) this.el.overrideDate.value = CurrentOverrideDate;
+        if (this.el.overrideStatus) {
+            this.el.overrideStatus.textContent = !isOverride
+                ? ''
+                : override
+                    ? `${CustomDatePicker.formatDate(CurrentOverrideDate)} 已调课`
+                    : `${CustomDatePicker.formatDate(CurrentOverrideDate)} 与常规课表一致`;
+            this.el.overrideStatus.classList.toggle('is-override', Boolean(override));
+        }
+        if (this.el.btnRestoreOverride) this.el.btnRestoreOverride.hidden = !override;
+        if (this.el.overrideHint) {
+            this.el.overrideHint.textContent = isOverride
+                ? `调课模式已开启：正在编辑 ${CustomDatePicker.formatDate(CurrentOverrideDate)}（${DAY_MAP[CurrentEditDay]}）的课程，常规课表保持不变。`
+                : '开启调课模式后，课程调整只会保存到所选日期（默认今天），常规课表保持不变。';
+            this.el.overrideHint.classList.toggle('is-warning', isOverride);
+        }
+    },
+
+    changeOverrideDate() {
+        if (!this.el.overrideMode.checked) {
+            this.el.overrideDate.value = CurrentOverrideDate || Schedule.getDateKey(new Date());
+            return;
+        }
+        CurrentOverrideDate = this.el.overrideDate.value || Schedule.getDateKey(new Date());
+        this.el.overrideDate.value = CurrentOverrideDate;
+        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+        CurrentEditDay = resolved.day;
+        CurrentEditWeek = resolved.week;
+        CurrentEditCourseIndex = null;
+        this.ensureCourseOverride();
+        this.renderDaySelector();
+        this.renderCourseCycleSelector();
+        this.renderCourseList();
+    },
+
+    async removeCourseOverride() {
+        const removed = this.getSelectedCourseOverride();
+        if (!removed) return;
+        const date = CurrentOverrideDate;
+        CourseOverride.remove(EditData.courseOverrides, date);
+        this.el.overrideMode.checked = false;
+        CurrentOverrideDate = '';
+        this.renderCourseList();
+        this.markSettingsDirty();
+        this.showUndoToast(`已恢复 ${CustomDatePicker.formatDate(date)} 的常规课表`, () => {
+            EditData.courseOverrides[date] = removed;
+            this.renderCourseList();
+            this.markSettingsDirty();
+        });
     },
 
     async updateCourseRotationWeekCount() {
@@ -4462,75 +4522,68 @@ const UI = {
         this.markSettingsDirty();
     },
 
-    changeCourseEditMode() {
-        CurrentEditMode = this.el.courseEditMode.value;
-        if (CurrentEditMode === 'override') {
-            if (!CurrentOverrideDate) CurrentOverrideDate = Schedule.getDateKey(new Date());
-            this.el.overrideDate.value = CurrentOverrideDate;
-            const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
-            CurrentEditDay = resolved.day;
-            CurrentEditWeek = resolved.week;
-            if (resolved.override) this.el.overrideType.value = resolved.override.type || 'adjustment';
+    toggleSettingsMoreMenu() {
+        const menu = this.el.settingsMoreMenu;
+        if (!menu) return;
+        const open = menu.hidden;
+        this.closeCourseCopyPopover();
+        menu.hidden = !open;
+        this.el.btnSettingsMore?.setAttribute('aria-expanded', String(open));
+        if (open) this.positionFloatingPanel(menu, this.el.btnSettingsMore);
+    },
+
+    closeSettingsMoreMenu() {
+        if (!this.el.settingsMoreMenu || this.el.settingsMoreMenu.hidden) return;
+        this.el.settingsMoreMenu.hidden = true;
+        this.el.btnSettingsMore?.setAttribute('aria-expanded', 'false');
+    },
+
+    toggleCourseCopyPopover() {
+        const popover = this.el.courseCopyPopover;
+        if (!popover) return;
+        const open = popover.hidden;
+        this.closeSettingsMoreMenu();
+        popover.hidden = !open;
+        this.el.btnCopyCoursesToggle?.setAttribute('aria-expanded', String(open));
+        if (open) {
+            this.renderCopyCourseWeekOptions();
+            this.updateCopyCourseButton();
+            this.positionFloatingPanel(popover, this.el.btnCopyCoursesToggle);
         }
-        CurrentEditCourseIndex = null;
-        this.renderDaySelector();
-        this.renderCourseCycleSelector();
-        this.updateCopyCourseButton();
-        this.renderCourseList();
     },
 
-    changeCourseOverrideDate() {
-        CurrentOverrideDate = this.el.overrideDate.value || Schedule.getDateKey(new Date());
-        this.el.overrideDate.value = CurrentOverrideDate;
-        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
-        CurrentEditDay = resolved.day;
-        CurrentEditWeek = resolved.week;
-        if (resolved.override) this.el.overrideType.value = resolved.override.type || 'adjustment';
-        CustomSelect.sync('input-course-override-type');
-        CurrentEditCourseIndex = null;
-        this.renderDaySelector();
-        this.renderCourseList();
+    closeCourseCopyPopover() {
+        if (!this.el.courseCopyPopover || this.el.courseCopyPopover.hidden) return;
+        this.el.courseCopyPopover.hidden = true;
+        this.el.btnCopyCoursesToggle?.setAttribute('aria-expanded', 'false');
     },
 
-    changeCourseOverrideType() {
-        const override = this.getSelectedCourseOverride();
-        if (!override) return;
-        override.type = this.el.overrideType.value;
-        this.renderCourseModeControls();
-        this.markSettingsDirty();
-    },
-
-    createCourseOverride() {
-        if (this.getSelectedCourseOverride()) return;
-        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
-        EditData.courseOverrides[CurrentOverrideDate] = {
-            type: this.el.overrideType.value,
-            courses: JSON.parse(JSON.stringify(resolved.courses))
-        };
-        CurrentEditDay = resolved.day;
-        CurrentEditWeek = resolved.week;
-        CurrentEditCourseIndex = null;
-        this.renderCourseModeControls();
-        this.renderDaySelector();
-        this.renderCourseList();
-        this.markSettingsDirty();
-    },
-
-    async removeCourseOverride() {
-        if (!this.getSelectedCourseOverride()) return;
-        const confirmed = await Dialog.confirm(`删除 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的单日安排？删除后会恢复常规课表。`, {
-            title: '删除单日安排', confirmText: '删除安排'
-        });
-        if (!confirmed) return;
-        delete EditData.courseOverrides[CurrentOverrideDate];
-        this.renderCourseModeControls();
-        this.renderCourseList();
-        this.markSettingsDirty();
+    positionFloatingPanel(panel, anchor) {
+        if (!panel || !anchor) return;
+        const gap = 6;
+        const edge = 8;
+        panel.style.visibility = 'hidden';
+        const rect = anchor.getBoundingClientRect();
+        const width = panel.offsetWidth;
+        const height = panel.offsetHeight;
+        const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
+        const spaceAbove = rect.top - gap - edge;
+        const dropUp = height > spaceBelow && spaceAbove > spaceBelow;
+        const top = dropUp
+            ? Math.max(edge, rect.top - gap - height)
+            : Math.min(rect.bottom + gap, window.innerHeight - height - edge);
+        const left = Math.min(Math.max(edge, rect.right - width), window.innerWidth - width - edge);
+        panel.style.top = `${Math.max(edge, Math.round(top))}px`;
+        panel.style.left = `${Math.max(edge, Math.round(left))}px`;
+        panel.style.right = 'auto';
+        panel.style.visibility = '';
     },
 
     renderDaySelector() {
         this.el.daySelector.innerHTML = '';
-        this.el.daySelector.hidden = CurrentEditMode === 'override';
+        const isOverrideEditing = Boolean(CurrentOverrideDate);
+        this.el.daySelector.hidden = isOverrideEditing;
+        this.el.cycleWeekSelector.hidden = isOverrideEditing || (EditData.courseRotation?.weeks?.length || 0) === 0;
         this.el.inputCopyCourseDay.innerHTML = '<option value="">复制到星期…</option>';
         Object.keys(DAY_MAP).forEach(dayKey => {
             const btn = document.createElement('button');
@@ -4570,19 +4623,37 @@ const UI = {
     },
 
     updateCopyCourseButton() {
-        this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value || CurrentEditMode !== 'regular';
+        this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value;
     },
 
     async copyCoursesToDay() {
-        if (CurrentEditMode !== 'regular') return;
         const targetDay = this.el.inputCopyCourseDay.value;
+        if (!targetDay || !DAY_MAP[targetDay]) return;
+        if (targetDay === CurrentEditDay) return;
+        const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
+        if (CurrentOverrideDate) {
+            this.ensureCourseOverride();
+            const confirmed = await Dialog.confirm(
+                `将 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的 ${courses.length} 节课程复制为 ${DAY_MAP[targetDay]} 的安排？该日原本的课表将被替换。`,
+                { title: '复制到其他星期', confirmText: '复制并覆盖' }
+            );
+            if (!confirmed) return;
+            const override = this.ensureCourseOverride();
+            override.courses = JSON.parse(JSON.stringify(courses));
+            CurrentEditDay = targetDay;
+            CurrentEditDay = targetDay;
+            this.el.inputCopyCourseDay.value = '';
+            this.updateCopyCourseButton();
+            this.closeCourseCopyPopover();
+            this.markSettingsDirty();
+            this.renderCourseList();
+            return;
+        }
         const targetWeek = Math.max(1, Math.min(
             (EditData.courseRotation?.weeks?.length || 0) + 1,
             Number(this.el.inputCopyCourseWeek.value) || CurrentEditWeek
         ));
-        if (!targetDay || !DAY_MAP[targetDay]) return;
-        if (targetDay === CurrentEditDay && targetWeek === CurrentEditWeek) return;
-        const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
+        if (targetWeek === CurrentEditWeek) return;
         const weekLabel = (week) => {
             const count = (EditData.courseRotation?.weeks?.length || 0) + 1;
             return count === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
@@ -4599,6 +4670,7 @@ const UI = {
         targetCourses[targetDay] = JSON.parse(JSON.stringify(courses));
         this.el.inputCopyCourseDay.value = '';
         this.updateCopyCourseButton();
+        this.closeCourseCopyPopover();
         this.markSettingsDirty();
         this.renderCourseList();
     },
@@ -4671,28 +4743,97 @@ const UI = {
         subjectOptions.appendChild(customButton);
         subjectMenu.append(menuTrigger, subjectOptions);
 
-        const doneButton = document.createElement('button');
-        doneButton.type = 'button';
-        doneButton.className = 'btn btn-secondary course-editor-done';
-        doneButton.textContent = '完成';
-        doneButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            CurrentEditCourseIndex = null;
-            this.renderCourseList();
-        });
-
         const editorHint = document.createElement('p');
         editorHint.className = 'course-editor-hint';
-        editorHint.textContent = '选择课程名称，或打开菜单添加自定义名称；拖动时间滑块调整时间，最后保存设置。';
-        form.append(subjectMenu, editorHint, doneButton);
+        editorHint.textContent = '选择课程名称；拖动时间滑块调整时间，最后保存设置';
+        form.append(subjectMenu, editorHint);
         return form;
+    },
+
+    toggleBulkMode(enabled = !this.bulkMode) {
+        this.bulkMode = Boolean(enabled);
+        this.bulkSelected = new Set();
+        if (this.el.courseList) this.el.courseList.classList.toggle('bulk-mode', this.bulkMode);
+        if (this.el.courseBulkBar) this.el.courseBulkBar.hidden = !this.bulkMode;
+        if (this.el.btnBulkMode) this.el.btnBulkMode.textContent = this.bulkMode ? '退出批量' : '批量管理';
+        CurrentEditCourseIndex = null;
+        this.renderCourseList();
+    },
+
+    syncBulkBar(total) {
+        const count = this.bulkSelected.size;
+        if (this.el.inputBulkSelectAll) {
+            this.el.inputBulkSelectAll.checked = total > 0 && count >= total;
+            this.el.inputBulkSelectAll.indeterminate = count > 0 && count < total;
+            this.el.inputBulkSelectAll.disabled = total === 0;
+        }
+        if (this.el.courseBulkCount) {
+            this.el.courseBulkCount.textContent = count ? `已选 ${count} / ${total} 节` : `未选择课程（共 ${total} 节）`;
+        }
+        [this.el.btnBulkDelete, this.el.btnBulkRename].forEach((button) => {
+            if (button) button.disabled = count === 0;
+        });
+    },
+
+    toggleBulkSelectAll() {
+        const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
+        this.bulkSelected = CourseBulk.toggleAll(this.bulkSelected, courses.length);
+        this.renderCourseList();
+    },
+
+    toggleBulkSelect(index) {
+        this.bulkSelected = CourseBulk.toggle(this.bulkSelected, index);
+        this.renderCourseList();
+    },
+
+    async bulkDeleteCourses() {
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        if (!courses || !this.bulkSelected.size) return;
+        const count = this.bulkSelected.size;
+        const confirmed = await Dialog.confirm(`删除当前列表中的 ${count} 节课程？此操作会立即生效。`, {
+            title: '批量删除课程', confirmText: `删除 ${count} 节`
+        });
+        if (!confirmed) return;
+        const kept = CourseBulk.removeAt(courses, [...this.bulkSelected]);
+        courses.length = 0;
+        courses.push(...kept);
+        this.bulkSelected = new Set();
+        this.renderCourseList();
+        this.markSettingsDirty();
+    },
+
+    async bulkRenameCourses() {
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        if (!courses || !this.bulkSelected.size) return;
+        const subjects = Array.isArray(EditData.subjects) ? EditData.subjects.filter(Boolean) : [];
+        const subjectText = subjects.slice(0, 8).map((name) => `<option value="${this.escapeHtml(name)}"></option>`).join('');
+        const selected = await Dialog.show({
+            title: `批量改名称（${this.bulkSelected.size} 节）`,
+            html: `<label for="bulk-rename-input">新课程名称</label><input id="bulk-rename-input" class="settings-pin-entry" type="text" maxlength="40" placeholder="例如：自习" list="bulk-rename-options" autocomplete="off"><datalist id="bulk-rename-options">${subjectText}</datalist>`,
+            buttons: [
+                { text: '取消', value: false },
+                { text: '应用', value: true, primary: true }
+            ]
+        });
+        if (selected !== true) return;
+        const name = document.getElementById('bulk-rename-input')?.value.trim() || '';
+        if (!name) {
+            await Dialog.alert('请输入新的课程名称', '信息不完整', 'warning');
+            return;
+        }
+        const renamed = CourseBulk.renameMany(courses, [...this.bulkSelected], name);
+        courses.length = 0;
+        courses.push(...renamed);
+        this.bulkSelected = new Set();
+        this.renderCourseList();
+        this.markSettingsDirty();
     },
 
     createCourseActionButtons(course, index, courses) {
         const duplicate = document.createElement('button');
         duplicate.type = 'button';
         duplicate.className = 'btn-course-action btn-course-duplicate';
-        duplicate.textContent = '复制';
+        duplicate.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/></svg><span>复制</span>';
         duplicate.title = '复制课程';
         duplicate.setAttribute('aria-label', `复制${course.course || '未命名课程'}`);
         duplicate.addEventListener('click', (event) => {
@@ -4706,34 +4847,102 @@ const UI = {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'btn-delete';
-        remove.textContent = '×';
+        remove.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+        remove.title = '删除课程';
         remove.setAttribute('aria-label', `删除${course.course || '未命名课程'}`);
         remove.addEventListener('click', (event) => {
             event.stopPropagation();
-            courses.splice(index, 1);
-            CurrentEditCourseIndex = null;
+            this.deleteCourseWithUndo(courses, index);
+        });
+        return [duplicate, remove];
+    },
+
+    /** 删除单节课程并提供撤销，避免误删。 */
+    deleteCourseWithUndo(courses, index) {
+        const [removed] = courses.splice(index, 1);
+        if (!removed) return;
+        this.bulkSelected = new Set();
+        CurrentEditCourseIndex = null;
+        this.renderCourseList();
+        this.markSettingsDirty();
+        this.showUndoToast(`已删除「${removed.course || '未命名课程'}」`, () => {
+            const target = this.getEditCoursesForDay(CurrentEditDay);
+            if (!target) return;
+            const position = Math.min(index, target.length);
+            target.splice(position, 0, removed);
             this.renderCourseList();
             this.markSettingsDirty();
         });
-        return [duplicate, remove];
+    },
+
+    /** 轻量撤销提示：挂在课程摘要旁，不覆盖摘要文本。 */
+    showUndoToast(message, onUndo) {
+        const host = this.el.courseDaySummary?.parentElement;
+        if (!host || typeof onUndo !== 'function') return;
+        host.querySelector('.course-undo-toast')?.remove();
+        const toast = document.createElement('span');
+        toast.className = 'course-undo-toast';
+        toast.textContent = `${message} `;
+        const undo = document.createElement('button');
+        undo.type = 'button';
+        undo.className = 'course-undo-action';
+        undo.textContent = '撤销';
+        undo.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toast.remove();
+            onUndo();
+        });
+        toast.appendChild(undo);
+        host.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    },
+
+    createAdjustedTag() {
+        const tag = document.createElement('span');
+        tag.className = 'course-adjusted-tag';
+        tag.textContent = '调课';
+        tag.title = `调课：仅 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 生效`;
+        tag.setAttribute('aria-label', tag.title);
+        return tag;
+    },
+
+    courseKey(course) {
+        return JSON.stringify([course.start || '', course.end || '', course.course || '']);
+    },
+
+    buildRegularCourseKeySet() {
+        if (!CurrentOverrideDate) return null;
+        const regularCourses = Schedule.resolveCourses(CurrentOverrideDate, { ...EditData, courseOverrides: {} }).courses || [];
+        const counts = new Map();
+        regularCourses.forEach((course) => {
+            const key = this.courseKey(course);
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+        return counts;
     },
 
     renderCourseList() {
         this.el.courseList.innerHTML = '';
         const courses = this.getEditCoursesForDay(CurrentEditDay);
+        const regularKeys = this.buildRegularCourseKeySet();
         this.renderCourseModeControls();
         this.el.btnAddCourse.disabled = !courses;
-        const weekLabel = CurrentEditMode !== 'regular' || !(EditData.courseRotation?.weeks?.length || 0)
+        if (courses) this.bulkSelected = CourseBulk.prune(this.bulkSelected, courses.length);
+        this.el.courseList.classList.toggle('bulk-mode', Boolean(this.bulkMode));
+        this.el.courseBulkBar.hidden = !this.bulkMode;
+        this.el.btnBulkMode.disabled = !courses;
+        this.el.btnBulkMode.textContent = this.bulkMode ? '退出批量' : '批量管理';
+        this.syncBulkBar(courses?.length || 0);
+        const weekLabel = CurrentOverrideDate || !(EditData.courseRotation?.weeks?.length || 0)
             ? ''
             : `${EditData.courseRotation.weeks.length + 1 === 2 ? (CurrentEditWeek === 1 ? 'A周' : 'B周') : `第${CurrentEditWeek}周`} · `;
-        this.el.courseDaySummary.textContent = `${weekLabel}${DAY_MAP[CurrentEditDay]} · ${courses?.length || 0} 节`;
+        const dateLabel = CurrentOverrideDate ? `${CustomDatePicker.formatDate(CurrentOverrideDate)} · ` : '';
+        this.el.courseDaySummary.textContent = `${dateLabel}${weekLabel}${DAY_MAP[CurrentEditDay]} · ${courses?.length || 0} 节`;
         if (courses && CurrentEditCourseIndex !== null && CurrentEditCourseIndex >= courses.length) CurrentEditCourseIndex = null;
         if (!courses?.length) {
             const emptyState = document.createElement('div');
             emptyState.className = 'course-empty-state';
-            emptyState.innerHTML = courses
-                ? '<b>本日暂无课程</b><span>点击“添加课程”开始安排今天的课表。</span>'
-                : '<b>尚无单日安排</b><span>创建后可单独编辑当天课程，常规课表不会改变。</span>';
+            emptyState.innerHTML = '<b>本日暂无课程</b><span>点击“添加课程”开始安排今天的课表。</span>';
             this.el.courseList.appendChild(emptyState);
             return;
         }
@@ -4744,12 +4953,28 @@ const UI = {
             row.tabIndex = -1;
             row.title = course.note || '';
             row.classList.toggle('selected', CurrentEditCourseIndex === index);
+            row.classList.toggle('bulk-checked', this.bulkSelected.has(index));
             row.dataset.courseIndex = String(index);
             row.addEventListener('click', (event) => {
                 if (event.target.closest('button, input, textarea, select, details, .custom-select, .custom-date-picker, .course-editor-form, .course-time-panel')) return;
+                if (this.bulkMode) {
+                    this.toggleBulkSelect(index);
+                    return;
+                }
                 CurrentEditCourseIndex = CurrentEditCourseIndex === index ? null : index;
                 this.renderCourseList();
             });
+
+            if (this.bulkMode) {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'course-select-box';
+                checkbox.checked = this.bulkSelected.has(index);
+                checkbox.setAttribute('aria-label', `选择${course.course || '未命名课程'}`);
+                checkbox.addEventListener('click', (event) => event.stopPropagation());
+                checkbox.addEventListener('change', () => this.toggleBulkSelect(index));
+                row.appendChild(checkbox);
+            }
 
             const timeToMinutes = (value, fallback) => {
                 const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value || '');
@@ -4777,7 +5002,9 @@ const UI = {
                 startLabel.className = 'course-range-value start';
                 const endLabel = document.createElement('div');
                 endLabel.className = 'course-range-value end';
-                labels.append(startLabel, endLabel);
+                const durationLabel = document.createElement('div');
+                durationLabel.className = 'course-range-duration';
+                labels.append(startLabel, durationLabel, endLabel);
 
                 const track = document.createElement('div');
                 track.className = 'course-time-range-track';
@@ -4785,6 +5012,8 @@ const UI = {
                 track.setAttribute('role', 'group');
                 track.setAttribute('aria-label', '课程开始和结束时间');
 
+                const rail = document.createElement('div');
+                rail.className = 'course-time-range-rail';
                 const fill = document.createElement('div');
                 fill.className = 'course-time-range-fill';
                 const startThumb = document.createElement('div');
@@ -4797,33 +5026,43 @@ const UI = {
                 endThumb.tabIndex = 0;
                 endThumb.setAttribute('role', 'slider');
                 endThumb.setAttribute('aria-label', '课程结束时间');
-                track.append(fill, startThumb, endThumb);
+                track.append(rail, fill, startThumb, endThumb);
 
                 let startMinutes = Math.max(MIN_COURSE_TIME, Math.min(MAX_COURSE_TIME, snapMinutes(timeToMinutes(course.start, 480))));
                 let endMinutes = Math.max(MIN_COURSE_TIME, Math.min(MAX_COURSE_TIME, snapMinutes(timeToMinutes(course.end, 525))));
                 if (endMinutes <= startMinutes) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
                 if (endMinutes - startMinutes < COURSE_TIME_STEP) endMinutes = Math.min(MAX_COURSE_TIME, startMinutes + COURSE_TIME_STEP);
 
+                const clampStart = (value) => Math.max(MIN_COURSE_TIME, Math.min(value, endMinutes - COURSE_TIME_STEP));
+                const clampEnd = (value) => Math.min(MAX_COURSE_TIME, Math.max(value, startMinutes + COURSE_TIME_STEP));
+
                 let activeTarget = 'start';
-                let stepperLabelEl = null;
                 const setActiveTarget = (target) => {
                     activeTarget = target;
                     startLabel.classList.toggle('active', target === 'start');
                     endLabel.classList.toggle('active', target === 'end');
-                    if (stepperLabelEl) stepperLabelEl.textContent = target === 'start' ? '调节开始' : '调节结束';
+                };
+
+                const presetButtons = [];
+                const syncPresets = () => {
+                    const duration = endMinutes - startMinutes;
+                    presetButtons.forEach(({ button, minutes }) => {
+                        button.classList.toggle('active', minutes === duration);
+                    });
                 };
 
                 const updateRange = (activeThumb = null) => {
                     startMinutes = Math.max(MIN_COURSE_TIME, Math.min(startMinutes, endMinutes - COURSE_TIME_STEP));
                     endMinutes = Math.min(MAX_COURSE_TIME, Math.max(endMinutes, startMinutes + COURSE_TIME_STEP));
-                    const startPercent = (startMinutes - MIN_COURSE_TIME) / (MAX_COURSE_TIME - MIN_COURSE_TIME) * 100;
-                    const endPercent = (endMinutes - MIN_COURSE_TIME) / (MAX_COURSE_TIME - MIN_COURSE_TIME) * 100;
+                    const width = MAX_COURSE_TIME - MIN_COURSE_TIME;
+                    const startPercent = (startMinutes - MIN_COURSE_TIME) / width * 100;
+                    const endPercent = (endMinutes - MIN_COURSE_TIME) / width * 100;
                     const startTime = minutesToTime(startMinutes);
                     const endTime = minutesToTime(endMinutes);
                     track.style.setProperty('--range-start', `${startPercent}%`);
                     track.style.setProperty('--range-end', `${endPercent}%`);
                     startLabel.innerHTML = `<span>开始时间</span><b>${startTime}</b>`;
-                    endLabel.innerHTML = `<span>结束时间</span><b>${endTime}</b>`;
+                    endLabel.innerHTML = `<span>结束时间</span><b>${endTime}</b>`;                    durationLabel.innerHTML = `<span>共计</span><b>${TimeRange.formatDuration(startMinutes, endMinutes)}</b>`;
                     startThumb.setAttribute('aria-valuemin', String(MIN_COURSE_TIME));
                     startThumb.setAttribute('aria-valuemax', String(endMinutes - COURSE_TIME_STEP));
                     startThumb.setAttribute('aria-valuenow', String(startMinutes));
@@ -4834,13 +5073,14 @@ const UI = {
                     endThumb.setAttribute('aria-valuetext', endTime);
                     courses[index].start = startTime;
                     courses[index].end = endTime;
+                    syncPresets();
                     if (activeThumb) activeThumb.focus({ preventScroll: true });
                     this.markSettingsDirty();
                 };
 
                 const stepTime = (target, step) => {
-                    if (target === 'start') startMinutes += step;
-                    else endMinutes += step;
+                    if (target === 'start') startMinutes = clampStart(startMinutes + step);
+                    else endMinutes = clampEnd(endMinutes + step);
                     setActiveTarget(target);
                     updateRange(target === 'start' ? startThumb : endThumb);
                 };
@@ -4849,8 +5089,8 @@ const UI = {
                     const rect = track.getBoundingClientRect();
                     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
                     const minutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
-                    if (thumb === startThumb) startMinutes = Math.min(minutes, endMinutes - COURSE_TIME_STEP);
-                    else endMinutes = Math.max(minutes, startMinutes + COURSE_TIME_STEP);
+                    if (thumb === startThumb) startMinutes = clampStart(minutes);
+                    else endMinutes = clampEnd(minutes);
                     setActiveTarget(thumb === startThumb ? 'start' : 'end');
                     updateRange(thumb);
                 };
@@ -4874,9 +5114,13 @@ const UI = {
                         const rect = track.getBoundingClientRect();
                         const ratio = Math.max(0, Math.min(1, (dragStartX - rect.left) / rect.width));
                         const startPosMinutes = snapMinutes(MIN_COURSE_TIME + ratio * (MAX_COURSE_TIME - MIN_COURSE_TIME));
-                        draggedThumb = Math.abs(startPosMinutes - startMinutes) <= Math.abs(startPosMinutes - endMinutes)
-                            ? startThumb
-                            : endThumb;
+                        // 两个滑块重叠时用纯函数判定拖动目标，避免抓错
+                        const target = TimeRange.pickThumb({
+                            pointerMinutes: startPosMinutes,
+                            startMinutes,
+                            endMinutes
+                        });
+                        draggedThumb = target === 'start' ? startThumb : endThumb;
                     }
                     updateThumbFromPointer(draggedThumb, event);
                 });
@@ -4896,6 +5140,7 @@ const UI = {
                     thumb.addEventListener('pointerdown', (event) => {
                         event.stopPropagation();
                         thumb.setPointerCapture(event.pointerId);
+                        setActiveTarget(thumb === startThumb ? 'start' : 'end');
                         updateThumbFromPointer(thumb, event);
                     });
                     thumb.addEventListener('pointermove', (event) => {
@@ -4905,8 +5150,8 @@ const UI = {
                         const direction = ['ArrowLeft', 'ArrowDown'].includes(event.key) ? -COURSE_TIME_STEP : ['ArrowRight', 'ArrowUp'].includes(event.key) ? COURSE_TIME_STEP : 0;
                         if (!direction) return;
                         event.preventDefault();
-                        if (thumb === startThumb) startMinutes += direction;
-                        else endMinutes += direction;
+                        if (thumb === startThumb) startMinutes = clampStart(startMinutes + direction);
+                        else endMinutes = clampEnd(endMinutes + direction);
                         updateRange(thumb);
                     });
                 });
@@ -4917,48 +5162,57 @@ const UI = {
                 const actions = document.createElement('div');
                 actions.className = 'course-time-actions';
 
-                const steppers = document.createElement('div');
-                steppers.className = 'course-time-steppers';
-                const stepConfigs = [
-                    { text: '-5', step: -COURSE_TIME_STEP, label: '向前 5 分钟' },
-                    { text: '-10', step: -COURSE_TIME_STEP * 2, label: '向前 10 分钟' },
-                    { text: '+5', step: COURSE_TIME_STEP, label: '向后 5 分钟' },
-                    { text: '+10', step: COURSE_TIME_STEP * 2, label: '向后 10 分钟' }
-                ];
-                stepConfigs.forEach(({ text, step, label }) => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'course-time-stepper';
-                    button.textContent = text;
-                    button.title = `${label}（作用于当前选中的时间点）`;
-                    button.setAttribute('aria-label', label);
-                    button.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        stepTime(activeTarget, step);
+                const makeStepperRow = (target, title) => {
+                    const row = document.createElement('div');
+                    row.className = 'course-time-steppers';
+                    const caption = document.createElement('span');
+                    caption.className = 'course-time-step-title';
+                    caption.textContent = title;
+                    row.appendChild(caption);
+                    [
+                        { text: '-10', step: -COURSE_TIME_STEP * 2, label: '向前 10 分钟' },
+                        { text: '-5', step: -COURSE_TIME_STEP, label: '向前 5 分钟' },
+                        { text: '+5', step: COURSE_TIME_STEP, label: '向后 5 分钟' },
+                        { text: '+10', step: COURSE_TIME_STEP * 2, label: '向后 10 分钟' }
+                    ].forEach(({ text, step, label }) => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'course-time-stepper';
+                        button.textContent = text;
+                        button.title = `${title}${label}`;
+                        button.setAttribute('aria-label', `${title}${label}`);
+                        button.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            stepTime(target, step);
+                        });
+                        row.appendChild(button);
                     });
-                    steppers.appendChild(button);
-                });
+                    return row;
+                };
 
-                const stepperLabel = document.createElement('span');
-                stepperLabel.className = 'course-time-step-label';
-                steppers.appendChild(stepperLabel);
-                stepperLabelEl = stepperLabel;
+                const steppers = document.createElement('div');
+                steppers.className = 'course-time-stepper-group';
+                steppers.append(makeStepperRow('start', '开始时间'), makeStepperRow('end', '结束时间'));
 
                 const presets = document.createElement('div');
                 presets.className = 'course-time-presets';
-                const presetDurations = [40, 45, 50];
-                presetDurations.forEach((duration) => {
+                const presetTitle = document.createElement('span');
+                presetTitle.className = 'course-time-step-title';
+                presetTitle.textContent = '快捷时长';
+                presets.appendChild(presetTitle);
+                [40, 45, 50].forEach((duration) => {
                     const button = document.createElement('button');
                     button.type = 'button';
                     button.className = 'course-time-preset';
                     button.textContent = `${duration}分钟`;
-                    button.title = `将结束时间设为开始时间 + ${duration} 分钟`;
+                    button.title = `结束时间设为开始时间 + ${duration} 分钟`;
                     button.addEventListener('click', (event) => {
                         event.stopPropagation();
-                        endMinutes = startMinutes + duration;
+                        endMinutes = clampEnd(startMinutes + duration);
                         setActiveTarget('end');
                         updateRange(endThumb);
                     });
+                    presetButtons.push({ button, minutes: duration });
                     presets.appendChild(button);
                 });
 
@@ -4974,6 +5228,51 @@ const UI = {
                     setActiveTarget('end');
                 });
 
+                // 点击时间数字可直接输入，比拖拽更精准
+                const bindTimeInput = (label, isStart) => {
+                    const valueEl = label.querySelector('b');
+                    if (!valueEl) return;
+                    valueEl.classList.add('course-range-editable');
+                    valueEl.title = '点击直接输入时间';
+                    valueEl.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        setActiveTarget(isStart ? 'start' : 'end');
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.inputMode = 'numeric';
+                        input.maxLength = 5;
+                        input.className = 'course-range-input';
+                        input.value = isStart ? minutesToTime(startMinutes) : minutesToTime(endMinutes);
+                        AutoFillGuard.apply(input);
+                        input.addEventListener('click', (inputEvent) => inputEvent.stopPropagation());
+                        valueEl.replaceWith(input);
+                        input.focus();
+                        input.select();
+                        const commit = () => {
+                            const parsed = timeToMinutes(input.value, null);
+                            if (parsed !== null) {
+                                const snapped = snapMinutes(parsed);
+                                if (isStart) startMinutes = clampStart(snapped);
+                                else endMinutes = clampEnd(snapped);
+                            }
+                            updateRange();
+                        };
+                        input.addEventListener('blur', commit, { once: true });
+                        input.addEventListener('keydown', (keyEvent) => {
+                            if (keyEvent.key === 'Enter') {
+                                keyEvent.preventDefault();
+                                input.blur();
+                            } else if (keyEvent.key === 'Escape') {
+                                keyEvent.preventDefault();
+                                input.value = isStart ? minutesToTime(startMinutes) : minutesToTime(endMinutes);
+                                input.blur();
+                            }
+                        });
+                    });
+                };
+                bindTimeInput(startLabel, true);
+                bindTimeInput(endLabel, false);
+
                 setActiveTarget('start');
                 return group;
             };
@@ -4984,12 +5283,22 @@ const UI = {
             subjectPanel.className = 'course-subject-panel';
             const [btnDuplicate, btnDelete] = this.createCourseActionButtons(course, index, courses);
 
+            let isAdjusted = false;
+            if (regularKeys) {
+                const key = this.courseKey(course);
+                const matched = regularKeys.get(key) || 0;
+                if (matched > 0) regularKeys.set(key, matched - 1);
+                else isAdjusted = true;
+            }
+            if (isAdjusted) row.classList.add('is-adjusted');
+
             const timePanel = document.createElement('div');
             timePanel.className = 'course-time-panel';
             if (timeRangeEditor) timePanel.appendChild(timeRangeEditor);
 
             if (CurrentEditCourseIndex === index) {
                 row.append(this.createCourseEditForm(course, index), timePanel, btnDuplicate, btnDelete);
+                if (isAdjusted) row.appendChild(this.createAdjustedTag());
                 this.el.courseList.appendChild(row);
                 return;
             }
@@ -5032,6 +5341,7 @@ const UI = {
                     this.renderCourseList();
                 });
                 subjectPanel.append(compactName, compactTime);
+                if (isAdjusted) subjectPanel.appendChild(this.createAdjustedTag());
             }
 
             row.appendChild(subjectPanel);
@@ -5098,15 +5408,8 @@ const UI = {
     timelineSignature: null,
     renderTimeline(courses, override = null, regularCourses = []) {
         const now = new Date();
-        const overrideLabels = { adjustment: '临时调课', substitute: '代课', event: '临时活动' };
-        const overrideLabel = overrideLabels[override?.type] || '';
-        const courseSignature = JSON.stringify({ courses: courses || [], override: override?.type || '' });
+        const courseSignature = JSON.stringify({ courses: courses || [], override: Boolean(override) });
         const courseChanged = this.timelineSignature !== courseSignature;
-        if (this.el.timeCourseBadge) {
-            this.el.timeCourseBadge.textContent = overrideLabel;
-            this.el.timeCourseBadge.hidden = !overrideLabel;
-            this.el.timeCourseBadge.title = overrideLabel;
-        }
         if (courseChanged) {
             this.timelineSignature = courseSignature;
             this.el.timeline.innerHTML = '';

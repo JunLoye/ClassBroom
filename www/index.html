@@ -31,6 +31,8 @@
     --accent-cyan: #0284C7;
     --accent-orange: #EA580C;
     --accent-red: #DC2626;
+    --accent-blue: #2563EB;
+    --accent-green: #059669;
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Consolas', monospace;
     
@@ -199,7 +201,6 @@
   body.measuring-width .widget-content { overflow: visible !important; }
   body.measuring-width #custom-bottom-info { white-space: nowrap !important; }
   
-  /* 测量模式：三列分别对应课表、天气、时间，天气列改用 auto 才能被内容撑开 */
   body.measuring-width .widget-content { grid-template-columns: minmax(0, 1fr) auto 108px !important; }
   body.measuring-width .weather-container { width: auto !important; max-width: none !important; overflow: visible !important; }
   body.measuring-width #view-main.hide-weather .widget-content { grid-template-columns: minmax(0, 1fr) 108px !important; }
@@ -246,7 +247,6 @@
   .time-clock { font-size: calc(16px * var(--fs-scale)); font-weight: 800; line-height: 1; color: var(--text-main); font-variant-numeric: tabular-nums; }
   .time-date-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0; }
   .time-date { margin-top: 4px; font-size: calc(10px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); white-space: nowrap; }
-  .time-course-badge { margin-top: 4px; padding: 1px 4px; border: 1px solid var(--accent-orange); border-radius: 3px; color: var(--accent-orange); font-size: calc(9px * var(--fs-scale)); font-weight: 700; line-height: 1.1; white-space: nowrap; }
   @keyframes time-enter { from { opacity: 0; } to { opacity: 1; } }
   .time-container.course-state-entered { animation: time-enter 500ms ease-out both; }
   .course-state-entered { animation: course-state-change 480ms ease-out both; }
@@ -272,9 +272,6 @@
   .weather-warning svg { width: 16px; height: 16px; flex-shrink: 0; animation: warning-shake 1.2s ease-in-out infinite; }
   .weather-container.no-warning { justify-content: flex-start; }
   .weather-container.no-warning .weather-warning { display: none; }
-  /* 窗口为容纳内容加宽后，固定列宽会让天气区继续被挤压；
-     由 JS 写入 --weather-extra 把测量到的缺口叠加到天气列宽度上，
-     并禁止天气区内部收缩，从而不再出现截断或元素重叠。 */
   .widget-content { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) calc(108px + var(--time-extra, 0px)); }
   .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) calc(108px + var(--time-extra, 0px)); }
   .weather-container, .widget-content .weather-container { width: 100%; max-width: none; }
@@ -374,7 +371,6 @@
     color: var(--text-muted); font-size: 10px; line-height: 16px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  /* 自定义文本位置：水平对齐 + 垂直偏移（由 JS 写入 --bottom-offset） */
   #custom-bottom-info.pos-left { justify-content: flex-start; }
   #custom-bottom-info.pos-center { justify-content: center; }
   #custom-bottom-info.pos-right { justify-content: flex-end; }
@@ -382,7 +378,6 @@
   #custom-bottom-info.force-hidden { display: none; }
   #view-main.hide-weather .weather-container { display: none; }
   #view-main.hide-timeline .timeline-container { display: none; }
-  /* 隐藏任一模块后重排剩余元素，已隐藏模块不再保留任何列宽 */
   #view-main.hide-timeline .widget-content,
   #view-main.hide-timeline .widget-content.no-warning {
     grid-template-columns: minmax(0, 1fr) calc(108px + var(--time-extra, 0px));
@@ -401,7 +396,6 @@
   .about-meta { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
   .about-meta dt { color: var(--text-muted); font-weight: 700; }
   .about-meta dd { color: var(--text-main); }
-  /* 版本更新区块 */
   .update-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .update-status { flex: 1; min-width: 180px; font-size: calc(13px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); }
   .update-status.has-update { color: var(--accent-orange); }
@@ -522,8 +516,6 @@
   .onboarding-weather-open { align-self: flex-start; height: var(--control-height); min-height: var(--control-height); padding: 0 12px; font-size: 12px; }
 
   body.onboarding-active #view-main { opacity: 0; pointer-events: none; }
-  /* 引导弹窗需要整块可读：窗口已加高到 620px 时取消遮罩内边距压缩，
-     改为按内容宽度铺开并让正文自身滚动，避免底部勾选行与按钮被裁掉。 */
   body.dialog-enlarged .app-dialog-mask { align-items: center; padding: 10px 0; }
   body.dialog-enlarged .app-dialog.is-wide {
     width: min(880px, calc(100% - 24px));
@@ -532,7 +524,6 @@
   body.dialog-enlarged .app-dialog-body { padding: 0 18px 6px; }
   body.dialog-enlarged .app-dialog-header { padding: 10px 18px 6px; }
   body.dialog-enlarged .app-dialog-footer { padding: 10px 18px 12px; }
-  /* 引导内容按两列排布，窗口高度有限时优先压缩纵向留白而不是裁掉按钮 */
   body.dialog-enlarged .onboarding { gap: 10px; }
   body.dialog-enlarged .onboarding-steps { gap: 8px; }
   .onboarding-weather { min-width: 0; }
@@ -690,7 +681,10 @@
   .custom-select-option.selected { color: var(--accent-cyan); font-weight: 800; }
   .custom-select-option.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
   .custom-select.disabled .custom-select-trigger { opacity: 0.5; cursor: not-allowed; }
-  .custom-select-option.selected::after { content: '✓'; float: right; margin-left: 8px; }
+  .custom-select-panel[hidden] { display: none !important; }
+  body.custom-select-open .custom-select-panel { display: none; }
+  body.custom-select-open .custom-select.open .custom-select-panel { display: block; }
+  .custom-select-option.selected::after { content: ''; float: right; margin-left: 8px; width: 12px; height: 12px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; }
   .native-select-source, .custom-date-source { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; opacity: 0 !important; pointer-events: none !important; clip-path: inset(50%) !important; }
   .form-group .native-custom-select { width: 100%; }
   .course-tools-row label .native-custom-select { width: 156px; }
@@ -752,13 +746,65 @@
   #tab-bottom.active > .settings-section:nth-child(1),
   #tab-bottom.active > .settings-section:nth-child(4) { grid-column: 1 / -1; }
   #tab-bottom.active > .settings-section:nth-child(6) { grid-column: 1 / -1; }
-  #tab-courses.active { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
-  #tab-courses.active .course-tools-details { grid-column: 1; grid-row: 1; }
-  #tab-courses.active .course-header { grid-column: 1; grid-row: 2; margin-bottom: 0; }
-  #tab-courses.active .subject-manager-details { grid-column: 1; grid-row: 3; }
-  #tab-courses.active .course-list { grid-column: 1; grid-row: 4; min-height: 0; padding-right: 4px; }
+  #tab-courses.active { display: flex !important; flex-direction: column; gap: 10px; min-height: 0; }
+  #tab-courses.active > .course-list { flex: 0 0 auto; padding-right: 4px; }
 
-  /* 复选开关行与分段按钮（模块显示、文本位置） */
+  .settings-more { position: relative; }
+  .settings-more-trigger { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: var(--control-height); padding: 0 10px; }
+  .settings-more-trigger svg { width: 16px; height: 16px; }
+  .settings-more-menu {
+    position: fixed; z-index: 5000; min-width: 176px;
+    display: flex; flex-direction: column; padding: 6px; gap: 2px;
+    border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  }
+  .settings-more-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--control-height);
+    padding: 6px 10px; border: none; border-radius: 6px; background: transparent;
+    color: var(--text-main); font-size: calc(12px * var(--fs-scale)); font-weight: 700;
+    font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .settings-more-item:hover { background: color-mix(in srgb, var(--accent-cyan) 10%, transparent); color: var(--accent-cyan); }
+  .settings-more-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-cyan); }
+  .settings-more-sep { height: 1px; margin: 4px 2px; background: var(--border-light); }
+
+  .course-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .course-week-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .course-week-pills .day-btn { min-width: 52px; height: 30px; font-size: calc(12px * var(--fs-scale)); }
+  .course-override-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .course-override-toggle { margin-bottom: 0; }
+  .course-override-date[hidden] { display: none !important; }
+  .course-override-date { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
+  .course-override-hint { margin: 0; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); line-height: 1.4; }
+  .course-override-hint.is-warning { color: var(--accent-orange); }
+  .course-status-tag {
+    display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-cyan) 10%, transparent); color: var(--text-sub);
+    font-size: calc(11px * var(--fs-scale)); font-weight: 700; white-space: nowrap;
+  }
+  .course-status-tag:empty { display: none; }
+  .course-status-tag.is-override { background: color-mix(in srgb, var(--accent-orange) 12%, transparent); color: var(--accent-orange); }
+  .course-inline-link { border: none; background: transparent; padding: 2px 4px; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); font-weight: 700; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .course-inline-link:hover { color: var(--accent-cyan); }
+
+  .course-copy-controls { position: relative; display: flex; align-items: center; }
+  .course-copy-trigger { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: var(--control-height); border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); }
+  .course-copy-trigger:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .course-copy-trigger svg { width: 15px; height: 15px; }
+  .course-copy-popover {
+    position: fixed; z-index: 5000;
+    display: flex; flex-direction: column; gap: 6px; width: 208px; padding: 10px;
+    border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card);
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  }
+  .course-copy-popover[hidden],
+  .settings-more-menu[hidden] { display: none !important; }
+  .course-copy-popover > label { color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; }
+  .course-copy-popover select { height: var(--control-height); padding: 4px 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(12px * var(--fs-scale)); }
+  .course-copy-popover .btn { height: var(--control-height); }
+
+  .course-header .day-selector .day-btn { min-width: 62px; height: 34px; font-size: calc(13px * var(--fs-scale)); font-weight: 800; }
+
   .switch-row {
     display: flex; align-items: center; gap: 8px; min-height: 32px; margin-bottom: 6px;
     font-size: calc(13px * var(--fs-scale)); font-weight: 600; color: var(--text-main);
@@ -779,7 +825,6 @@
   .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 5px; font-size: calc(13px * var(--fs-scale)); outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
   .form-group select { width: 100%; height: 36px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); }
   .form-group input[type="color"] { padding: 3px; }
-  /* 开关行内的复选框不参与输入框的通用尺寸/边框/内边距样式 */
   .form-group label.switch-row {
     display: flex; margin-bottom: 6px;
     color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 600;
@@ -829,8 +874,7 @@
     .form-row { flex-wrap: wrap; }
   }
   @media (max-width: 850px) {
-    #tab-courses.active { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(240px, 1fr); }
-    #tab-courses.active .course-list { grid-column: 1; grid-row: 4; }
+    #tab-courses.active { min-height: 240px; }
   }
   @media (max-width: 760px) {
     #tab-bottom.active { grid-template-columns: minmax(0, 1fr); }
@@ -845,9 +889,10 @@
   }
 
   .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
-  .course-tools-details { padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
-  .course-tools-details > summary { color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
-  .course-schedule-tools { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+  .course-tools-details, .course-data-details { padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
+  .course-tools-details > summary, .course-data-details > summary { color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
+  .course-override-panel { display: flex; flex-direction: column; gap: 6px; padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
+  .course-schedule-tools { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
   .course-tools-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .course-tools-row label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
   .course-tools-row select, .course-tools-row input { height: var(--control-height); min-width: 92px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); }
@@ -871,8 +916,9 @@
   .course-editor-done { align-self: flex-end; white-space: nowrap; }
   .course-subject-menu { position: relative; min-width: 0; }
   .course-subject-menu-trigger { min-height: var(--control-height); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; list-style: none; }
+  .course-subject-menu-trigger:hover { border-color: color-mix(in srgb, var(--accent-cyan) 45%, var(--border-light)); }
   .course-subject-menu-trigger::-webkit-details-marker { display: none; }
-  .course-subject-menu-trigger::after { content: '⌄'; color: var(--text-muted); }
+  .course-subject-menu-trigger::after { content: ''; width: 10px; height: 10px; flex: 0 0 10px; background: currentColor; opacity: 0.6; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
   .course-subject-panel { grid-column: 1; grid-row: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .course-time-panel { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; display: flex; align-items: center; justify-content: stretch; overflow: visible; }
   .course-item.selected > .btn-course-duplicate { grid-column: 3; grid-row: 2; }
@@ -880,17 +926,39 @@
   .course-item:not(.selected) > .btn-course-duplicate { grid-column: 2; grid-row: 1; }
   .course-item:not(.selected) > .btn-delete { grid-column: 3; grid-row: 1; justify-self: end; margin-left: 0; }
   .course-item.selected .btn-delete { margin-left: 0; align-self: start; }
-  .btn-course-action { width: var(--control-height); height: var(--control-height); min-height: var(--control-height); padding: 0; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
+  .btn-course-action { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: var(--control-height); min-height: var(--control-height); padding: 0 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
   .btn-course-action:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
   .course-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 140px; border: 1px dashed var(--border-light); border-radius: 6px; color: var(--text-muted); text-align: center; }
   .course-empty-state b { color: var(--text-main); font-size: calc(14px * var(--fs-scale)); }
+  .course-adjusted-tag { flex: 0 0 auto; align-self: center; padding: 1px 6px; border-radius: 4px; background: color-mix(in srgb, var(--accent-orange) 14%, transparent); color: var(--accent-orange); font-size: calc(10px * var(--fs-scale)); font-weight: 800; line-height: 1.5; white-space: nowrap; }
   .course-name-summary { min-width: 0; font-size: calc(15px * var(--fs-scale)); font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-  .course-time-summary { min-width: 0; margin-top: 2px; white-space: nowrap; font-family: var(--font-mono); font-size: calc(14px * var(--fs-scale)); font-weight: 800; color: var(--text-sub); cursor: pointer; }
+  .course-time-summary { min-width: 0; margin-top: 2px; white-space: nowrap; font-family: var(--font-mono); font-size: calc(14px * var(--fs-scale)); font-weight: 800; color: var(--accent-cyan); cursor: pointer; }
+  .course-item .course-name-summary { overflow: hidden; text-overflow: ellipsis; }
+  .course-item > .btn-delete { opacity: 0; transition: opacity 120ms ease; }
+  .course-item:hover > .btn-delete,
+  .course-item:focus-within > .btn-delete,
+  .course-item.selected > .btn-delete { opacity: 1; }
+  @media (hover: none) {
+    .course-item > .btn-delete { opacity: 1; }
+  }
   .course-item:not(.selected) .course-subject-panel { grid-column: 1; grid-row: 1; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
   .course-item:not(.selected) .course-name-summary { flex: 1; }
   .course-item:not(.selected) .course-time-summary { margin-top: 0; flex-shrink: 0; }
-  .course-item:not(.selected) > .btn-course-duplicate,
-  .course-item:not(.selected) > .btn-delete { display: none; }
+  .course-item:not(.selected) > .btn-course-duplicate { display: none; }
+  .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr) var(--control-height); }
+  .course-bulk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-app); }
+  .course-bulk-bar[hidden] { display: none !important; }
+  .course-bulk-bar .bulk-select-all { margin-bottom: 0; flex: 0 0 auto; }
+  .course-bulk-bar .bulk-count { flex: 1 1 auto; min-width: 96px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
+  .course-bulk-bar .bulk-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .course-bulk-bar .btn { height: var(--control-height); min-height: var(--control-height); padding: 0 12px; }
+  .course-bulk-bar .btn:disabled { opacity: 0.45; cursor: default; }
+  .course-item .course-select-box { width: 18px; height: 18px; margin: 0; padding: 0; flex: 0 0 18px; accent-color: var(--accent-cyan); cursor: pointer; }
+  .course-undo-toast { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding: 2px 8px; border: 1px solid var(--border-light); border-radius: 999px; background: var(--bg-card); color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; }
+  .course-undo-action { border: none; background: transparent; color: var(--accent-cyan); font-size: inherit; font-weight: 800; cursor: pointer; padding: 0; }
+  .course-undo-action:hover { text-decoration: underline; }
+  .course-list.bulk-mode .course-item { cursor: default; }
+  .course-list.bulk-mode .course-item.bulk-checked { border-color: var(--accent-cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent); opacity: 1; }
   .course-subject-options { width: 100%; max-height: 220px; overflow: auto; margin-top: 4px; padding: 6px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); display: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); align-items: center; gap: 4px; }
   .course-subject-menu[open] .course-subject-options { display: grid; }
   .course-subject-option { min-width: 0; width: 100%; min-height: var(--control-height); padding: 4px 6px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
@@ -899,37 +967,50 @@
   .course-custom-button:hover { border-color: var(--accent-cyan) !important; color: var(--accent-cyan); }
   .course-custom-input { flex: 1; min-width: 120px; height: var(--control-height); padding: 8px 10px; border: 1px solid var(--accent-cyan); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(14px * var(--fs-scale)); }
   .course-custom-confirm { height: var(--control-height); min-height: var(--control-height); padding: 0 10px; border: 1px solid var(--accent-cyan); border-radius: var(--control-radius); background: var(--accent-cyan); color: #fff; font-size: calc(13px * var(--fs-scale)); cursor: pointer; }
-  .course-time-range { width: min(560px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 6px; }
-  .course-time-range-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
-  .course-range-value { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 6px; border: 1px solid transparent; border-radius: 8px; background: var(--bg-card); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); line-height: 1.2; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: border-color 120ms ease, background-color 120ms ease; }
+  .course-time-range { width: min(580px, 100%); min-width: 320px; display: flex; flex-direction: column; gap: 8px; }
+  .course-time-range-labels { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+  .course-range-value { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-app); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); line-height: 1.2; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: border-color 120ms ease, background-color 120ms ease; }
   .course-range-value:hover { border-color: color-mix(in srgb, var(--accent-cyan) 40%, var(--border-light)); }
-  .course-range-value.active { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 8%, var(--bg-card)); }
+  .course-range-value.active { border-color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 9%, var(--bg-card)); }
   .course-range-value b { min-width: 0; color: var(--text-main); font-family: var(--font-mono); font-size: calc(22px * var(--fs-scale)); line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .course-range-value span { white-space: nowrap; font-size: calc(12px * var(--fs-scale)); font-weight: 700; line-height: 1.2; }
-  .course-time-range-track { --range-start: 0%; --range-end: 100%; position: relative; width: 100%; height: 48px; cursor: pointer; touch-action: none; outline: none; }
-  .course-time-range-track::before { top: 21px !important; }
-  .course-time-range-fill { top: 21px !important; }
-  .course-time-range-track::before { content: ''; position: absolute; left: 0; right: 0; top: 18px; height: 6px; border-radius: 3px; background: var(--border-light); }
-  .course-time-range-fill { position: absolute; left: var(--range-start); right: calc(100% - var(--range-end)); top: 18px; height: 6px; border-radius: 3px; background: var(--accent-cyan); }
-  .course-time-range-thumb { position: absolute; top: 0; width: 48px; height: 48px; margin-left: -24px; left: var(--range-start); border-radius: 50%; background: transparent; cursor: grab; touch-action: none; outline: none; }
-  .course-time-range-thumb::after { content: ''; position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--bg-card); background: var(--accent-cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+  .course-range-value b.course-range-editable { cursor: text; border-bottom: 1px dashed transparent; }
+  .course-range-value b.course-range-editable:hover { border-bottom-color: color-mix(in srgb, var(--accent-cyan) 55%, transparent); }
+  .course-range-input { width: 5.2ch; height: 30px; padding: 0 2px; border: 1px solid var(--accent-cyan); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-family: var(--font-mono); font-size: calc(20px * var(--fs-scale)); font-weight: 800; text-align: center; outline: none; }
+  .course-range-value span { white-space: nowrap; font-size: calc(11px * var(--fs-scale)); font-weight: 700; line-height: 1.2; }
+  .course-range-duration { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 4px; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); font-weight: 700; white-space: nowrap; }
+  .course-range-duration b { color: var(--accent-cyan); font-size: calc(13px * var(--fs-scale)); font-weight: 800; }
+
+  .course-time-range-track { --range-start: 0%; --range-end: 100%; position: relative; width: 100%; height: 56px; cursor: pointer; touch-action: none; outline: none; }
+  .course-time-range-rail { position: absolute; left: 0; right: 0; top: 25px; height: 6px; border-radius: 3px; background: var(--border-light); }
+  .course-time-range-fill { position: absolute; left: var(--range-start); right: calc(100% - var(--range-end)); top: 25px; height: 6px; border-radius: 3px; background: var(--accent-cyan); }
+  .course-time-range-thumb { position: absolute; top: 7px; width: 40px; height: 40px; margin-left: -20px; border-radius: 50%; background: transparent; cursor: grab; touch-action: none; outline: none; }
+  .course-time-range-thumb::after { content: ''; position: absolute; left: 8px; width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--bg-card); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
   .course-time-range-thumb.start { left: var(--range-start); }
   .course-time-range-thumb.end { left: var(--range-end); }
+  .course-time-range-thumb.start::after { top: 0; background: var(--accent-blue, #2563EB); }
+  .course-time-range-thumb.end::after { top: 12px; background: var(--accent-green, #059669); }
   .course-time-range-thumb:active { cursor: grabbing; }
-  .course-time-range-thumb:active::after,
-  .course-time-range-thumb:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-cyan) 22%, transparent); }
-  .course-time-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
-  .course-time-steppers { display: flex; align-items: center; gap: 6px; }
-  .course-time-stepper { width: var(--control-height); height: var(--control-height); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(16px * var(--fs-scale)); font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .course-time-range-thumb.start:active::after,
+  .course-time-range-thumb.start:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-blue, #2563EB) 24%, transparent); }
+  .course-time-range-thumb.end:active::after,
+  .course-time-range-thumb.end:focus-visible::after { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-green, #059669) 24%, transparent); }
+
+  .course-time-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .course-time-stepper-group { display: flex; flex-direction: column; gap: 6px; }
+  .course-time-steppers { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 999px; background: var(--bg-app); }
+  .course-time-step-title { min-width: 58px; color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 700; white-space: nowrap; }
+  .course-time-steppers .course-time-step-title { padding-left: 4px; }
+  .course-time-stepper { width: 38px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); color: var(--text-main); font-size: calc(12px * var(--fs-scale)); font-weight: 800; font-family: var(--font-mono); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
   .course-time-stepper:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
   .course-time-stepper:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
-  .course-time-steppers .course-time-step-label { min-width: 62px; text-align: center; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
+  .course-time-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .course-time-preset.active { border-color: var(--accent-cyan); background: var(--accent-cyan); color: #fff; }
   .course-time-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .course-time-preset { height: var(--control-height); min-height: var(--control-height); padding: 0 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
   .course-time-preset:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
   .course-time-preset:active { background: color-mix(in srgb, var(--accent-cyan) 12%, var(--bg-card)); }
-  .btn-delete { background: rgba(220, 38, 38, 0.1); color: var(--accent-red); border: none; width: var(--control-height); height: var(--control-height); min-height: var(--control-height); border-radius: var(--control-radius); font-size: 20px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
-  .btn-delete:hover { background: var(--accent-red); color: #fff; }
+  .btn-delete { background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border-light); width: var(--control-height); height: var(--control-height); min-height: var(--control-height); border-radius: var(--control-radius); font-size: 20px; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; }
+  .btn-delete:hover { background: var(--bg-card); color: var(--accent-red); border-color: color-mix(in srgb, var(--accent-red) 45%, var(--border-light)); }
   .day-btn { min-height: var(--control-height); min-width: 52px; }
   #btn-add-course { min-height: var(--control-height); }
   @media (pointer: coarse) {
@@ -1017,7 +1098,6 @@
         <div class="time-clock" id="time-clock">--:--</div>
         <div class="time-date-row" id="time-date-row">
           <div class="time-date" id="time-date">----</div>
-          <span class="time-course-badge" id="time-course-badge" role="status" hidden></span>
         </div>
       </div>
       <div class="weather-container" id="weather"></div>
@@ -1035,35 +1115,31 @@
         <button class="tab-btn" data-target="about" type="button">关于</button>
       </div>
       <div id="settings-actions" class="settings-actions">
-        <button id="btn-settings-unlock" class="btn btn-secondary" type="button" hidden>解锁编辑</button>
-        <label class="startup-toggle"><input id="input-autostart" type="checkbox">开机自启</label>
         <div class="theme-select" id="theme-select-wrap">
           <span>主题</span>
           <div class="custom-select" id="select-theme" data-input="input-theme" data-placeholder="默认"></div>
           <input type="hidden" id="input-theme" value="default">
+        </div>
+        <div class="settings-more" id="settings-more">
+          <button id="btn-settings-more" class="btn btn-secondary settings-more-trigger" type="button" aria-haspopup="menu" aria-expanded="false" title="更多设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+          </button>
+          <div class="settings-more-menu" id="settings-more-menu" role="menu" hidden>
+            <button id="btn-settings-unlock" class="settings-more-item" type="button" role="menuitem" hidden>解锁编辑</button>
+            <label class="settings-more-item switch-row" role="menuitem">
+              <input id="input-autostart" type="checkbox">开机自启
+            </label>
+            <div class="settings-more-sep" aria-hidden="true"></div>
+            <button id="btn-restart-guide" class="settings-more-item" type="button" role="menuitem">使用引导</button>
+            <button id="btn-import-config" class="settings-more-item" type="button" role="menuitem">导入配置</button>
+            <button id="btn-export-config" class="settings-more-item" type="button" role="menuitem">导出配置</button>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="settings-body" autocomplete="off">
       <div class="tab-content active" id="tab-main">
-        <section class="settings-section">
-          <h3 class="settings-section-title">模块显示</h3>
-          <div class="settings-section-body">
-            <p class="switch-hint">开关与“显示与文本 → 默认显示”为同一组设置；日期方案生效时会临时覆盖。关闭后对应区域不占用主界面空间。</p>
-            <div class="form-row">
-              <div class="form-group col">
-                <label class="switch-row" for="input-show-weather"><input type="checkbox" id="input-show-weather" checked>显示天气</label>
-                <label class="switch-row" for="input-show-timeline"><input type="checkbox" id="input-show-timeline" checked>显示课表</label>
-              </div>
-              <div class="form-group col">
-                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示底部信息</label>
-                <label class="switch-row" for="input-show-clock-seconds"><input type="checkbox" id="input-show-clock-seconds" checked>显示时钟秒数</label>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section class="settings-section">
           <h3 class="settings-section-title">设置保护</h3>
           <div class="settings-section-body">
@@ -1085,7 +1161,7 @@
                 <input id="input-settings-lock-pin-confirm" type="password" autocomplete="new-password" maxlength="64">
               </div>
             </div>
-            <div class="switch-hint">只读模式可从顶部解锁编辑；PIN 每次进入设置时验证。PIN 仅用于防止误操作，不代替 Windows 账户密码。</div>
+            <div class="switch-hint">只读模式可从顶部解锁编辑；PIN 每次进入设置时验证。PIN 仅用于防止误操作，不代替 Windows 账户密码</div>
           </div>
         </section>
 
@@ -1094,17 +1170,12 @@
           <div class="settings-section-body">
             <div class="form-row">
               <div class="form-group col">
-                <label for="input-main-window-width">主页宽度（1400–1920 px）</label>
-                <input type="range" id="input-main-window-width" min="1400" max="1920" step="20" value="1400">
-                <div class="range-value" id="main-window-width-label">1400 px</div>
-              </div>
-              <div class="form-group col">
-                <label for="input-ui-scale">界面缩放（DPI，80–150%）</label>
+                <label for="input-ui-scale">界面缩放（DPI）</label>
                 <input type="range" id="input-ui-scale" min="80" max="150" step="5" value="100">
                 <div class="range-value" id="ui-scale-label">100%</div>
               </div>
             </div>
-            <div class="switch-hint">界面缩放只影响应用，不会修改 Windows 显示设置。</div>
+            <div class="switch-hint">界面缩放只影响应用，不会修改 Windows 显示</div>
           </div>
         </section>
 
@@ -1121,7 +1192,7 @@
                 <label for="input-font-size-scale">全局字号缩放</label>
                 <input type="range" id="input-font-size-scale" min="80" max="150" step="5" value="100">
                 <div class="range-value" id="font-size-scale-label">100%</div>
-                <div class="switch-hint">影响全部界面文字；底部信息还可在“显示与文本”单独设定像素字号。</div>
+                <div class="switch-hint">影响全部界面文字</div>
               </div>
             </div>
             <div class="form-row">
@@ -1131,7 +1202,7 @@
                 <input type="hidden" id="input-course-font" value="">
               </div>
               <div class="form-group col">
-                <label for="input-course-font-size">课程字号（像素，12–32）</label>
+                <label for="input-course-font-size">课程字号</label>
                 <input type="range" id="input-course-font-size" min="12" max="32" step="1" value="15">
                 <div class="range-value" id="course-font-size-label">15 px</div>
               </div>
@@ -1185,13 +1256,13 @@
           <div class="settings-section-body">
             <div id="weather-api-host-group" class="form-group"><label for="input-api-host">API Host（专属域名）</label><input type="text" id="input-api-host" autocomplete="off" spellcheck="false" placeholder="例如: xxx.qweatherapi.com"></div>
             <div class="form-group">
-              <label for="input-location-query">地区搜索（免密钥）</label>
+              <label for="input-location-query">地区搜索</label>
               <div class="weather-location-search">
                 <input type="search" id="input-location-query" autocomplete="off" spellcheck="false" placeholder="输入城市或地区名称">
                 <button id="btn-search-location" class="btn btn-secondary" type="button">搜索</button>
                 <button id="btn-locate-by-ip" class="btn btn-secondary" type="button">按 IP 定位</button>
               </div>
-              <p class="location-privacy-note">仅在点击时向 ipwho.is 发送公网 IP；定位结果仅供参考。</p>
+              <p class="location-privacy-note">定位服务由 ipwho.is 提供，定位结果仅供参考</p>
               <div class="custom-select" id="select-geocoding-result" data-input="input-geocoding-result" data-placeholder="选择匹配地区"></div>
               <input type="hidden" id="input-geocoding-result">
               <div id="location-search-status" class="switch-hint" role="status" aria-live="polite"></div>
@@ -1200,7 +1271,7 @@
               <div class="form-group col"><label for="input-location">经纬度（经度,纬度）</label><input type="text" id="input-location" autocomplete="off" spellcheck="false" placeholder="例如: xx.xx,xx.xx"></div>
               <div class="form-group col"><label for="input-real-location">地区名称</label><input type="text" id="input-real-location" autocomplete="off" placeholder="用于显示，可留空"></div>
             </div>
-            <div class="form-group"><label for="input-weather-refresh-minutes">自动刷新间隔（分钟，1–1440）</label><input type="number" id="input-weather-refresh-minutes" autocomplete="off" min="1" max="1440" step="1" value="10"></div>
+            <div class="form-group"><label for="input-weather-refresh-minutes">自动刷新间隔（分钟）</label><input type="number" id="input-weather-refresh-minutes" autocomplete="off" min="1" max="1440" step="1" value="10"></div>
           </div>
         </section>
 
@@ -1224,47 +1295,75 @@
       </div>
 
       <div class="tab-content" id="tab-courses">
+        <div class="course-override-panel">
+          <div class="course-tools-row">
+            <label class="switch-row course-override-toggle" for="input-override-mode">
+              <input type="checkbox" id="input-override-mode">调课模式
+            </label>
+            <label class="course-override-date" for="input-override-date" hidden>生效日期<input id="input-override-date" type="date"></label>
+            <div class="course-override-actions">
+              <span id="override-status" class="course-status-tag" role="status" aria-live="polite"></span>
+              <button id="btn-restore-override" class="course-inline-link" type="button" hidden>恢复为常规课表</button>
+            </div>
+          </div>
+          <p class="course-override-hint">开启调课模式后，课程调整只会保存到所选日期（默认今天），常规课表保持不变</p>
+        </div>
         <details class="course-tools-details">
-          <summary>高级课表工具</summary>
+          <summary>课表设置</summary>
           <div class="course-schedule-tools">
-          <div class="course-tools-row">
-            <label for="input-cycle-week-count">循环周数
-              <select id="input-cycle-week-count">
-                <option value="1">每周</option><option value="2">单双周</option><option value="3">3 周一轮</option><option value="4">4 周一轮</option>
-                <option value="5">5 周一轮</option><option value="6">6 周一轮</option><option value="7">7 周一轮</option><option value="8">8 周一轮</option>
-              </select>
-            </label>
-            <label for="input-cycle-start-date">周期起始周一<input id="input-cycle-start-date" type="date"></label>
-            <div class="day-selector" id="cycle-week-selector" aria-label="选择轮换周"></div>
-            <button id="btn-download-course-template" class="btn btn-secondary" type="button">下载 Excel 模板</button>
-            <button id="btn-import-courses" class="btn btn-secondary" type="button">Excel 导入</button>
-            <button id="btn-export-courses" class="btn btn-secondary" type="button">Excel 导出</button>
+            <div class="course-tools-row">
+              <label for="input-cycle-week-count">循环周数
+                <select id="input-cycle-week-count">
+                  <option value="1">每周</option><option value="2">单双周</option><option value="3">3 周一轮</option><option value="4">4 周一轮</option>
+                  <option value="5">5 周一轮</option><option value="6">6 周一轮</option><option value="7">7 周一轮</option><option value="8">8 周一轮</option>
+                </select>
+              </label>
+              <label for="input-cycle-start-date">起始日期<input id="input-cycle-start-date" type="date"></label>
+            </div>
           </div>
-          <div class="course-tools-row">
-            <label for="input-course-edit-mode">课表类型
-              <select id="input-course-edit-mode"><option value="regular">常规课表</option><option value="override">单日临时安排</option></select>
-            </label>
-            <label id="course-override-date-group" for="input-course-override-date">安排日期<input id="input-course-override-date" type="date"></label>
-            <label id="course-override-type-group" for="input-course-override-type">安排类型
-              <select id="input-course-override-type"><option value="adjustment">临时调课</option><option value="substitute">代课</option><option value="event">临时活动</option></select>
-            </label>
-            <button id="btn-create-course-override" class="btn btn-secondary" type="button">创建单日安排</button>
-            <button id="btn-remove-course-override" class="btn btn-secondary" type="button">恢复常规课表</button>
-            <span id="course-override-status" class="switch-hint" role="status" aria-live="polite"></span>
-          </div>
+        </details>
+        <details class="course-data-details">
+          <summary>数据管理</summary>
+          <div class="course-schedule-tools">
+            <div class="course-tools-row">
+              <button id="btn-download-course-template" class="btn btn-secondary" type="button">下载 Excel 模板</button>
+              <button id="btn-import-courses" class="btn btn-secondary" type="button">Excel 导入</button>
+              <button id="btn-export-courses" class="btn btn-secondary" type="button">Excel 导出</button>
+            </div>
           </div>
         </details>
         <div class="course-header">
-          <div class="day-selector" id="day-selector"></div>
+          <div class="course-nav">
+            <div class="day-selector" id="day-selector"></div>
+            <div class="course-week-pills" id="cycle-week-selector" aria-label="选择轮换周"></div>
+          </div>
           <span id="course-day-summary" class="course-day-summary"></span>
           <div class="course-copy-controls">
-            <select id="input-copy-course-week" aria-label="复制到周"></select>
-            <select id="input-copy-course-day" aria-label="复制课程到星期">
-              <option value="">复制到星期…</option>
-            </select>
-            <button id="btn-copy-courses" class="btn btn-secondary" type="button" disabled>复制课表</button>
+            <button id="btn-copy-courses-toggle" class="icon-btn course-copy-trigger" type="button" title="复制课表" aria-haspopup="dialog" aria-expanded="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/></svg>
+            </button>
+            <div class="course-copy-popover" id="course-copy-popover" hidden>
+              <label for="input-copy-course-week">复制到</label>
+              <select id="input-copy-course-week" aria-label="复制到周"></select>
+              <select id="input-copy-course-day" aria-label="复制课程到星期">
+                <option value="">星期…</option>
+              </select>
+              <button id="btn-copy-courses" class="btn btn-primary" type="button" disabled>复制</button>
+            </div>
           </div>
+          <button id="btn-bulk-mode" class="btn btn-secondary" type="button">批量管理</button>
           <button id="btn-add-course" class="btn btn-secondary" type="button">+ 添加课程</button>
+        </div>
+        <div class="course-bulk-bar" id="course-bulk-bar" hidden>
+          <label class="switch-row bulk-select-all" for="input-bulk-select-all">
+            <input type="checkbox" id="input-bulk-select-all">全选
+          </label>
+          <span class="bulk-count" id="course-bulk-count">未选择课程</span>
+          <div class="bulk-actions">
+            <button id="btn-bulk-rename" class="btn btn-secondary" type="button" disabled>批量改名称</button>
+            <button id="btn-bulk-delete" class="btn btn-secondary" type="button" disabled>批量删除</button>
+            <button id="btn-bulk-exit" class="btn btn-secondary" type="button">退出批量</button>
+          </div>
         </div>
         <details class="subject-manager-details">
           <summary>课程管理</summary>
@@ -1279,30 +1378,8 @@
 
       <div class="tab-content" id="tab-bottom">
         <section class="settings-section">
-          <h3 class="settings-section-title">默认显示</h3>
-          <div class="settings-section-body">
-            <p class="switch-hint">未命中日期方案时使用的通用外观。日期方案（见“按日期应用方案”）会整体覆盖这里的开关与文本。</p>
-            <div class="form-row">
-              <div class="form-group col profile-toggles">
-                <label class="switch-row" for="input-show-weather"><input type="checkbox" id="input-show-weather" checked>显示天气</label>
-                <label class="switch-row" for="input-show-timeline"><input type="checkbox" id="input-show-timeline" checked>显示课表</label>
-              </div>
-              <div class="form-group col profile-toggles">
-                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示底部信息</label>
-                <label class="switch-row" for="input-show-clock-seconds"><input type="checkbox" id="input-show-clock-seconds" checked>显示时钟秒数</label>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="input-custom-bottom-text">底部信息模板（全局默认）</label>
-              <textarea id="input-custom-bottom-text" autocomplete="off" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
-            </div>
-          </div>
-        </section>
-
-        <section class="settings-section">
           <h3 class="settings-section-title">显示方案</h3>
           <div class="settings-section-body">
-            <p class="switch-hint">方案保存一整套外观，可被日期规则复用。先选择“新建方案”填写内容，再点击“保存方案”。</p>
             <div class="form-row">
               <div class="form-group col">
                 <label for="select-display-profile-edit">选择方案</label>
@@ -1345,8 +1422,8 @@
         <section class="settings-section">
           <h3 class="settings-section-title">按日期应用方案</h3>
           <div class="settings-section-body">
-            <p class="switch-hint">为指定日期启用某个方案，到期自动生效、次日恢复默认显示。</p>
-            <div class="form-row display-rule-controls">
+            <p class="switch-hint">为指定日期启用某个方案</p>
+                        <div class="form-row display-rule-controls">
               <div class="form-group col">
                 <label for="input-display-rule-date">应用日期</label>
                 <input id="input-display-rule-date" type="date">
@@ -1376,17 +1453,17 @@
                 </div>
               </div>
               <div class="form-group col">
-                <label for="input-bottom-offset">垂直偏移（-20 ~ 20 px）</label>
+                <label for="input-bottom-offset">垂直偏移</label>
                 <input type="range" id="input-bottom-offset" min="-20" max="20" step="1" value="0">
                 <div class="range-value" id="bottom-offset-label">0 px</div>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group col">
-                <label for="input-bottom-font-size">底部信息字号（像素，8–30）</label>
+                <label for="input-bottom-font-size">底部信息字号</label>
                 <input type="range" id="input-bottom-font-size" min="8" max="30" step="1" value="10">
                 <div class="range-value" id="bottom-font-size-label">10 px</div>
-                <div class="switch-hint">仅影响底部信息；界面整体字号请用“主界面 → 字体 → 全局字号缩放”。</div>
+                <div class="switch-hint">仅影响底部信息的显示</div>
               </div>
               <div class="form-group col"><label for="input-bottom-color">文字颜色</label><input type="color" id="input-bottom-color" autocomplete="off" value="#64748b"></div>
             </div>
@@ -1396,7 +1473,6 @@
         <section class="settings-section">
           <h3 class="settings-section-title">倒计时</h3>
           <div class="settings-section-body">
-            <p class="switch-hint">供模板中的 {targetName}、{targetDate}、{daysTo} 使用。</p>
             <div class="form-row">
               <div class="form-group col"><label for="input-countdown-name">名称</label><input type="text" id="input-countdown-name" autocomplete="off" placeholder="例如：高考"></div>
               <div class="form-group col"><label for="input-countdown-date">目标日期</label><input type="date" id="input-countdown-date" autocomplete="off"></div>
@@ -1407,13 +1483,6 @@
         <section class="settings-section">
           <h3 class="settings-section-title">模板文本与占位符</h3>
           <div class="settings-section-body">
-            <p class="switch-hint">插入位置：优先使用最近一次编辑的模板。方案文本框有内容时只影响该方案。</p>
-            <div class="form-row">
-              <div class="form-group col"><label for="input-custom-one">文本 1（{custom1}）</label><input type="text" id="input-custom-one" autocomplete="off" placeholder="例如：班主任"></div>
-              <div class="form-group col"><label for="input-custom-two">文本 2（{custom2}）</label><input type="text" id="input-custom-two" autocomplete="off" placeholder="例如：教室"></div>
-              <div class="form-group col"><label for="input-custom-three">文本 3（{custom3}）</label><input type="text" id="input-custom-three" autocomplete="off" placeholder="例如：口号"></div>
-            </div>
-            <div class="placeholder-target-hint" id="placeholder-target-hint">将插入到：底部信息模板（全局默认）</div>
             <details class="placeholder-details">
               <summary>可用占位符</summary>
           <div class="placeholder-groups">
@@ -1454,16 +1523,13 @@
             <div class="placeholder-group">
               <h4>其他</h4>
               <div class="placeholder-chips">
-                <button type="button" class="placeholder-token" data-placeholder="{custom1}" title="文本 1">{custom1}</button>
-                <button type="button" class="placeholder-token" data-placeholder="{custom2}" title="文本 2">{custom2}</button>
-                <button type="button" class="placeholder-token" data-placeholder="{custom3}" title="文本 3">{custom3}</button>
                 <button type="button" class="placeholder-token" data-placeholder="{appName}" title="应用名称">{appName}</button>
                 <button type="button" class="placeholder-token" data-placeholder="{version}" title="应用版本号">{version}</button>
               </div>
             </div>
           </div>
               <p class="placeholder-example">示例：<code>距{targetName}还有{daysTo}天</code></p>
-            </details>
+          </details>
           </div>
         </section>
       </div>
@@ -1496,9 +1562,6 @@
       </div>
     </div>
     <div class="settings-footer">
-      <button id="btn-restart-guide" class="btn btn-secondary" type="button" title="重新查看首次使用引导">使用引导</button>
-      <button id="btn-import-config" class="btn btn-secondary" type="button">导入配置</button>
-      <button id="btn-export-config" class="btn btn-secondary" type="button">导出配置</button>
       <button id="btn-cancel-settings" class="btn btn-secondary">取消</button>
       <button id="btn-save-settings" class="btn btn-primary" type="button">保存并退出</button>
     </div>
@@ -1509,6 +1572,9 @@
   <script src="js/display-settings.js"></script>
   <script src="js/settings-lock.js"></script>
   <script src="js/release-selector.js"></script>
+  <script src="js/course-override.js"></script>
+  <script src="js/course-bulk.js"></script>
+  <script src="js/time-range.js"></script>
   <script src="js/course-import.js"></script>
   <script src="js/vendor/xlsx.full.min.js"></script>
   <script src="js/course-export.js"></script>
