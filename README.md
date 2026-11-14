@@ -150,27 +150,6 @@ Excel 模板包含「星期、开始时间、结束时间、课程」列；「�
 
 在「主界面」页保存多个显示方案，再为具体日期分配方案。到达该日期后会自动应用方案主题、天气/课表显隐、时钟秒数和底部信息。
 
-### 可用占位符
-
-写进「窗口右下角信息」即可，保存后会自动替换成实际内容。设置页可以点击插入。
-
-| 类别 | 占位符 |
-| :--- | :--- |
-| 时间 | `{time}` `{date}` `{datetime}` `{weekday}` |
-| 课程 | `{course}` `{nextCourse}` |
-| 天气 | `{temperature}` `{weather}` `{location}` `{real_location}` |
-| 倒计时 | `{targetName}` `{targetDate}` `{daysTo}` `{daysTo:2027-06-07}` |
-| 其他 | `{custom1}` `{custom2}` `{custom3}` `{appName}` `{version}` |
-
-示例：`{weekday} {date} · {course} · 距{targetName}还有{daysTo}天`
-
-## 数据存放
-
-课表、天气凭据、主题等设置都**保存在本机**
-不会上传、不会联网同步、不收集使用数据。
-
-Excel 导入使用随应用分发的 SheetJS 兼容解析器（`@e965/xlsx` 0.20.3）；许可证见 [xlsx.LICENSE](www/js/vendor/xlsx.LICENSE)。
-
 ## 常见问题
 
 <details>

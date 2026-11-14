@@ -35,6 +35,7 @@
     --font-mono: 'JetBrains Mono', 'Consolas', monospace;
     
     --fs-scale: 1;
+    --ui-scale: 1;
     --scrollbar-thumb: rgba(100, 116, 139, 0.42);
     --scrollbar-thumb-hover: rgba(2, 132, 199, 0.72);
   }
@@ -111,6 +112,7 @@
 
   #view-main {
     position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px;
+    scale: var(--ui-scale, 1); transform-origin: top left;
     background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border-light);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column;
     overflow: hidden; z-index: 10;
@@ -181,6 +183,7 @@
     font-family: var(--course-name-font, var(--font-sans));
     line-height: 1.15;
   }
+  .time-node.override-course .name { font-style: italic; }
   
   body.measuring-width .time-node .name,
   body.measuring-width .weather-info .desc,
@@ -199,6 +202,9 @@
   /* 测量模式：三列分别对应课表、天气、时间，天气列改用 auto 才能被内容撑开 */
   body.measuring-width .widget-content { grid-template-columns: minmax(0, 1fr) auto 108px !important; }
   body.measuring-width .weather-container { width: auto !important; max-width: none !important; overflow: visible !important; }
+  body.measuring-width #view-main.hide-weather .widget-content { grid-template-columns: minmax(0, 1fr) 108px !important; }
+  body.measuring-width #view-main.hide-timeline .widget-content { grid-template-columns: minmax(0, 1fr) auto !important; }
+  body.measuring-width #view-main.hide-weather.hide-timeline .widget-content { grid-template-columns: minmax(0, 1fr) 108px !important; }
   body.measuring-width .weather-main { flex: 0 0 auto !important; overflow: visible !important; }
   body.measuring-width .weather-info { overflow: visible !important; }
   body.measuring-width .weather-warning { flex-shrink: 0 !important; }
@@ -232,21 +238,22 @@
   .timeline-container { order: 1; }
   .time-container {
     grid-column: 3; grid-row: 1; position: relative; right: auto; bottom: auto;
-    width: 108px; height: 44px; display: flex; flex-direction: column;
+    width: 100%; height: 44px; display: flex; flex-direction: column;
     align-items: center; justify-content: center; border-left: 1px solid var(--border-light);
     border-right: 1px solid var(--border-light); overflow: hidden; font-family: var(--font-mono);
     animation: time-enter 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   .time-clock { font-size: calc(16px * var(--fs-scale)); font-weight: 800; line-height: 1; color: var(--text-main); font-variant-numeric: tabular-nums; }
+  .time-date-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0; }
   .time-date { margin-top: 4px; font-size: calc(10px * var(--fs-scale)); font-weight: 700; color: var(--text-sub); white-space: nowrap; }
-  .time-date[data-course-mode]:not([data-course-mode=""])::after { content: attr(data-course-mode); margin-left: 5px; padding: 1px 4px; border: 1px solid var(--accent-orange); border-radius: 3px; color: var(--accent-orange); font-size: 9px; vertical-align: 1px; }
+  .time-course-badge { margin-top: 4px; padding: 1px 4px; border: 1px solid var(--accent-orange); border-radius: 3px; color: var(--accent-orange); font-size: calc(9px * var(--fs-scale)); font-weight: 700; line-height: 1.1; white-space: nowrap; }
   @keyframes time-enter { from { opacity: 0; } to { opacity: 1; } }
   .time-container.course-state-entered { animation: time-enter 500ms ease-out both; }
   .course-state-entered { animation: course-state-change 480ms ease-out both; }
   @keyframes course-state-change { from { opacity: 0.55; filter: brightness(1.25); } to { opacity: 1; filter: brightness(1); } }
   .time-container.seconds-visible .time-clock::after { content: attr(data-seconds); color: var(--text-sub); font-size: 13px; }
 
-  .weather-container { grid-column: 2; grid-row: 1; position: relative; right: auto; bottom: auto; height: 44px; width: 150px; max-width: 150px; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; margin: 0 0 0 auto; border-left: 1px solid var(--border-light); z-index: 15; overflow: hidden; }
+  .weather-container { grid-column: 2; grid-row: 1; position: relative; right: auto; bottom: auto; height: 44px; width: 150px; max-width: 150px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; padding: 0; margin: 0 0 0 auto; border-left: 1px solid var(--border-light); z-index: 15; overflow: hidden; }
   .weather-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
   .weather-icon { color: var(--accent-cyan); display: flex; align-items: center; flex-shrink: 0; }
   .weather-icon svg { width: 24px; height: 24px; }
@@ -263,13 +270,13 @@
   }
   .weather-warning span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .weather-warning svg { width: 16px; height: 16px; flex-shrink: 0; animation: warning-shake 1.2s ease-in-out infinite; }
-  .weather-container.no-warning { justify-content: flex-end; }
+  .weather-container.no-warning { justify-content: flex-start; }
   .weather-container.no-warning .weather-warning { display: none; }
   /* 窗口为容纳内容加宽后，固定列宽会让天气区继续被挤压；
      由 JS 写入 --weather-extra 把测量到的缺口叠加到天气列宽度上，
      并禁止天气区内部收缩，从而不再出现截断或元素重叠。 */
-  .widget-content { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
-  .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px; }
+  .widget-content { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) calc(108px + var(--time-extra, 0px)); }
+  .widget-content.no-warning { grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) calc(108px + var(--time-extra, 0px)); }
   .weather-container, .widget-content .weather-container { width: 100%; max-width: none; }
   .weather-container .weather-main { flex-shrink: 0; overflow: visible; }
   .weather-info { min-width: 0; }
@@ -284,27 +291,41 @@
     40%, 80% { transform: rotate(8deg); }
   }
   @media (max-width: 1100px) {
-    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(140px, calc(140px + var(--weather-extra, 0px))) 92px; padding: 0 96px 0 10px; column-gap: 6px; }
+    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(140px, calc(140px + var(--weather-extra, 0px))) calc(92px + var(--time-extra, 0px)); padding: 0 96px 0 10px; column-gap: 6px; }
     .timeline-container { grid-column: 1; }
     .window-controls { gap: 0; }
     .refresh-hint { width: 16px; }
-    .time-container { width: 92px; }
+    .time-container { width: 100%; }
     .time-clock { font-size: 15px; }
     .weather-container { width: 140px; height: 44px; padding: 0; gap: 4px; }
     .weather-info .desc { max-width: none; }
     .weather-warning { max-width: 72px; font-size: 11px; }
+    #view-main.hide-timeline .widget-content,
+    #view-main.hide-timeline .widget-content.no-warning,
+    #view-main.hide-weather .widget-content,
+    #view-main.hide-weather .widget-content.no-warning,
+    #view-main.hide-weather.hide-timeline .widget-content {
+      grid-template-columns: minmax(0, 1fr) calc(92px + var(--time-extra, 0px));
+    }
   }
   @media (max-width: 900px) {
-    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(130px, calc(130px + var(--weather-extra, 0px))) 78px; padding: 0 82px 0 8px; column-gap: 4px; }
+    .widget-content { grid-template-columns: minmax(0, 1fr) minmax(130px, calc(130px + var(--weather-extra, 0px))) calc(78px + var(--time-extra, 0px)); padding: 0 82px 0 8px; column-gap: 4px; }
     .timeline-container { grid-column: 1; }
     .window-controls { width: 96px; }
-    .time-container { width: 78px; }
+    .time-container { width: 100%; }
     .time-clock { font-size: 14px; }
     .time-date { font-size: 9px; }
     .weather-container { width: 130px; }
     .weather-icon { display: none; }
     .weather-info .desc { max-width: none; }
     .weather-warning { max-width: 62px; font-size: 10px; padding: 3px 4px; }
+    #view-main.hide-timeline .widget-content,
+    #view-main.hide-timeline .widget-content.no-warning,
+    #view-main.hide-weather .widget-content,
+    #view-main.hide-weather .widget-content.no-warning,
+    #view-main.hide-weather.hide-timeline .widget-content {
+      grid-template-columns: minmax(0, 1fr) calc(78px + var(--time-extra, 0px));
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .weather-warning, .weather-warning svg { animation: none; }
@@ -312,6 +333,7 @@
 
   #view-settings {
     position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px;
+    scale: var(--ui-scale, 1); transform-origin: top left;
     background: #FFFFFF;
     border-radius: 10px; border: 1px solid var(--border-light);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column;
@@ -360,20 +382,20 @@
   #custom-bottom-info.force-hidden { display: none; }
   #view-main.hide-weather .weather-container { display: none; }
   #view-main.hide-timeline .timeline-container { display: none; }
-  /* 隐藏任一模块后按剩余元素重排，避免列位错乱挤占时间区 */
+  /* 隐藏任一模块后重排剩余元素，已隐藏模块不再保留任何列宽 */
   #view-main.hide-timeline .widget-content,
   #view-main.hide-timeline .widget-content.no-warning {
-    grid-template-columns: minmax(0, 1fr) minmax(150px, calc(150px + var(--weather-extra, 0px))) 108px;
+    grid-template-columns: minmax(0, 1fr) calc(108px + var(--time-extra, 0px));
   }
   #view-main.hide-timeline .weather-container { grid-column: 1; }
-  #view-main.hide-timeline .time-container { grid-column: 2; }
+  #view-main.hide-timeline .time-container { grid-column: 2; border-left: 1px solid var(--border-light); }
   #view-main.hide-weather .widget-content,
   #view-main.hide-weather .widget-content.no-warning {
-    grid-template-columns: minmax(0, 1fr) 108px;
+    grid-template-columns: minmax(0, 1fr) calc(108px + var(--time-extra, 0px));
   }
   #view-main.hide-weather .timeline-container { grid-column: 1; }
-  #view-main.hide-weather .time-container { grid-column: 2; }
-  #view-main.hide-weather.hide-timeline .widget-content { grid-template-columns: minmax(0, 1fr) 108px; }
+  #view-main.hide-weather .time-container { grid-column: 2; border-left: 1px solid var(--border-light); }
+  #view-main.hide-weather.hide-timeline .widget-content { grid-template-columns: minmax(0, 1fr) calc(108px + var(--time-extra, 0px)); }
 
   .about-meta { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
   .about-meta { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px 12px; font-size: calc(13px * var(--fs-scale)); }
@@ -466,6 +488,8 @@
     color: var(--text-sub); font-size: 13px; line-height: 1.62;
     white-space: pre-wrap; word-break: break-word;
   }
+  .settings-pin-entry { width: 100%; height: 36px; margin-top: 8px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-size: 14px; }
+  .settings-pin-entry:focus { border-color: var(--accent-cyan); outline: none; }
   .app-dialog-footer {
     display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px;
   }
@@ -658,9 +682,9 @@
   @keyframes select-pop-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .custom-select.drop-up .custom-select-panel { animation-name: select-pop-up; }
   .custom-select-option {
-    padding: 8px 10px; border-radius: 5px; cursor: pointer;
+    min-height: 34px; padding: 8px 10px; border-radius: 5px; cursor: pointer;
     font-size: calc(13px * var(--fs-scale)); color: var(--text-main);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: normal; overflow-wrap: anywhere;
   }
   .custom-select-option:hover, .custom-select-option.focused { background: color-mix(in srgb, var(--accent-cyan) 10%, transparent); color: var(--accent-cyan); }
   .custom-select-option.selected { color: var(--accent-cyan); font-weight: 800; }
@@ -701,19 +725,19 @@
   .tab-btn:hover { background: color-mix(in srgb, var(--accent-cyan) 6%, transparent); color: var(--text-main); }
   .tab-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-  .settings-body { flex: 1; overflow-y: auto; padding: 14px 18px 18px; min-height: 0; position: relative; }
+  .settings-body { flex: 1; overflow-y: auto; padding: 10px 12px 12px; min-height: 0; position: relative; }
 
   .settings-section {
-    margin-bottom: 14px; border: 1px solid var(--border-light); border-radius: 10px;
+    margin-bottom: 10px; border: 1px solid var(--border-light); border-radius: 8px;
     background: var(--bg-card); overflow: hidden;
   }
   .settings-section:last-child { margin-bottom: 0; }
   .settings-section-title {
-    margin: 0; padding: 10px 14px; font-size: calc(12px * var(--fs-scale));
+    margin: 0; padding: 8px 12px; font-size: calc(12px * var(--fs-scale));
     font-weight: 800; letter-spacing: 0.02em; color: var(--text-main);
     background: var(--bg-app); border-bottom: 1px solid var(--border-light);
   }
-  .settings-section-body { padding: 12px; }
+  .settings-section-body { padding: 10px; }
   .settings-section-body > .form-group:last-child,
   .settings-section-body > .form-row:last-child,
   .settings-section-body > .form-row:last-child .form-group { margin-bottom: 0; }
@@ -724,8 +748,12 @@
   
   .tab-content { display: none !important; }
   .tab-content.active { display: block !important; }
+  #tab-bottom.active { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; align-content: start; }
+  #tab-bottom.active > .settings-section:nth-child(1),
+  #tab-bottom.active > .settings-section:nth-child(4) { grid-column: 1 / -1; }
+  #tab-bottom.active > .settings-section:nth-child(6) { grid-column: 1 / -1; }
   #tab-courses.active { display: grid !important; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); gap: 10px; min-height: 0; }
-  #tab-courses.active .course-schedule-tools { grid-column: 1; grid-row: 1; }
+  #tab-courses.active .course-tools-details { grid-column: 1; grid-row: 1; }
   #tab-courses.active .course-header { grid-column: 1; grid-row: 2; margin-bottom: 0; }
   #tab-courses.active .subject-manager-details { grid-column: 1; grid-row: 3; }
   #tab-courses.active .course-list { grid-column: 1; grid-row: 4; min-height: 0; padding-right: 4px; }
@@ -746,7 +774,7 @@
   .segmented-btn:hover { background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); color: var(--text-main); }
   .segmented-btn.active { background: var(--bg-card); color: var(--accent-cyan); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-  .form-group { margin-bottom: 12px; }
+  .form-group { margin-bottom: 10px; }
   .form-group label { display: block; font-size: calc(12px * var(--fs-scale)); font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
   .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 5px; font-size: calc(13px * var(--fs-scale)); outline: none; height: 36px; background: var(--bg-card); color: var(--text-main); }
   .form-group select { width: 100%; height: 36px; padding: 6px 10px; border: 1px solid var(--border-light); border-radius: 5px; background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); }
@@ -782,13 +810,15 @@
   .font-preview-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); font-weight: 800; line-height: 1.25; }
   .font-preview-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-sub); font-weight: 700; line-height: 1.25; }
   .font-preview-meta { flex-shrink: 0; font-family: var(--font-mono); font-size: calc(11px * var(--fs-scale)); font-weight: 800; color: var(--accent-cyan); }
-  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: end; gap: 10px 12px; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: end; gap: 8px 10px; }
   .form-row .col { min-width: 0; }
   .profile-save-actions { display: flex; flex-direction: row; align-items: flex-end; gap: 6px; }
   .profile-save-actions .btn { flex: 1 1 auto; min-width: 92px; height: 36px; }
   .profile-toggles { margin-bottom: 0; }
   .display-rule-controls { align-items: flex-end; }
   .display-rule-list { display: flex; flex-direction: column; gap: 5px; }
+  .display-rule-empty { padding: 6px 2px; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); }
+  .placeholder-target-hint { margin: 4px 0 8px; padding: 5px 8px; border-left: 3px solid var(--accent-cyan); border-radius: 3px; background: var(--bg-app); color: var(--text-sub); font-size: calc(11px * var(--fs-scale)); font-weight: 600; }
   .display-rule-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: 5px; color: var(--text-main); font-size: calc(12px * var(--fs-scale)); }
   .display-rule-item .btn { min-height: var(--control-height); height: var(--control-height); padding: 0 12px; }
   @media (max-width: 1100px) {
@@ -802,6 +832,9 @@
     #tab-courses.active { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(240px, 1fr); }
     #tab-courses.active .course-list { grid-column: 1; grid-row: 4; }
   }
+  @media (max-width: 760px) {
+    #tab-bottom.active { grid-template-columns: minmax(0, 1fr); }
+  }
   @media (max-width: 620px) {
     .settings-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .settings-actions .btn { width: 100%; }
@@ -812,7 +845,9 @@
   }
 
   .course-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
-  .course-schedule-tools { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
+  .course-tools-details { padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
+  .course-tools-details > summary { color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; cursor: pointer; }
+  .course-schedule-tools { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
   .course-tools-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .course-tools-row label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-sub); font-size: calc(12px * var(--fs-scale)); font-weight: 700; }
   .course-tools-row select, .course-tools-row input { height: var(--control-height); min-width: 92px; padding: 4px 8px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); }
@@ -831,8 +866,8 @@
   .course-item:not(.selected) { grid-template-columns: minmax(0, 1fr); min-height: 48px; opacity: 0.82; }
   .course-item:not(.selected):hover { opacity: 1; border-color: color-mix(in srgb, var(--accent-cyan) 45%, var(--border-light)); }
   .course-item.selected { grid-template-columns: minmax(180px, 0.7fr) minmax(320px, 1.3fr) 36px 36px; grid-template-rows: auto auto; min-height: 112px; height: auto; opacity: 1; border-color: var(--accent-cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 12%, transparent); align-items: start; padding-top: 8px; padding-bottom: 8px; overflow: visible; cursor: default; }
-  .course-editor-form { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 0; }
-  .course-editor-hint { margin: 0; color: var(--text-muted); font-size: calc(11px * var(--fs-scale)); line-height: 1.4; }
+  .course-editor-form { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+  .course-editor-hint { display: none; }
   .course-editor-done { align-self: flex-end; white-space: nowrap; }
   .course-subject-menu { position: relative; min-width: 0; }
   .course-subject-menu-trigger { min-height: var(--control-height); display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 10px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; list-style: none; }
@@ -856,9 +891,9 @@
   .course-item:not(.selected) .course-time-summary { margin-top: 0; flex-shrink: 0; }
   .course-item:not(.selected) > .btn-course-duplicate,
   .course-item:not(.selected) > .btn-delete { display: none; }
-  .course-subject-options { width: 100%; max-height: 220px; overflow: auto; margin-top: 4px; padding: 6px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); display: none; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 4px; }
+  .course-subject-options { width: 100%; max-height: 220px; overflow: auto; margin-top: 4px; padding: 6px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-card); display: none; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); align-items: center; gap: 4px; }
   .course-subject-menu[open] .course-subject-options { display: grid; }
-  .course-subject-option { min-width: 0; width: 100%; min-height: var(--control-height); height: var(--control-height); padding: 4px 6px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .course-subject-option { min-width: 0; width: 100%; min-height: var(--control-height); padding: 4px 6px; border: 1px solid var(--border-light); border-radius: var(--control-radius); background: var(--bg-card); color: var(--text-main); font-size: calc(13px * var(--fs-scale)); font-weight: 700; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
   .course-subject-option:hover, .course-subject-option.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: color-mix(in srgb, var(--accent-cyan) 7%, var(--bg-card)); }
   .course-custom-button { height: var(--control-height) !important; min-height: var(--control-height) !important; padding: 4px 6px !important; border: 1px solid var(--border-light) !important; border-radius: var(--control-radius) !important; background: var(--bg-card); color: var(--text-sub); font-size: calc(13px * var(--fs-scale)); cursor: pointer; white-space: nowrap; }
   .course-custom-button:hover { border-color: var(--accent-cyan) !important; color: var(--accent-cyan); }
@@ -980,7 +1015,10 @@
       <div class="timeline-container" id="timeline"></div>
       <div class="time-container" id="time-display" aria-label="当前时间">
         <div class="time-clock" id="time-clock">--:--</div>
-        <div class="time-date" id="time-date">----</div>
+        <div class="time-date-row" id="time-date-row">
+          <div class="time-date" id="time-date">----</div>
+          <span class="time-course-badge" id="time-course-badge" role="status" hidden></span>
+        </div>
       </div>
       <div class="weather-container" id="weather"></div>
     </div>
@@ -997,6 +1035,7 @@
         <button class="tab-btn" data-target="about" type="button">关于</button>
       </div>
       <div id="settings-actions" class="settings-actions">
+        <button id="btn-settings-unlock" class="btn btn-secondary" type="button" hidden>解锁编辑</button>
         <label class="startup-toggle"><input id="input-autostart" type="checkbox">开机自启</label>
         <div class="theme-select" id="theme-select-wrap">
           <span>主题</span>
@@ -1009,29 +1048,63 @@
     <div class="settings-body" autocomplete="off">
       <div class="tab-content active" id="tab-main">
         <section class="settings-section">
-          <h3 class="settings-section-title">主题外观</h3>
-          <div class="settings-section-body">
-            <div class="form-group">
-              <label>主题配色</label>
-              <div class="custom-select" id="select-theme-main" data-input="input-theme" data-placeholder="默认"></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="settings-section">
           <h3 class="settings-section-title">模块显示</h3>
           <div class="settings-section-body">
+            <p class="switch-hint">开关与“显示与文本 → 默认显示”为同一组设置；日期方案生效时会临时覆盖。关闭后对应区域不占用主界面空间。</p>
             <div class="form-row">
               <div class="form-group col">
                 <label class="switch-row" for="input-show-weather"><input type="checkbox" id="input-show-weather" checked>显示天气</label>
                 <label class="switch-row" for="input-show-timeline"><input type="checkbox" id="input-show-timeline" checked>显示课表</label>
               </div>
               <div class="form-group col">
-                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示自定义文本</label>
+                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示底部信息</label>
                 <label class="switch-row" for="input-show-clock-seconds"><input type="checkbox" id="input-show-clock-seconds" checked>显示时钟秒数</label>
-                <div class="switch-hint">关闭后对应区域不占用主界面空间</div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">设置保护</h3>
+          <div class="settings-section-body">
+            <div class="form-group">
+              <label for="input-settings-lock-mode">进入设置时</label>
+              <select id="input-settings-lock-mode">
+                <option value="off">不锁定</option>
+                <option value="readonly">以只读方式打开</option>
+                <option value="pin">输入 PIN 后打开</option>
+              </select>
+            </div>
+            <div id="settings-lock-pin-fields" class="form-row" hidden>
+              <div class="form-group col">
+                <label for="input-settings-lock-pin">新 PIN（至少 6 位）</label>
+                <input id="input-settings-lock-pin" type="password" autocomplete="new-password" maxlength="64">
+              </div>
+              <div class="form-group col">
+                <label for="input-settings-lock-pin-confirm">再次输入 PIN</label>
+                <input id="input-settings-lock-pin-confirm" type="password" autocomplete="new-password" maxlength="64">
+              </div>
+            </div>
+            <div class="switch-hint">只读模式可从顶部解锁编辑；PIN 每次进入设置时验证。PIN 仅用于防止误操作，不代替 Windows 账户密码。</div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">窗口与界面</h3>
+          <div class="settings-section-body">
+            <div class="form-row">
+              <div class="form-group col">
+                <label for="input-main-window-width">主页宽度（1400–1920 px）</label>
+                <input type="range" id="input-main-window-width" min="1400" max="1920" step="20" value="1400">
+                <div class="range-value" id="main-window-width-label">1400 px</div>
+              </div>
+              <div class="form-group col">
+                <label for="input-ui-scale">界面缩放（DPI，80–150%）</label>
+                <input type="range" id="input-ui-scale" min="80" max="150" step="5" value="100">
+                <div class="range-value" id="ui-scale-label">100%</div>
+              </div>
+            </div>
+            <div class="switch-hint">界面缩放只影响应用，不会修改 Windows 显示设置。</div>
           </div>
         </section>
 
@@ -1048,6 +1121,7 @@
                 <label for="input-font-size-scale">全局字号缩放</label>
                 <input type="range" id="input-font-size-scale" min="80" max="150" step="5" value="100">
                 <div class="range-value" id="font-size-scale-label">100%</div>
+                <div class="switch-hint">影响全部界面文字；底部信息还可在“显示与文本”单独设定像素字号。</div>
               </div>
             </div>
             <div class="form-row">
@@ -1150,37 +1224,41 @@
       </div>
 
       <div class="tab-content" id="tab-courses">
-        <div class="course-schedule-tools">
+        <details class="course-tools-details">
+          <summary>高级课表工具</summary>
+          <div class="course-schedule-tools">
           <div class="course-tools-row">
-            <label for="input-cycle-week-count">轮换周期
+            <label for="input-cycle-week-count">循环周数
               <select id="input-cycle-week-count">
                 <option value="1">每周</option><option value="2">单双周</option><option value="3">3 周一轮</option><option value="4">4 周一轮</option>
                 <option value="5">5 周一轮</option><option value="6">6 周一轮</option><option value="7">7 周一轮</option><option value="8">8 周一轮</option>
               </select>
             </label>
-            <label for="input-cycle-start-date">轮换起始周一<input id="input-cycle-start-date" type="date"></label>
+            <label for="input-cycle-start-date">周期起始周一<input id="input-cycle-start-date" type="date"></label>
             <div class="day-selector" id="cycle-week-selector" aria-label="选择轮换周"></div>
             <button id="btn-download-course-template" class="btn btn-secondary" type="button">下载 Excel 模板</button>
             <button id="btn-import-courses" class="btn btn-secondary" type="button">Excel 导入</button>
             <button id="btn-export-courses" class="btn btn-secondary" type="button">Excel 导出</button>
           </div>
           <div class="course-tools-row">
-            <label for="input-course-edit-mode">编辑对象
-              <select id="input-course-edit-mode"><option value="regular">轮换课表</option><option value="override">某日临时覆盖</option></select>
+            <label for="input-course-edit-mode">课表类型
+              <select id="input-course-edit-mode"><option value="regular">常规课表</option><option value="override">单日临时安排</option></select>
             </label>
-            <label id="course-override-date-group" for="input-course-override-date">覆盖日期<input id="input-course-override-date" type="date"></label>
-            <label id="course-override-type-group" for="input-course-override-type">事件类型
+            <label id="course-override-date-group" for="input-course-override-date">安排日期<input id="input-course-override-date" type="date"></label>
+            <label id="course-override-type-group" for="input-course-override-type">安排类型
               <select id="input-course-override-type"><option value="adjustment">临时调课</option><option value="substitute">代课</option><option value="event">临时活动</option></select>
             </label>
-            <button id="btn-create-course-override" class="btn btn-secondary" type="button">新建覆盖</button>
-            <button id="btn-remove-course-override" class="btn btn-secondary" type="button">恢复原课表</button>
+            <button id="btn-create-course-override" class="btn btn-secondary" type="button">创建单日安排</button>
+            <button id="btn-remove-course-override" class="btn btn-secondary" type="button">恢复常规课表</button>
             <span id="course-override-status" class="switch-hint" role="status" aria-live="polite"></span>
           </div>
-        </div>
+          </div>
+        </details>
         <div class="course-header">
           <div class="day-selector" id="day-selector"></div>
           <span id="course-day-summary" class="course-day-summary"></span>
           <div class="course-copy-controls">
+            <select id="input-copy-course-week" aria-label="复制到周"></select>
             <select id="input-copy-course-day" aria-label="复制课程到星期">
               <option value="">复制到星期…</option>
             </select>
@@ -1189,7 +1267,7 @@
           <button id="btn-add-course" class="btn btn-secondary" type="button">+ 添加课程</button>
         </div>
         <details class="subject-manager-details">
-          <summary>课程名称管理</summary>
+          <summary>课程管理</summary>
           <div class="subject-manager-row">
             <input type="text" id="input-new-subject" autocomplete="off" placeholder="输入课程名称，例如：语文">
             <button type="button" id="btn-add-subject" class="btn btn-secondary">添加</button>
@@ -1201,11 +1279,33 @@
 
       <div class="tab-content" id="tab-bottom">
         <section class="settings-section">
-          <h3 class="settings-section-title">显示方案与考试日期</h3>
+          <h3 class="settings-section-title">默认显示</h3>
           <div class="settings-section-body">
+            <p class="switch-hint">未命中日期方案时使用的通用外观。日期方案（见“按日期应用方案”）会整体覆盖这里的开关与文本。</p>
+            <div class="form-row">
+              <div class="form-group col profile-toggles">
+                <label class="switch-row" for="input-show-weather"><input type="checkbox" id="input-show-weather" checked>显示天气</label>
+                <label class="switch-row" for="input-show-timeline"><input type="checkbox" id="input-show-timeline" checked>显示课表</label>
+              </div>
+              <div class="form-group col profile-toggles">
+                <label class="switch-row" for="input-show-bottom"><input type="checkbox" id="input-show-bottom" checked>显示底部信息</label>
+                <label class="switch-row" for="input-show-clock-seconds"><input type="checkbox" id="input-show-clock-seconds" checked>显示时钟秒数</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="input-custom-bottom-text">底部信息模板（全局默认）</label>
+              <textarea id="input-custom-bottom-text" autocomplete="off" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">显示方案</h3>
+          <div class="settings-section-body">
+            <p class="switch-hint">方案保存一整套外观，可被日期规则复用。先选择“新建方案”填写内容，再点击“保存方案”。</p>
             <div class="form-row">
               <div class="form-group col">
-                <label for="select-display-profile-edit">编辑方案</label>
+                <label for="select-display-profile-edit">选择方案</label>
                 <select id="select-display-profile-edit"><option value="">新建方案</option></select>
               </div>
               <div class="form-group col">
@@ -1236,21 +1336,28 @@
               </div>
             </div>
             <div class="form-group">
-              <label for="input-profile-bottom-text">方案底部信息</label>
+              <label for="input-profile-bottom-text">方案底部信息模板</label>
               <textarea id="input-profile-bottom-text" placeholder="例如：考试中 · 请保持安静"></textarea>
             </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">按日期应用方案</h3>
+          <div class="settings-section-body">
+            <p class="switch-hint">为指定日期启用某个方案，到期自动生效、次日恢复默认显示。</p>
             <div class="form-row display-rule-controls">
               <div class="form-group col">
                 <label for="input-display-rule-date">应用日期</label>
                 <input id="input-display-rule-date" type="date">
               </div>
               <div class="form-group col">
-                <label for="select-display-rule-profile">显示方案</label>
+                <label for="select-display-rule-profile">使用方案</label>
                 <select id="select-display-rule-profile"></select>
               </div>
               <div class="form-group col profile-save-actions">
                 <label>&nbsp;</label>
-                <button id="btn-add-display-rule" class="btn btn-secondary" type="button">设置日期方案</button>
+                <button id="btn-add-display-rule" class="btn btn-secondary" type="button">应用到该日期</button>
               </div>
             </div>
             <div id="display-rule-list" class="display-rule-list"></div>
@@ -1258,18 +1365,7 @@
         </section>
 
         <section class="settings-section">
-          <h3 class="settings-section-title">显示内容</h3>
-          <div class="settings-section-body">
-            <label class="switch-row" for="input-show-bottom-text"><input type="checkbox" id="input-show-bottom-text" checked>在主界面显示自定义文本</label>
-            <div class="form-group" style="margin-top:12px;">
-              <label for="input-custom-bottom-text">信息模板</label>
-              <textarea id="input-custom-bottom-text" autocomplete="off" placeholder="例如：距{targetName}还有{daysTo}天 · {date} {version}"></textarea>
-            </div>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-section-title">位置</h3>
+          <h3 class="settings-section-title">位置与样式</h3>
           <div class="settings-section-body">
             <div class="form-row">
               <div class="form-group col">
@@ -1285,24 +1381,14 @@
                 <div class="range-value" id="bottom-offset-label">0 px</div>
               </div>
             </div>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h3 class="settings-section-title">样式</h3>
-          <div class="settings-section-body">
             <div class="form-row">
               <div class="form-group col">
-                <label for="input-bottom-font-size">字号（像素，8–30）</label>
+                <label for="input-bottom-font-size">底部信息字号（像素，8–30）</label>
                 <input type="range" id="input-bottom-font-size" min="8" max="30" step="1" value="10">
                 <div class="range-value" id="bottom-font-size-label">10 px</div>
+                <div class="switch-hint">仅影响底部信息；界面整体字号请用“主界面 → 字体 → 全局字号缩放”。</div>
               </div>
               <div class="form-group col"><label for="input-bottom-color">文字颜色</label><input type="color" id="input-bottom-color" autocomplete="off" value="#64748b"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group col"><label for="input-custom-one">文本 1（{custom1}）</label><input type="text" id="input-custom-one" autocomplete="off" placeholder="例如：班主任"></div>
-              <div class="form-group col"><label for="input-custom-two">文本 2（{custom2}）</label><input type="text" id="input-custom-two" autocomplete="off" placeholder="例如：教室"></div>
-              <div class="form-group col"><label for="input-custom-three">文本 3（{custom3}）</label><input type="text" id="input-custom-three" autocomplete="off" placeholder="例如：口号"></div>
             </div>
           </div>
         </section>
@@ -1310,6 +1396,7 @@
         <section class="settings-section">
           <h3 class="settings-section-title">倒计时</h3>
           <div class="settings-section-body">
+            <p class="switch-hint">供模板中的 {targetName}、{targetDate}、{daysTo} 使用。</p>
             <div class="form-row">
               <div class="form-group col"><label for="input-countdown-name">名称</label><input type="text" id="input-countdown-name" autocomplete="off" placeholder="例如：高考"></div>
               <div class="form-group col"><label for="input-countdown-date">目标日期</label><input type="date" id="input-countdown-date" autocomplete="off"></div>
@@ -1318,10 +1405,17 @@
         </section>
 
         <section class="settings-section">
-          <h3 class="settings-section-title">可用占位符</h3>
+          <h3 class="settings-section-title">模板文本与占位符</h3>
           <div class="settings-section-body">
-            <details class="placeholder-details" open>
-              <summary>点击插入到光标处</summary>
+            <p class="switch-hint">插入位置：优先使用最近一次编辑的模板。方案文本框有内容时只影响该方案。</p>
+            <div class="form-row">
+              <div class="form-group col"><label for="input-custom-one">文本 1（{custom1}）</label><input type="text" id="input-custom-one" autocomplete="off" placeholder="例如：班主任"></div>
+              <div class="form-group col"><label for="input-custom-two">文本 2（{custom2}）</label><input type="text" id="input-custom-two" autocomplete="off" placeholder="例如：教室"></div>
+              <div class="form-group col"><label for="input-custom-three">文本 3（{custom3}）</label><input type="text" id="input-custom-three" autocomplete="off" placeholder="例如：口号"></div>
+            </div>
+            <div class="placeholder-target-hint" id="placeholder-target-hint">将插入到：底部信息模板（全局默认）</div>
+            <details class="placeholder-details">
+              <summary>可用占位符</summary>
           <div class="placeholder-groups">
             <div class="placeholder-group">
               <h4>时间</h4>
@@ -1368,7 +1462,7 @@
               </div>
             </div>
           </div>
-          <p class="placeholder-example">示例：<code>距{targetName}还有{daysTo}天</code></p>
+              <p class="placeholder-example">示例：<code>距{targetName}还有{daysTo}天</code></p>
             </details>
           </div>
         </section>
@@ -1412,6 +1506,9 @@
 
   <script src="js/neutralino.js"></script>
   <script src="js/schedule.js"></script>
+  <script src="js/display-settings.js"></script>
+  <script src="js/settings-lock.js"></script>
+  <script src="js/release-selector.js"></script>
   <script src="js/course-import.js"></script>
   <script src="js/vendor/xlsx.full.min.js"></script>
   <script src="js/course-export.js"></script>

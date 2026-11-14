@@ -1,7 +1,7 @@
 [Setup]
 AppId=ClassBroom
 AppName=ClassBroom
-AppVersion=2.1.0
+AppVersion=2.2.0
 VersionInfoDescription=ClassBroom - 桌面课程与天气挂件
 VersionInfoProductName=ClassBroom
 VersionInfoCompany=JunLoye
@@ -17,7 +17,7 @@ DefaultGroupName=ClassBroom
 DisableProgramGroupPage=yes
 
 OutputDir=installer
-OutputBaseFilename=ClassBroom-Setup-v2.1.0
+OutputBaseFilename=ClassBroom-Setup-v2.2.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

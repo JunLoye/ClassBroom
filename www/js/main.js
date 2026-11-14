@@ -74,14 +74,15 @@ window.addEventListener('keydown', (e) => {
     }
 }, true);
 
+const DEFAULT_MAIN_WINDOW_WIDTH = 1400;
 const APP_CONFIG = {
-    windowSize: { width: 1400, height: 76 },
+    windowSize: { width: DEFAULT_MAIN_WINDOW_WIDTH, height: 76 },
     settingsSize: { width: 1400, height: 800 },
     maxWindowWidth: 1920,
     topOffset: 20,
     documentRoot: '/www/',
     excludeDrag: ["btn-refresh", "btn-close", "btn-settings"],
-    releasesApi: 'https://api.github.com/repos/JunLoye/ClassBroom/releases/latest',
+    releasesApi: 'https://api.github.com/repos/JunLoye/ClassBroom/releases?per_page=10',
     releasesPage: 'https://github.com/JunLoye/ClassBroom/releases/latest',
     weatherProviders: {
         qweather: { label: '和风天气', url: 'https://console.qweather.com/' },
@@ -336,6 +337,12 @@ const SecretVault = {
             if (!providerConfig.jwtConfig || typeof providerConfig.jwtConfig !== 'object') providerConfig.jwtConfig = {};
             await sealField(providerConfig.jwtConfig, 'privateKey', `jwt:${provider}:privateKey`);
         }
+        const settingsLock = clone.settingsLock;
+        if (settingsLock?.pinVerifier && typeof settingsLock.pinVerifier === 'object' && !settingsLock.pinVerifier.alg) {
+            const sealedVerifier = await this.encryptText(JSON.stringify(settingsLock.pinVerifier));
+            if (!sealedVerifier) throw new Error('设置 PIN 无法安全保存');
+            settingsLock.pinVerifier = sealedVerifier;
+        }
         return clone;
     },
 
@@ -368,6 +375,15 @@ const SecretVault = {
             await restore(providerConfig, 'apiKey', `weather:${provider}:apiKey`, true);
             if (!providerConfig.jwtConfig || typeof providerConfig.jwtConfig !== 'object') providerConfig.jwtConfig = {};
             await restore(providerConfig.jwtConfig, 'privateKey', `jwt:${provider}:privateKey`, true);
+        }
+        const settingsLock = clone.settingsLock;
+        if (settingsLock?.pinVerifier?.alg) {
+            const plain = await this.decryptText(settingsLock.pinVerifier);
+            try {
+                settingsLock.pinVerifier = plain ? JSON.parse(plain) : null;
+            } catch (error) {
+                settingsLock.pinVerifier = null;
+            }
         }
         return clone;
     }
@@ -413,7 +429,7 @@ const Logger = {
     },
     sanitize(value) {
         if (!value || typeof value !== 'object') return value;
-        const sensitiveKeys = /private.?key|api.?key|password|token|secret|credential|apihost|location|^sub$|^iss$|^kid$/i;
+        const sensitiveKeys = /private.?key|api.?key|pin.?verifier|password|token|secret|credential|apihost|location|^sub$|^iss$|^kid$/i;
         return JSON.parse(JSON.stringify(value, (key, item) => sensitiveKeys.test(key) ? '[REDACTED]' : item));
     },
     async write(level, message, context = {}, error = null) {
@@ -971,10 +987,12 @@ const Onboarding = {
         const size = previousSize && previousSize.width && previousSize.height
             ? { width: previousSize.width, height: previousSize.height }
             : APP_CONFIG.windowSize;
+        if (fromSettings && !await UI.ensureSettingsAccess()) fromSettings = false;
         try {
             if (fromSettings) {
                 UI.el.viewMain.classList.add('hidden');
                 UI.el.viewSettings.classList.remove('hidden');
+                UI.applySettingsReadOnly(UI.getSettingsLockMode() === 'readonly');
                 await UI.animateWindowSize(size);
                 await UI.setWindowDragRegion('settings');
             } else {
@@ -1073,27 +1091,26 @@ const Updater = {
         return 0;
     },
 
-    /**
-     * 拉取最新发布信息。
-     * 先用 GitHub API 获取版本号与发布说明；接口失败（如限流）时回退到网页地址解析重定向版本号。
-     */
     async fetchLatest() {
         try {
             const response = await fetch(APP_CONFIG.releasesApi, {
                 headers: { Accept: 'application/vnd.github+json' }
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
+            const releases = await response.json();
+            if (!Array.isArray(releases) || !releases.length) throw new Error('No releases');
+            const data = ReleaseSelector.pickLatestRelease(releases);
+            if (!data) throw new Error('No published releases');
             return {
                 version: String(data.tag_name || data.name || '').trim(),
                 name: String(data.name || '').trim(),
                 notes: String(data.body || '').trim(),
                 url: String(data.html_url || APP_CONFIG.releasesPage),
-                publishedAt: data.published_at || null
+                publishedAt: data.published_at || null,
+                prerelease: data.prerelease === true
             };
         } catch (error) {
             void Logger.warn('GitHub API 获取版本失败，回退网页解析', { module: 'update', action: 'fetch-api' }, error);
-            // 回退：releases/latest 会 302 到具体 tag 页面
             const response = await fetch(APP_CONFIG.releasesPage, { redirect: 'follow' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const finalUrl = response.url || '';
@@ -1108,8 +1125,7 @@ const Updater = {
             };
         }
     },
-
-    /** 输出检查结果并向调用方返回是否为新版本 */
+    
     async check({ silent = false } = {}) {
         const current = String(window.NL_APPVERSION || '').trim();
         AppData.lastUpdateCheckAt = new Date().toISOString();
@@ -1139,7 +1155,7 @@ const Updater = {
         }
     },
 
-    /** 展示新版本信息并引导前往发布页 */
+    
     async promptUpdate(latest, current) {
         const notes = latest.notes
             ? `<pre class="update-notes">${this.escapeHtml(latest.notes.slice(0, 1200))}</pre>`
@@ -1180,7 +1196,7 @@ const Updater = {
             .replace(/'/g, '&#039;');
     },
 
-    /** 启动后静默检查：未到间隔时间则跳过 */
+    
     scheduleStartupCheck(delay = 6000) {
         const last = Date.parse(AppData.lastUpdateCheckAt || '') || 0;
         if (Date.now() - last < APP_CONFIG.updateCheckIntervalMs) return;
@@ -1669,13 +1685,22 @@ const UI = {
     el: {
         viewMain: document.getElementById('view-main'),
         viewSettings: document.getElementById('view-settings'),
+        settingsBody: document.querySelector('.settings-body'),
         settingsHeader: document.getElementById('settings-header'),
         settingsDragHandle: document.getElementById('settings-drag-handle'),
         settingsActions: document.getElementById('settings-actions'),
+        themeSelectWrap: document.getElementById('theme-select-wrap'),
+        btnSettingsUnlock: document.getElementById('btn-settings-unlock'),
+        inputSettingsLockMode: document.getElementById('input-settings-lock-mode'),
+        settingsLockPinFields: document.getElementById('settings-lock-pin-fields'),
+        inputSettingsLockPin: document.getElementById('input-settings-lock-pin'),
+        inputSettingsLockPinConfirm: document.getElementById('input-settings-lock-pin-confirm'),
         timeline: document.getElementById('timeline'),
         timeDisplay: document.getElementById('time-display'),
         timeClock: document.getElementById('time-clock'),
         timeDate: document.getElementById('time-date'),
+        timeDateRow: document.getElementById('time-date-row'),
+        timeCourseBadge: document.getElementById('time-course-badge'),
         weather: document.getElementById('weather'),
         btnSettings: document.getElementById('btn-settings'),
         btnRefresh: document.getElementById('btn-refresh'),
@@ -1716,7 +1741,7 @@ const UI = {
         inputShowTimeline: document.getElementById('input-show-timeline'),
         inputShowBottom: document.getElementById('input-show-bottom'),
         inputShowClockSeconds: document.getElementById('input-show-clock-seconds'),
-        inputShowBottomText: document.getElementById('input-show-bottom-text'),
+        placeholderTargetHint: document.getElementById('placeholder-target-hint'),
         displayProfileEdit: document.getElementById('select-display-profile-edit'),
         inputDisplayProfileName: document.getElementById('input-display-profile-name'),
         inputDisplayProfileTheme: document.getElementById('input-display-profile-theme'),
@@ -1742,6 +1767,10 @@ const UI = {
         inputFontFamily: document.getElementById('input-font-family'),
         inputFontSizeScale: document.getElementById('input-font-size-scale'),
         fontSizeScaleLabel: document.getElementById('font-size-scale-label'),
+        inputMainWindowWidth: document.getElementById('input-main-window-width'),
+        mainWindowWidthLabel: document.getElementById('main-window-width-label'),
+        inputUiScale: document.getElementById('input-ui-scale'),
+        uiScaleLabel: document.getElementById('ui-scale-label'),
         courseFontSizeLabel: document.getElementById('course-font-size-label'),
         bottomFontSizeLabel: document.getElementById('bottom-font-size-label'),
         fontPreview: document.getElementById('font-preview'),
@@ -1771,6 +1800,7 @@ const UI = {
         btnRemoveOverride: document.getElementById('btn-remove-course-override'),
         overrideStatus: document.getElementById('course-override-status'),
         courseDaySummary: document.getElementById('course-day-summary'),
+        inputCopyCourseWeek: document.getElementById('input-copy-course-week'),
         inputCopyCourseDay: document.getElementById('input-copy-course-day'),
         btnCopyCourses: document.getElementById('btn-copy-courses'),
         courseList: document.getElementById('course-list'),
@@ -1781,6 +1811,9 @@ const UI = {
     },
 
     timeTimer: null,
+    settingsAccessGranted: false,
+    settingsReadOnly: false,
+    pinInputRevision: 0,
     locationResults: [],
     async init() {
         await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
@@ -1796,6 +1829,8 @@ const UI = {
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
         this.el.btnSettings.addEventListener('click', () => this.openSettings());
+        this.el.btnSettingsUnlock.addEventListener('click', () => this.applySettingsReadOnly(false));
+        this.el.inputSettingsLockMode.addEventListener('change', () => this.updateSettingsLockFields());
         this.el.btnCancelSettings.addEventListener('click', () => this.cancelSettings());
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
         this.el.btnImportConfig.addEventListener('click', () => this.importConfig());
@@ -1848,9 +1883,8 @@ const UI = {
         });
 
         this.renderDaySelector();
-        this.el.inputCopyCourseDay.addEventListener('change', () => {
-            this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value;
-        });
+        this.el.inputCopyCourseDay.addEventListener('change', () => this.updateCopyCourseButton());
+        this.el.inputCopyCourseWeek.addEventListener('change', () => this.updateCopyCourseButton());
         this.el.btnCopyCourses.addEventListener('click', () => this.copyCoursesToDay());
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
         this.el.cycleWeekCount.addEventListener('change', () => this.updateCourseRotationWeekCount());
@@ -1873,11 +1907,19 @@ const UI = {
         });
         const rememberCaret = () => {
             this.customBottomTextSelection = this.el.inputCustomBottomText.selectionStart;
+            this.placeholderTarget = 'custom';
+            this.syncPlaceholderTargetHint();
         };
         this.el.inputCustomBottomText.addEventListener('focus', rememberCaret);
         this.el.inputCustomBottomText.addEventListener('click', rememberCaret);
         this.el.inputCustomBottomText.addEventListener('keyup', rememberCaret);
         this.el.inputCustomBottomText.addEventListener('blur', rememberCaret);
+        const rememberProfileCaret = () => {
+            this.placeholderTarget = 'profile';
+            this.syncPlaceholderTargetHint();
+        };
+        this.el.inputProfileBottomText.addEventListener('focus', rememberProfileCaret);
+        this.el.inputProfileBottomText.addEventListener('click', rememberProfileCaret);
         document.querySelectorAll('.placeholder-token').forEach(button => {
             button.addEventListener('mousedown', (event) => event.preventDefault());
             button.addEventListener('click', () => {
@@ -1891,6 +1933,12 @@ const UI = {
                 document.documentElement.style.setProperty('--fs-scale', String(preview));
                 this.updateFontPreview();
             });
+            this.el.inputMainWindowWidth.addEventListener('input', () => this.syncMainWindowWidthLabel());
+            this.el.inputUiScale.addEventListener('input', () => {
+                this.syncUiScaleLabel();
+                this.applyUiScale(this.el.inputUiScale.value);
+            });
+            window.addEventListener('resize', () => this.syncScaledViewBounds());
         }
         [this.el.inputCourseFontSize, this.el.inputBottomFontSize].forEach((input) => {
             if (!input) return;
@@ -1947,11 +1995,11 @@ const UI = {
     initCustomSelects() {
         CustomSelect.initAll();
         CustomSelect.setOptions('select-weather-provider', this.WEATHER_PROVIDER_OPTIONS);
-        ['select-theme', 'select-theme-main'].forEach((id) => {
-            if (!document.getElementById(id)) return;
-            CustomSelect.init(document.getElementById(id));
-            CustomSelect.setOptions(id, this.THEME_OPTIONS);
-        });
+        const themeSelect = document.getElementById('select-theme');
+        if (themeSelect) {
+            CustomSelect.init(themeSelect);
+            CustomSelect.setOptions('select-theme', this.THEME_OPTIONS);
+        }
         if (document.getElementById('select-font-family')) {
             CustomSelect.setOptions('select-font-family', this.FONT_OPTIONS);
         }
@@ -1962,7 +2010,7 @@ const UI = {
         }
         this.el.inputTheme?.addEventListener('change', () => {
             const value = this.el.inputTheme.value;
-            ['select-theme', 'select-theme-main'].forEach((id) => CustomSelect.setValue(id, value));
+            CustomSelect.setValue('select-theme', value);
         });
     },
 
@@ -1975,8 +2023,10 @@ const UI = {
     },
 
     appendPlaceholder(placeholder) {
-        if (!placeholder || !this.el.inputCustomBottomText) return;
-        const textArea = this.el.inputCustomBottomText;
+        if (!placeholder) return;
+        const preferProfile = this.placeholderTarget === 'profile' && this.el.inputProfileBottomText;
+        const textArea = preferProfile ? this.el.inputProfileBottomText : this.el.inputCustomBottomText;
+        if (!textArea) return;
         const value = textArea.value;
         let start = Number.isInteger(textArea.selectionStart) ? textArea.selectionStart : value.length;
         let end = Number.isInteger(textArea.selectionEnd) ? textArea.selectionEnd : start;
@@ -1988,8 +2038,17 @@ const UI = {
         const caret = start + insertText.length;
         textArea.focus({ preventScroll: true });
         textArea.setSelectionRange(caret, caret);
-        this.customBottomTextSelection = caret;
+        if (textArea === this.el.inputCustomBottomText) this.customBottomTextSelection = caret;
         textArea.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+
+    syncPlaceholderTargetHint() {
+        const hint = this.el.placeholderTargetHint;
+        if (!hint) return;
+        const usingProfile = this.placeholderTarget === 'profile' && this.el.inputProfileBottomText;
+        hint.textContent = usingProfile
+            ? '将插入到：方案底部信息模板'
+            : '将插入到：底部信息模板（全局默认）';
     },
 
     getCurrentCourse() {
@@ -2063,8 +2122,8 @@ const UI = {
             return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : match;
         });
         this.el.customBottomText.textContent = rendered;
-        this.el.customBottomText.style.fontSize = `${Number(AppData.bottomFontSize) || 10}px`;
-        this.el.customBottomText.style.color = AppData.bottomColor || '#64748b';
+        this.el.customBottomText.style.fontSize = `${Number(displayConfig.bottomFontSize) || 10}px`;
+        this.el.customBottomText.style.color = displayConfig.bottomColor || '#64748b';
         this.scheduleFitWindow();
     },
 
@@ -2109,12 +2168,14 @@ const UI = {
     },
 
     applyActiveDisplayProfile(force = false) {
-        const dateKey = Schedule.getDateKey(new Date());
-        const profileId = AppData.displayRules?.[dateKey] || '';
-        const key = `${dateKey}:${profileId}`;
-        if (!force && this.activeDisplayProfileKey === key) return false;
-        this.activeDisplayProfileKey = key;
         const config = this.getEffectiveDisplayConfig();
+        const signature = JSON.stringify([
+            config.theme, config.showWeather, config.showTimeline, config.showBottomText,
+            config.showClockSeconds, config.bottomAlign, config.bottomOffset,
+            config.customBottomText, config.bottomFontSize, config.bottomColor
+        ]);
+        if (!force && this.activeDisplayProfileKey === signature) return false;
+        this.activeDisplayProfileKey = signature;
         this.applyTheme(config.theme);
         this.applyDisplayOptions(config);
         this.renderCustomBottomInfo();
@@ -2129,6 +2190,7 @@ const UI = {
 
         const scale = Math.max(80, Math.min(150, Number(AppData.fontSizeScale) || 100)) / 100;
         style.setProperty('--fs-scale', String(scale));
+        this.applyUiScale(AppData.uiScale);
 
         const courseSize = Math.max(12, Math.min(32, Number(AppData.courseFontSize) || 15));
         const courseFont = String(AppData.courseFont || '').trim();
@@ -2145,6 +2207,37 @@ const UI = {
         if (!input || !this.el.fontSizeScaleLabel) return;
         const value = Math.max(80, Math.min(150, Number(input.value) || 100));
         this.el.fontSizeScaleLabel.textContent = `${value}%`;
+    },
+
+    syncMainWindowWidthLabel() {
+        const width = DisplaySettings.normalizeWindowWidth(this.el.inputMainWindowWidth.value);
+        this.el.mainWindowWidthLabel.textContent = `${width} px`;
+    },
+
+    syncUiScaleLabel() {
+        const scale = DisplaySettings.normalizeUiScale(this.el.inputUiScale.value);
+        this.el.uiScaleLabel.textContent = `${scale}%`;
+    },
+
+    applyUiScale(value = AppData.uiScale) {
+        const scale = DisplaySettings.normalizeUiScale(value) / 100;
+        document.documentElement.style.setProperty('--ui-scale', String(scale));
+        this.syncScaledViewBounds(scale);
+    },
+
+    syncScaledViewBounds(scale = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1) {
+        const width = Math.max(0, (window.innerWidth - 8) / scale);
+        const height = Math.max(0, (window.innerHeight - 8) / scale);
+        const inset = `${4 / scale}px`;
+        [this.el.viewMain, this.el.viewSettings].forEach((view) => {
+            if (!view) return;
+            view.style.left = inset;
+            view.style.top = inset;
+            view.style.right = 'auto';
+            view.style.bottom = 'auto';
+            view.style.width = `${width}px`;
+            view.style.height = `${height}px`;
+        });
     },
 
     syncRangeLabels() {
@@ -2188,6 +2281,8 @@ const UI = {
             viewMain.classList.toggle('hide-timeline', config.showTimeline === false);
         }
         this.el.timeDisplay?.classList.toggle('seconds-visible', config.showClockSeconds !== false);
+        if (config.showWeather === false && this.weatherExtraWidth) this.applyWeatherExtraWidth(0);
+        if (config.showTimeline === false && this.timeExtraWidth) this.applyTimeExtraWidth(0);
         const bottomText = this.el.customBottomText;
         if (bottomText) {
             const align = ['left', 'center', 'right'].includes(config.bottomAlign) ? config.bottomAlign : 'right';
@@ -2203,12 +2298,12 @@ const UI = {
         this.scheduleFitWindow(200);
     },
 
-    /** 自定义文本当前是否可见（总开关关闭时不参与宽度测量） */
+    
     isBottomTextVisible() {
         return this.getEffectiveDisplayConfig().showBottomText !== false;
     },
 
-    /** 设置关于页的更新状态文本与配色 */
+    
     setUpdateStatus(text, state = '') {
         const el = this.el.updateStatus;
         if (!el) return;
@@ -2217,7 +2312,7 @@ const UI = {
         if (state) el.classList.add(state);
     },
 
-    /** 根据缓存的检查结果刷新关于页状态（不发请求） */
+    
     renderAboutUpdateState() {
         const current = String(window.NL_APPVERSION || '').trim();
         const latest = String(AppData.latestKnownVersion || '').trim();
@@ -2319,6 +2414,7 @@ const UI = {
 
     async positionWindow(size, top) {
         await Neutralino.window.setSize(size);
+        this.syncScaledViewBounds();
         await Neutralino.window.center();
         if (top !== undefined) {
             const centeredPosition = await Neutralino.window.getPosition();
@@ -2326,7 +2422,6 @@ const UI = {
         }
     },
 
-    /** 读取当前窗口尺寸，失败时返回 null 以便调用方回退到默认尺寸 */
     async getCurrentSize() {
         try {
             const size = await Neutralino.window.getSize();
@@ -2345,6 +2440,7 @@ const UI = {
 
         let extra = 0;
         let weatherExtra = 0;
+        let timeExtra = 0;
         document.body.classList.add('measuring-width');
         try {
             const timeline = this.el.timeline;
@@ -2362,6 +2458,8 @@ const UI = {
                 weatherExtra = this.measureWeatherOverflow();
                 extra = Math.max(extra, weatherExtra);
             }
+            timeExtra = this.measureTimeOverflow();
+            extra = Math.max(extra, timeExtra);
             const bottomInfo = this.el.customBottomText;
             if (bottomInfo && bottomInfo.textContent && this.isBottomTextVisible()) {
                 const overflow = bottomInfo.scrollWidth - bottomInfo.clientWidth;
@@ -2372,9 +2470,15 @@ const UI = {
         }
 
         this.applyWeatherExtraWidth(weatherExtra);
+        this.applyTimeExtraWidth(timeExtra);
 
-        const targetWidth = Math.min(maxWidth, Math.max(baseWidth, baseWidth + Math.ceil(extra) + 10));
-        const appliedWidth = this.appliedMainWidth || baseWidth;
+        const scale = DisplaySettings.normalizeUiScale(AppData.uiScale) / 100;
+        const targetWidth = Math.min(maxWidth, Math.max(baseWidth, baseWidth + Math.ceil((extra + 10) * scale)));
+        let appliedWidth = this.appliedMainWidth;
+        if (appliedWidth === null || appliedWidth === undefined) {
+            appliedWidth = (await this.getCurrentSize())?.width || baseWidth;
+            this.appliedMainWidth = appliedWidth;
+        }
         if (targetWidth === appliedWidth) {
             return;
         }
@@ -2400,13 +2504,28 @@ const UI = {
         if (!container) return 0;
         const viewportWidth = window.innerWidth;
         const assigned = viewportWidth <= 900 ? 130 : viewportWidth <= 1100 ? 140 : 150;
+        const scale = DisplaySettings.normalizeUiScale(AppData.uiScale) / 100;
         const contentWidth = Array.from(container.children)
-            .reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+            .reduce((sum, child) => sum + child.getBoundingClientRect().width / scale, 0);
         const styles = getComputedStyle(container);
         const gaps = Math.max(0, container.children.length - 1) * (parseFloat(styles.columnGap) || 0);
         const borders = (parseFloat(styles.borderLeftWidth) || 0) + (parseFloat(styles.borderRightWidth) || 0);
         const naturalWidth = Math.max(contentWidth + gaps + borders, container.scrollWidth);
         return Math.max(0, Math.ceil(naturalWidth - assigned));
+    },
+
+    measureTimeOverflow() {
+        const container = this.el.timeDisplay;
+        if (!container) return 0;
+        const contentWidth = Math.max(
+            this.el.timeClock?.scrollWidth || 0,
+            this.el.timeDateRow?.scrollWidth || 0,
+            this.el.timeDate?.scrollWidth || 0
+        );
+        const assigned = window.innerWidth <= 900 ? 78 : window.innerWidth <= 1100 ? 92 : 108;
+        const styles = getComputedStyle(container);
+        const borders = (parseFloat(styles.borderLeftWidth) || 0) + (parseFloat(styles.borderRightWidth) || 0);
+        return Math.max(0, Math.ceil(contentWidth + borders - assigned));
     },
 
     applyWeatherExtraWidth(extra) {
@@ -2417,6 +2536,17 @@ const UI = {
         const root = document.documentElement;
         if (next > 0) root.style.setProperty('--weather-extra', `${next}px`);
         else root.style.removeProperty('--weather-extra');
+        return true;
+    },
+
+    applyTimeExtraWidth(extra) {
+        const next = Math.max(0, Math.ceil(Number(extra) || 0));
+        const current = this.timeExtraWidth || 0;
+        if (next === current) return false;
+        this.timeExtraWidth = next;
+        const root = document.documentElement;
+        if (next > 0) root.style.setProperty('--time-extra', `${next}px`);
+        else root.style.removeProperty('--time-extra');
         return true;
     },
 
@@ -2441,7 +2571,6 @@ const UI = {
     windowVisible: true,
 
     hideMainWindow(source = 'unknown') {
-        // 引导未完成时不允许隐藏窗口，否则托盘重新调出后引导状态与窗口尺寸会错乱
         if (typeof Onboarding !== 'undefined' && Onboarding.active) {
             void Logger.info('忽略隐藏主窗口请求（引导进行中）', {
                 module: 'window', action: 'hide-skip', context: { source, visible: this.windowVisible }
@@ -2768,6 +2897,12 @@ const UI = {
             if (!Number.isFinite(scale)) throw new Error('全局字号缩放必须是数字');
             config.fontSizeScale = Math.max(80, Math.min(150, Math.round(scale)));
         }
+        if (config.mainWindowWidth !== undefined) {
+            config.mainWindowWidth = DisplaySettings.normalizeWindowWidth(
+                config.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            );
+        }
+        if (config.uiScale !== undefined) config.uiScale = DisplaySettings.normalizeUiScale(config.uiScale);
         if (config.courseFont !== undefined && config.courseFont !== null && typeof config.courseFont !== 'string') {
             throw new Error('课程字体必须是字符串');
         }
@@ -2818,21 +2953,21 @@ const UI = {
         }
         if (config.courseOverrides !== undefined) {
             if (!config.courseOverrides || typeof config.courseOverrides !== 'object' || Array.isArray(config.courseOverrides)) {
-                throw new Error('临时覆盖配置无效');
+                throw new Error('单日临时安排配置无效');
             }
             Object.entries(config.courseOverrides).forEach(([date, override]) => {
                 if (Schedule.getDateKey(date) !== date || !override || typeof override !== 'object' ||
                     !Array.isArray(override.courses)) {
-                    throw new Error(`临时覆盖日期或内容无效：${date}`);
+                    throw new Error(`单日临时安排日期或内容无效：${date}`);
                 }
                 if (override.type && !['adjustment', 'substitute', 'event'].includes(override.type)) {
-                    throw new Error(`临时覆盖类型无效：${date}`);
+                    throw new Error(`单日安排类型无效：${date}`);
                 }
                 override.courses.forEach((course) => {
                     if (!course || typeof course !== 'object' ||
                         !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.start || '') ||
                         !/^([01]\d|2[0-3]):[0-5]\d$/.test(course.end || '')) {
-                        throw new Error(`临时覆盖课程时间无效：${date}`);
+                        throw new Error(`单日安排课程时间无效：${date}`);
                     }
                 });
             });
@@ -2973,7 +3108,7 @@ const UI = {
             item('文本位置', `${config?.bottomAlign === 'left' ? '左对齐' : config?.bottomAlign === 'center' ? '居中' : '右对齐'}${Number(config?.bottomOffset) ? ` · 垂直 ${config.bottomOffset} px` : ''}`),
             item('显示天气', config?.showWeather === false ? '已隐藏' : '显示'),
             item('显示课表', config?.showTimeline === false ? '已隐藏' : '显示'),
-            item('显示自定义文本', config?.showBottomText === false ? '已隐藏' : '显示'),
+            item('显示底部信息', config?.showBottomText === false ? '已隐藏' : '显示'),
             item('显示时钟秒数', config?.showClockSeconds === false ? '关闭' : '开启'),
             item('倒计时名称', config?.countdownName),
                 item('目标日期', CustomDatePicker.formatDate(config?.countdownDate)),
@@ -3101,6 +3236,7 @@ const UI = {
         if (!Array.isArray(imported.subjects)) imported.subjects = [];
         imported.onboardingCompleted = true;
         imported.onboardingCompletedAt = AppData.onboardingCompletedAt || new Date().toISOString();
+        imported.settingsLock = JSON.parse(JSON.stringify(AppData.settingsLock || { mode: 'off' }));
         delete imported.version;
         SecretVault.remember('weather:apiHost', imported.weather.apiHost || '');
         SecretVault.remember('weather:location', imported.weather.location || '');
@@ -3234,12 +3370,12 @@ const UI = {
             XLSX.utils.book_append_sheet(
                 workbook,
                 XLSX.utils.aoa_to_sheet(CourseExport.buildRotationRows(EditData, DAY_MAP)),
-                '轮换课表'
+                '常规课表'
             );
             XLSX.utils.book_append_sheet(
                 workbook,
                 XLSX.utils.aoa_to_sheet(CourseExport.buildOverrideRows(EditData)),
-                '临时覆盖'
+                '单日临时安排'
             );
             const path = await Neutralino.os.showSaveDialog('导出 Excel 课表', {
                 forceOverwrite: true,
@@ -3379,6 +3515,10 @@ const UI = {
             theme: clone.theme || 'default',
             fontFamily: clone.fontFamily || '',
             fontSizeScale: Math.max(80, Math.min(150, Number(clone.fontSizeScale) || 100)),
+            mainWindowWidth: DisplaySettings.normalizeWindowWidth(
+                clone.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            ),
+            uiScale: DisplaySettings.normalizeUiScale(clone.uiScale),
             courseFont: clone.courseFont || '',
             courseFontSize: Math.max(12, Math.min(32, Number(clone.courseFontSize) || 15)),
             customBottomText: clone.customBottomText || '',
@@ -3416,13 +3556,13 @@ const UI = {
                 }
             }
         };
-        const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'courseFont',
+        const known = new Set(['version', 'exportedAt', 'theme', 'fontFamily', 'fontSizeScale', 'mainWindowWidth', 'uiScale', 'courseFont',
             'courseFontSize', 'customBottomText', 'bottomFontSize', 'bottomColor', 'countdownName', 'countdownDate',
             'customTexts', 'weatherRefreshMinutes', 'autoStart', 'subjects', 'courses', 'weather',
             'bottomAlign', 'bottomOffset', 'showWeather', 'showTimeline', 'showBottomText',
             'showClockSeconds',
             'lastUpdateCheckAt', 'latestKnownVersion',
-            'onboardingCompleted', 'onboardingCompletedAt']);
+            'onboardingCompleted', 'onboardingCompletedAt', 'settingsLock']);
         Object.keys(clone).forEach((key) => {
             if (!known.has(key)) payload[key] = clone[key];
         });
@@ -3493,7 +3633,58 @@ const UI = {
         }
     },
 
+    getSettingsLockMode() {
+        return ['off', 'readonly', 'pin'].includes(AppData.settingsLock?.mode) ? AppData.settingsLock.mode : 'off';
+    },
+
+    async ensureSettingsAccess() {
+        if (this.getSettingsLockMode() !== 'pin' || this.settingsAccessGranted) return true;
+        const verifier = AppData.settingsLock?.pinVerifier;
+        if (!verifier) {
+            await Dialog.alert('PIN 校验数据不可用，无法解锁设置。', '设置已锁定', 'danger');
+            return false;
+        }
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            const dialogResult = Dialog.show({
+                title: '设置已锁定',
+                html: '<label for="settings-pin-entry">请输入 PIN</label><input id="settings-pin-entry" class="settings-pin-entry" type="password" autocomplete="current-password" maxlength="64">',
+                buttons: [
+                    { text: '取消', value: false },
+                    { text: '解锁', value: true, primary: true }
+                ]
+            });
+            document.getElementById('settings-pin-entry')?.focus({ preventScroll: true });
+            const result = await dialogResult;
+            if (result !== true) return false;
+            const pin = document.getElementById('settings-pin-entry')?.value || '';
+            if (await SettingsLock.verifyPin(pin, verifier)) {
+                this.settingsAccessGranted = true;
+                return true;
+            }
+            await Dialog.alert(`PIN 不正确，还可尝试 ${4 - attempt} 次。`, '无法解锁', 'warning');
+        }
+        return false;
+    },
+
+    updateSettingsLockFields() {
+        this.el.settingsLockPinFields.hidden = this.el.inputSettingsLockMode.value !== 'pin';
+    },
+
+    applySettingsReadOnly(locked) {
+        this.settingsReadOnly = Boolean(locked);
+        this.el.viewSettings.classList.toggle('is-readonly', this.settingsReadOnly);
+        this.el.settingsBody.inert = this.settingsReadOnly;
+        this.el.inputAutoStart.disabled = this.settingsReadOnly;
+        this.el.themeSelectWrap.inert = this.settingsReadOnly;
+        this.el.btnSettingsUnlock.hidden = !this.settingsReadOnly;
+        this.el.btnSaveSettings.disabled = this.settingsReadOnly ||
+            this.getSettingsSnapshot() === this.settingsSnapshot;
+        this.el.btnImportConfig.disabled = this.settingsReadOnly;
+        this.el.btnExportConfig.disabled = this.settingsReadOnly;
+    },
+
     async openSettings(configToEdit = null, options = {}) {
+        if (!await this.ensureSettingsAccess()) return;
         const { tab = null, guide = false } = options;
         EditData = configToEdit
             ? JSON.parse(JSON.stringify(configToEdit))
@@ -3509,6 +3700,11 @@ const UI = {
         if (!EditData.courseOverrides || typeof EditData.courseOverrides !== 'object' || Array.isArray(EditData.courseOverrides)) EditData.courseOverrides = {};
         if (!Array.isArray(EditData.displayProfiles)) EditData.displayProfiles = [];
         if (!EditData.displayRules || typeof EditData.displayRules !== 'object') EditData.displayRules = {};
+        // 旧版曾用 showBottom 记录底部信息开关，这里统一到 showBottomText
+        if (typeof EditData.showBottomText !== 'boolean' && typeof EditData.showBottom === 'boolean') {
+            EditData.showBottomText = EditData.showBottom;
+        }
+        delete EditData.showBottom;
         CurrentEditWeek = 1;
         CurrentEditMode = 'regular';
         CurrentOverrideDate = Schedule.getDateKey(new Date());
@@ -3545,7 +3741,13 @@ const UI = {
         this.el.inputShowTimeline.checked = EditData.showTimeline !== false;
         this.el.inputShowBottom.checked = EditData.showBottomText !== false;
         this.el.inputShowClockSeconds.checked = EditData.showClockSeconds !== false;
-        this.el.inputShowBottomText.checked = EditData.showBottomText !== false;
+        this.el.inputSettingsLockMode.value = ['off', 'readonly', 'pin'].includes(EditData.settingsLock?.mode)
+            ? EditData.settingsLock.mode
+            : 'off';
+        this.el.inputSettingsLockPin.value = '';
+        this.el.inputSettingsLockPinConfirm.value = '';
+        this.pinInputRevision = 0;
+        this.updateSettingsLockFields();
         this.el.inputBottomOffset.value = Math.max(-20, Math.min(20, Number(EditData.bottomOffset) || 0));
         this.setBottomAlign(EditData.bottomAlign || 'right');
         this.syncBottomOffsetLabel();
@@ -3553,11 +3755,17 @@ const UI = {
         this.el.inputCourseFontSize.value = EditData.courseFontSize || 15;
         this.el.inputFontFamily.value = EditData.fontFamily || '';
         this.el.inputFontSizeScale.value = EditData.fontSizeScale || 100;
+        this.el.inputMainWindowWidth.value = DisplaySettings.normalizeWindowWidth(
+            EditData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+        );
+        this.el.inputUiScale.value = DisplaySettings.normalizeUiScale(EditData.uiScale);
         this.syncFontSizeScaleLabel();
+        this.syncMainWindowWidthLabel();
+        this.syncUiScaleLabel();
+        this.applyUiScale(this.el.inputUiScale.value);
         this.syncRangeLabels();
         this.updateFontPreview();
         CustomSelect.setValue('select-theme', this.el.inputTheme.value);
-        CustomSelect.setValue('select-theme-main', this.el.inputTheme.value);
         CustomSelect.setValue('select-font-family', this.el.inputFontFamily.value);
         CustomSelect.setValue('select-course-font', this.el.inputCourseFont.value);
         this.el.inputBottomColor.value = EditData.bottomColor || '#64748b';
@@ -3579,6 +3787,7 @@ const UI = {
         this.el.viewSettings.classList.remove('hidden');
         this.bindSettingsDirtyTracking();
         this.settingsSnapshot = this.getSettingsSnapshot();
+        this.applySettingsReadOnly(this.getSettingsLockMode() === 'readonly');
 
         await this.animateWindowSize(APP_CONFIG.settingsSize);
         await this.setWindowDragRegion('settings');
@@ -3801,8 +4010,13 @@ const UI = {
     },
 
     async closeSettings({ silent = false } = {}) {
+        this.settingsAccessGranted = false;
+        this.applySettingsReadOnly(false);
+        this.el.inputSettingsLockPin.value = '';
+        this.el.inputSettingsLockPinConfirm.value = '';
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
+        this.applyUiScale(AppData.uiScale);
 
         this.appliedMainWidth = APP_CONFIG.windowSize.width;
         await this.animateWindowSize(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
@@ -3825,6 +4039,7 @@ const UI = {
             'inputPrivateKey', 'inputWeatherApiKey', 'inputTheme', 'inputWeatherRefreshMinutes', 'inputCustomBottomText',
             'inputCountdownName', 'inputCountdownDate', 'inputBottomFontSize', 'inputBottomColor',
             'inputCourseFont', 'inputCourseFontSize', 'inputFontFamily', 'inputFontSizeScale',
+            'inputMainWindowWidth', 'inputUiScale', 'inputSettingsLockMode',
             'inputCustomOne', 'inputCustomTwo', 'inputCustomThree', 'inputBottomOffset'
         ];
         const values = fields.map((key) => this.el[key]?.value ?? '');
@@ -3834,7 +4049,7 @@ const UI = {
         values.push(this.el.inputShowTimeline?.checked === true);
         values.push(this.el.inputShowBottom?.checked === true);
         values.push(this.el.inputShowClockSeconds?.checked === true);
-        values.push(this.el.inputShowBottomText?.checked === true);
+        values.push(this.pinInputRevision);
         values.push(this.getBottomAlign());
         values.push(
             this.el.displayProfileEdit?.value || '',
@@ -3854,19 +4069,18 @@ const UI = {
     },
 
     markSettingsDirty() {
-        if (this.el.btnSaveSettings) this.el.btnSaveSettings.disabled = false;
+        if (this.el.btnSaveSettings && !this.settingsReadOnly) this.el.btnSaveSettings.disabled = false;
     },
 
     bindSettingsDirtyTracking() {
         if (!this.el.viewSettings || this.settingsDirtyBound) return;
-        this.el.viewSettings.addEventListener('input', () => this.markSettingsDirty());
-        this.el.viewSettings.addEventListener('change', (event) => {
-            if (event.target === this.el.inputShowBottom || event.target === this.el.inputShowBottomText) {
-                const synchronizedInput = event.target === this.el.inputShowBottom
-                    ? this.el.inputShowBottomText
-                    : this.el.inputShowBottom;
-                synchronizedInput.checked = event.target.checked;
+        this.el.viewSettings.addEventListener('input', (event) => {
+            if ([this.el.inputSettingsLockPin, this.el.inputSettingsLockPinConfirm].includes(event.target)) {
+                this.pinInputRevision += 1;
             }
+            this.markSettingsDirty();
+        });
+        this.el.viewSettings.addEventListener('change', (event) => {
             this.markSettingsDirty();
         });
         this.settingsDirtyBound = true;
@@ -3883,6 +4097,10 @@ const UI = {
         await Logger.measure('设置保存', async () => {
             await Store.saveToRegistry(EditData);
             AppData = JSON.parse(JSON.stringify(EditData));
+            APP_CONFIG.windowSize.width = DisplaySettings.normalizeWindowWidth(
+                AppData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            );
+            this.applyUiScale(AppData.uiScale);
             delete AppData.weather.jwtConfig.privateKey;
             delete AppData.weather.apiKey;
             for (const providerConfig of Object.values(AppData.weather.providers || {})) {
@@ -3913,6 +4131,37 @@ const UI = {
     },
 
     async saveSettings() {
+        const lockMode = this.el.inputSettingsLockMode.value || 'off';
+        const currentVerifier = EditData.settingsLock?.pinVerifier;
+        if (lockMode === 'pin') {
+            const pin = this.el.inputSettingsLockPin.value;
+            const confirmation = this.el.inputSettingsLockPinConfirm.value;
+            let pinVerifier = currentVerifier;
+            if (pin || confirmation) {
+                if (pin !== confirmation) {
+                    await Dialog.alert('两次输入的 PIN 不一致。', '无法保存', 'warning');
+                    return;
+                }
+                if (pin.trim().length < 6 || pin.length > 64) {
+                    await Dialog.alert('PIN 须为 6 到 64 个字符。', 'PIN 无效', 'warning');
+                    return;
+                }
+                try {
+                    pinVerifier = await SettingsLock.createVerifier(pin);
+                } catch (error) {
+                    void Logger.warn('设置 PIN 生成失败', { module: 'settings-lock', action: 'create-pin' }, error);
+                    await Dialog.alert('无法安全设置 PIN，请检查运行环境后重试。', '设置失败', 'danger');
+                    return;
+                }
+            }
+            if (!pinVerifier) {
+                await Dialog.alert('请设置至少 6 个字符的 PIN。', '需要设置 PIN', 'warning');
+                return;
+            }
+            EditData.settingsLock = { mode: 'pin', pinVerifier };
+        } else {
+            EditData.settingsLock = { mode: lockMode };
+        }
         const provider = this.el.inputWeatherProvider.value || 'qweather';
         this.cacheWeatherProviderFields(provider);
         EditData.weather.provider = provider;
@@ -3945,6 +4194,10 @@ const UI = {
         EditData.courseFontSize = Math.max(12, Math.min(32, Number(this.el.inputCourseFontSize.value) || 15));
         EditData.fontFamily = this.el.inputFontFamily.value || '';
         EditData.fontSizeScale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100));
+        EditData.mainWindowWidth = DisplaySettings.normalizeWindowWidth(
+            this.el.inputMainWindowWidth.value, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+        );
+        EditData.uiScale = DisplaySettings.normalizeUiScale(this.el.inputUiScale.value);
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
         EditData.showWeather = this.el.inputShowWeather.checked;
         EditData.showTimeline = this.el.inputShowTimeline.checked;
@@ -3981,7 +4234,9 @@ const UI = {
             editOption.value = profile.id;
             editOption.textContent = profile.name;
             this.el.displayProfileEdit.appendChild(editOption);
-            const ruleOption = editOption.cloneNode(true);
+            const ruleOption = document.createElement('option');
+            ruleOption.value = profile.id;
+            ruleOption.textContent = profile.name;
             this.el.displayRuleProfile.appendChild(ruleOption);
         });
         this.el.displayProfileEdit.value = profiles.some((profile) => profile.id === selectedId) ? selectedId : '';
@@ -3997,6 +4252,10 @@ const UI = {
 
     loadDisplayProfileForm() {
         const profile = EditData.displayProfiles?.find((item) => item.id === this.el.displayProfileEdit.value);
+        if (this.placeholderTarget === 'profile') {
+            this.placeholderTarget = 'custom';
+            this.syncPlaceholderTargetHint();
+        }
         this.el.inputDisplayProfileName.value = profile?.name || '';
         this.el.inputDisplayProfileTheme.value = profile?.theme || EditData.theme || 'default';
         CustomSelect.sync('input-display-profile-theme');
@@ -4072,7 +4331,15 @@ const UI = {
     renderDisplayRules() {
         this.el.displayRuleList.innerHTML = '';
         const profiles = new Map((EditData.displayProfiles || []).map((profile) => [profile.id, profile.name]));
-        Object.entries(EditData.displayRules || {}).sort(([left], [right]) => left.localeCompare(right)).forEach(([date, profileId]) => {
+        const entries = Object.entries(EditData.displayRules || {}).sort(([left], [right]) => left.localeCompare(right));
+        if (!entries.length) {
+            const empty = document.createElement('div');
+            empty.className = 'display-rule-empty';
+            empty.textContent = '尚未按日期应用方案，当前使用“默认显示”。';
+            this.el.displayRuleList.appendChild(empty);
+            return;
+        }
+        entries.forEach(([date, profileId]) => {
             const row = document.createElement('div');
             row.className = 'display-rule-item';
             const label = document.createElement('span');
@@ -4128,6 +4395,8 @@ const UI = {
                 CurrentEditWeek = week;
                 CurrentEditCourseIndex = null;
                 this.renderCourseCycleSelector();
+                this.renderCopyCourseWeekOptions();
+                this.updateCopyCourseButton();
                 this.renderCourseList();
             });
             this.el.cycleWeekSelector.appendChild(button);
@@ -4155,11 +4424,13 @@ const UI = {
         this.el.btnDownloadCourseTemplate.hidden = isOverrideMode;
         this.el.btnCreateOverride.disabled = Boolean(override);
         this.el.inputCopyCourseDay.closest('.course-copy-controls').hidden = isOverrideMode;
+        this.el.inputCopyCourseWeek.closest('.course-copy-controls').hidden = isOverrideMode;
+        if (isOverrideMode) this.el.btnCopyCourses.disabled = true;
         this.el.overrideStatus.textContent = !isOverrideMode
             ? ''
             : override
-                ? `已启用${{ adjustment: '临时调课', substitute: '代课', event: '临时活动' }[override.type] || '临时覆盖'}，原轮换课表保留`
-                : '尚无临时覆盖，主界面仍显示轮换课表';
+                ? `已设为${{ adjustment: '临时调课', substitute: '代课', event: '临时活动' }[override.type] || '单日安排'}，本日使用此安排；常规课表保留`
+                : '尚无单日安排，本日按常规课表显示';
     },
 
     async updateCourseRotationWeekCount() {
@@ -4204,6 +4475,7 @@ const UI = {
         CurrentEditCourseIndex = null;
         this.renderDaySelector();
         this.renderCourseCycleSelector();
+        this.updateCopyCourseButton();
         this.renderCourseList();
     },
 
@@ -4246,8 +4518,8 @@ const UI = {
 
     async removeCourseOverride() {
         if (!this.getSelectedCourseOverride()) return;
-        const confirmed = await Dialog.confirm(`删除 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的临时覆盖并恢复轮换课表？`, {
-            title: '恢复原课表', confirmText: '恢复'
+        const confirmed = await Dialog.confirm(`删除 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的单日安排？删除后会恢复常规课表。`, {
+            title: '删除单日安排', confirmText: '删除安排'
         });
         if (!confirmed) return;
         delete EditData.courseOverrides[CurrentOverrideDate];
@@ -4279,26 +4551,56 @@ const UI = {
             }
         });
         CustomSelect.refreshNativeSelect('input-copy-course-day');
+        this.renderCopyCourseWeekOptions();
         this.el.btnCopyCourses.disabled = true;
+    },
+
+    renderCopyCourseWeekOptions() {
+        const weekCount = (EditData.courseRotation?.weeks?.length || 0) + 1;
+        this.el.inputCopyCourseWeek.innerHTML = '';
+        for (let week = 1; week <= weekCount; week += 1) {
+            const option = document.createElement('option');
+            option.value = String(week);
+            option.textContent = weekCount === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
+            this.el.inputCopyCourseWeek.appendChild(option);
+        }
+        this.el.inputCopyCourseWeek.value = String(CurrentEditWeek);
+        this.el.inputCopyCourseWeek.disabled = weekCount <= 1;
+        CustomSelect.refreshNativeSelect('input-copy-course-week');
+    },
+
+    updateCopyCourseButton() {
+        this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value || CurrentEditMode !== 'regular';
     },
 
     async copyCoursesToDay() {
         if (CurrentEditMode !== 'regular') return;
         const targetDay = this.el.inputCopyCourseDay.value;
-        if (!targetDay || targetDay === CurrentEditDay || !DAY_MAP[targetDay]) return;
+        const targetWeek = Math.max(1, Math.min(
+            (EditData.courseRotation?.weeks?.length || 0) + 1,
+            Number(this.el.inputCopyCourseWeek.value) || CurrentEditWeek
+        ));
+        if (!targetDay || !DAY_MAP[targetDay]) return;
+        if (targetDay === CurrentEditDay && targetWeek === CurrentEditWeek) return;
         const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
+        const weekLabel = (week) => {
+            const count = (EditData.courseRotation?.weeks?.length || 0) + 1;
+            return count === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
+        };
         const confirmed = await Dialog.confirm(
-            `将${DAY_MAP[CurrentEditDay]}的 ${courses.length} 节课程复制到${DAY_MAP[targetDay]}？目标星期的课程将被替换。`,
+            `将${weekLabel(CurrentEditWeek)}${DAY_MAP[CurrentEditDay]}的 ${courses.length} 节课程复制到${weekLabel(targetWeek)}${DAY_MAP[targetDay]}？目标星期的课程将被替换。`,
             { title: '复制课表', confirmText: '复制并覆盖' }
         );
         if (!confirmed) return;
-        const targetCourses = CurrentEditWeek === 1
+        const targetCourses = targetWeek === 1
             ? EditData.courses
-            : EditData.courseRotation.weeks[CurrentEditWeek - 2];
+            : EditData.courseRotation.weeks[targetWeek - 2];
+        if (!targetCourses) return;
         targetCourses[targetDay] = JSON.parse(JSON.stringify(courses));
         this.el.inputCopyCourseDay.value = '';
-        this.el.btnCopyCourses.disabled = true;
+        this.updateCopyCourseButton();
         this.markSettingsDirty();
+        this.renderCourseList();
     },
 
     createCourseEditForm(course, courseIndex) {
@@ -4431,7 +4733,7 @@ const UI = {
             emptyState.className = 'course-empty-state';
             emptyState.innerHTML = courses
                 ? '<b>本日暂无课程</b><span>点击“添加课程”开始安排今天的课表。</span>'
-                : '<b>本日尚无临时覆盖</b><span>新建后可编辑当天安排，原轮换课表会保留。</span>';
+                : '<b>尚无单日安排</b><span>创建后可单独编辑当天课程，常规课表不会改变。</span>';
             this.el.courseList.appendChild(emptyState);
             return;
         }
@@ -4794,13 +5096,17 @@ const UI = {
     },
 
     timelineSignature: null,
-    renderTimeline(courses, override = null) {
+    renderTimeline(courses, override = null, regularCourses = []) {
         const now = new Date();
         const overrideLabels = { adjustment: '临时调课', substitute: '代课', event: '临时活动' };
         const overrideLabel = overrideLabels[override?.type] || '';
         const courseSignature = JSON.stringify({ courses: courses || [], override: override?.type || '' });
         const courseChanged = this.timelineSignature !== courseSignature;
-        if (this.el.timeDate) this.el.timeDate.dataset.courseMode = overrideLabel;
+        if (this.el.timeCourseBadge) {
+            this.el.timeCourseBadge.textContent = overrideLabel;
+            this.el.timeCourseBadge.hidden = !overrideLabel;
+            this.el.timeCourseBadge.title = overrideLabel;
+        }
         if (courseChanged) {
             this.timelineSignature = courseSignature;
             this.el.timeline.innerHTML = '';
@@ -4816,6 +5122,13 @@ const UI = {
             return;
         }
 
+        const regularCourseCounts = new Map();
+        if (override) {
+            regularCourses.forEach((course) => {
+                const key = JSON.stringify([course.start || '', course.end || '', course.course || '']);
+                regularCourseCounts.set(key, (regularCourseCounts.get(key) || 0) + 1);
+            });
+        }
         courses.forEach((item, index) => {
             if (!item.start || !item.end) return;
             const [sH, sM] = item.start.split(':').map(Number);
@@ -4833,7 +5146,6 @@ const UI = {
 
             let statusClass = 'upcoming';
             let displayName = item.course || '无';
-            if (index === 0 && overrideLabel) displayName = `${overrideLabel} · ${displayName}`;
             const endingAnimationStart = new Date(actualEndTime.getTime() - 60 * 1000);
             if (now >= actualEndTime) statusClass = 'done';
             else if (now >= endingAnimationStart && now < actualEndTime) statusClass = 'ending';
@@ -4849,7 +5161,11 @@ const UI = {
                 ? `${item.start}-${String(actualEndTime.getHours()).padStart(2, '0')}:${String(actualEndTime.getMinutes()).padStart(2, '0')}`
                 : item.start;
             const previousStatus = el.dataset.status || '';
-            el.className = `time-node ${statusClass}`;
+            const courseKey = JSON.stringify([item.start || '', item.end || '', item.course || '']);
+            const matchingRegularCount = regularCourseCounts.get(courseKey) || 0;
+            if (matchingRegularCount > 0) regularCourseCounts.set(courseKey, matchingRegularCount - 1);
+            const isAdjustedCourse = Boolean(override) && matchingRegularCount === 0;
+            el.className = `time-node ${statusClass}${isAdjustedCourse ? ' override-course' : ''}`;
             el.dataset.status = statusClass;
             el.setAttribute('aria-current', statusClass === 'now' || statusClass === 'ending' ? 'true' : 'false');
             if (!existingNode) {
@@ -4945,6 +5261,9 @@ const App = {
     async init() {
         await Logger.init();
         await Store.init();
+        APP_CONFIG.windowSize.width = DisplaySettings.normalizeWindowWidth(
+            AppData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+        );
         UI.activeDisplayProfileKey = null;
         UI.applyFontStyles();
         UI.applyActiveDisplayProfile(true);
@@ -4968,7 +5287,10 @@ const App = {
             UI.applyActiveDisplayProfile();
             const schedule = Schedule.resolveCourses(new Date(), AppData);
             const courses = schedule.courses;
-            UI.renderTimeline(courses, schedule.override);
+            const regularCourses = schedule.override
+                ? Schedule.resolveCourses(schedule.dateKey, { ...AppData, courseOverrides: {} }).courses
+                : [];
+            UI.renderTimeline(courses, schedule.override, regularCourses);
             UI.renderCustomBottomInfo();
             void Logger.info('课程刷新完成', { module: 'course', action: 'refresh', durationMs: Math.round(performance.now() - startedAt), context: { courseCount: courses.length } });
         } catch (error) {
