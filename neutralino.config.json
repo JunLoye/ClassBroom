@@ -1,6 +1,6 @@
 {
   "applicationId": "com.junloye.classbroom",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "applicationName": "ClassBroom",
   "description": "ClassBroom - 桌面课程与天气挂件",
   "author": "JunLoye",
@@ -20,6 +20,7 @@
     "os.setTray",
     "os.showOpenDialog",
     "os.showSaveDialog",
+    "os.spawnProcess",
     "filesystem.appendFile",
     "filesystem.createDirectory",
     "filesystem.getAbsolutePath",
@@ -33,6 +34,7 @@
     "filesystem.writeFile",
     "window.beginDrag",
     "window.center",
+    "window.create",
     "window.focus",
     "window.getPosition",
     "window.getSize",

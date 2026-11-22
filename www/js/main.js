@@ -1,6 +1,9 @@
 Neutralino.init();
 window.addEventListener('contextmenu', e => e.preventDefault());
 
+const WINDOW_PARAMS = new URLSearchParams(window.location.search);
+const WINDOW_MODE = WINDOW_PARAMS.get('window') || 'main';
+
 const AutoFillGuard = {
     skipTypes: /^(checkbox|radio|button|submit|reset|hidden|color|range|file)$/i,
     apply(element) {
@@ -184,6 +187,25 @@ const SecretVault = {
     async aesEncrypt(key, plain, iv) {
         const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plain));
         return { alg: 'AES-GCM', iv: this.toBase64(iv), data: this.toBase64(cipher) };
+    },
+
+    /** 定位后端 exe，托盘宿主与加密助手都在同一目录。 */
+    resolveBackendFile(name) {
+        const cwd = typeof window.NL_CWD === 'string' ? window.NL_CWD : '';
+        const resources = typeof window.NL_PATH === 'string' ? window.NL_PATH : '';
+        const documentRoot = String(APP_CONFIG?.documentRoot || '/www/').replace(/^\/+|\/+$/g, '');
+        const bases = [resources, cwd].filter(Boolean);
+        const candidates = [];
+        const push = (base, segments) => {
+            const separator = base.includes('\\') ? '\\' : '/';
+            candidates.push([base.replace(/[\\/]+$/, ''), ...segments].join(separator));
+        };
+        for (const base of bases) push(base, [name]);
+        for (const base of bases) {
+            push(base, ['backend', name]);
+            if (documentRoot) push(base, [documentRoot, 'backend', name]);
+        }
+        return candidates.find((candidate) => candidate.length > 0) || null;
     },
 
     resolveBackendPath() {
@@ -484,6 +506,19 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 const Store = {
+    runtimeDirectory: null,
+    async getRuntimeDirectory() {
+        if (this.runtimeDirectory) return this.runtimeDirectory;
+        let base = '';
+        try {
+            base = await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, 'runtime');
+            await Neutralino.filesystem.createDirectory(base);
+        } catch (error) {
+            base = '';
+        }
+        this.runtimeDirectory = base;
+        return base;
+    },
     async getConfigPath() {
         try {
             return await Neutralino.filesystem.getJoinedPath(window.NL_DATAPATH, 'config.json');
@@ -550,13 +585,215 @@ const Store = {
     }
 };
 
-const Startup = {
-    async setEnabled(enabled) {
-        if (window.NL_OS === 'Windows') return this.setWindows(enabled);
-        if (window.NL_OS === 'Darwin') return this.setMacOS(enabled);
-        if (window.NL_OS === 'Linux') return this.setLinux(enabled);
-        throw new Error('当前系统不支持开机自启');
+/** 托盘进程由 C++ 全权管理，JS 只负责拉起进程并同步状态。 */
+const TrayHost = {
+    execPath: null,
+    spawnPromise: null,
+    pipeName: null,
+    statePath: null,
+    stateName: null,
+    watchdogTimer: null,
+    notifyTmpPath: null,
+    notifyTimer: null,
+    notifyDraining: false,
+    pid: 0,
+    lastState: null,
+    async resolveExecutable() {
+        if (this.execPath) return this.execPath;
+        const candidates = ['classbroom-tray.exe', 'classbroom-crypto.exe']
+            .map((name) => SecretVault.resolveBackendFile(name))
+            .filter(Boolean);
+        for (const candidate of candidates) {
+            try {
+                if ((await Neutralino.filesystem.getStats(candidate)).isFile) {
+                    this.execPath = candidate;
+                    return candidate;
+                }
+            } catch (error) { }
+        }
+        return null;
     },
+    async start() {
+        if (window.NL_OS !== 'Windows') return false;
+        if (this.watchdogTimer) return true;
+        if (this.spawnPromise) return this.spawnPromise;
+        this.spawnPromise = (async () => {
+            const executable = await this.resolveExecutable();
+            if (!executable) {
+                void Logger.warn('未找到托盘进程，托盘不可用', { module: 'tray', action: 'resolve-host' });
+                return false;
+            }
+            const runtime = await Store.getRuntimeDirectory();
+            if (!runtime) return false;
+            this.statePath = await Neutralino.filesystem.getJoinedPath(runtime, 'tray-state.txt');
+            this.notifyTmpPath = await Neutralino.filesystem.getJoinedPath(runtime, 'tray-commands.txt');
+            try { await Neutralino.filesystem.writeFile(this.notifyTmpPath, ''); } catch (error) { }
+            const instanceId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            this.pipeName = `classbroom-tray-${instanceId}`;
+            this.stateName = `classbroom-tray-state-${instanceId}`;
+            this.lastState = null;
+            let icon = '';
+            try {
+                icon = await UI.getTrayIconPath('tray.ico');
+            } catch (error) {
+                void Logger.warn('tray.ico 解析失败，尝试回退 app.ico', { module: 'tray', action: 'resolve-icon' }, error);
+                try {
+                    icon = await UI.getTrayIconPath('app.ico');
+                } catch (fallbackError) {
+                    void Logger.warn('托盘图标均不可用，由宿主自行回退到系统图标', { module: 'tray', action: 'resolve-icon' }, fallbackError);
+                }
+            }
+            const quote = (value) => `"${String(value).replace(/"/g, '\\"')}"`;
+            // 主程序路径用于 C++ 托盘弹出"设置"等需要主窗口的菜单项
+            const appPath = Startup && typeof Startup.getExecutablePath === 'function'
+                ? await Startup.getExecutablePath().catch(() => '')
+                : '';
+            const args = [
+                'tray',
+                `--data=${runtime}`,
+                `--state=${this.statePath}`,
+                `--pipe=${this.pipeName}`,
+                `--notify-file=${this.notifyTmpPath}`,
+                `--state-name=${this.stateName}`,
+                `--app=${appPath}`,
+                `--icon=${icon || ''}`
+            ].join(' ');
+            const pid = await Neutralino.os.spawnProcess(`${quote(executable)} ${args}`);
+            this.pid = Number(pid) || 0;
+            void Logger.info('托盘进程已启动', { module: 'tray', action: 'spawn', context: { executable, pid: this.pid, icon } });
+            const running = await this.verifyProcessAlive();
+            if (!running) {
+                void Logger.error('托盘进程启动后立即退出，托盘不可用', { module: 'tray', action: 'spawn-verify', context: { executable, pid: this.pid, args } });
+                this.execPath = null;
+                return false;
+            }
+            this.watchdogTimer = setInterval(() => this.ensureAlive(), 15000);
+            this.startNotifyListener();
+            // 进程稳定后再同步一次真实状态，避免启动瞬间误判
+            await this.writeState(UI.windowVisible === true);
+            return true;
+        })();
+        try {
+            return await this.spawnPromise;
+        } finally {
+            this.spawnPromise = null;
+        }
+    },
+    async verifyProcessAlive() {
+        const executable = this.execPath;
+        const fileName = executable ? executable.split(/[\\/]/).pop() : 'classbroom-tray.exe';
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+            const result = await Neutralino.os.execCommand(`tasklist /FI "IMAGENAME eq ${fileName}" /NH`);
+            return new RegExp(fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(String(result.stdOut || ''));
+        } catch (error) {
+            void Logger.warn('托盘进程存活检查失败', { module: 'tray', action: 'verify' }, error);
+            return true;
+        }
+    },
+
+    async stop() {
+        clearInterval(this.watchdogTimer);
+        this.watchdogTimer = null;
+        clearInterval(this.notifyTimer);
+        this.notifyTimer = null;
+        // 下发 exit 让 C++ 侧自行移除图标并退出，避免按名字误杀其它实例
+        await this.sendPipe('exit');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+    },
+    async writeState(visible = UI.windowVisible === true) {
+        if (!this.statePath) return;
+        const signature = `${visible ? 'visible' : 'hidden'}|${AppData.autoStart === true ? 1 : 0}`;
+        if (signature === this.lastState) return;
+        this.lastState = signature;
+        const text = buildTrayState(visible, AppData.autoStart === true);
+        try {
+            await Neutralino.filesystem.writeFile(this.statePath, text);
+        } catch (error) {
+            void Logger.warn('写入托盘菜单状态失败', { module: 'tray', action: 'write-state' }, error);
+        }
+        await this.sendPipe(`state ${text.trim().replace(/\s+/g, ' ')}`);
+    },
+    /** 通过命名管道把状态或指令交给 C++ 托盘；写失败视为托盘未就绪，状态文件仍可兜底。 */
+    async sendPipe(command) {
+        if (!this.pipeName) return false;
+        const script = "try{$p=New-Object System.IO.Pipes.NamedPipeClientStream('.',$env:CB_TRAY_PIPE,'Out');" +
+            "$p.Connect(300);$w=New-Object System.IO.StreamWriter($p);" +
+            "$w.Write($env:CB_TRAY_CMD);$w.Flush();$p.Dispose()}catch{}";
+        try {
+            await Neutralino.os.execCommand(
+                `powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command "${script}"`,
+                { env: `CB_TRAY_PIPE=${this.pipeName};CB_TRAY_CMD=${command}` }
+            );
+            return true;
+        } catch (error) {
+            void Logger.warn('托盘管道写入失败', { module: 'tray', action: 'pipe-write' }, error);
+            return false;
+        }
+    },
+    async ensureAlive() {
+        if (!this.watchdogTimer || !this.pid) return;
+        try {
+            const result = await Neutralino.os.execCommand(`tasklist /FI "PID eq ${this.pid}" /NH`);
+            if (/classbroom-tray\.exe/i.test(String(result.stdOut || ''))) return;
+        } catch (error) {
+            return;
+        }
+        void Logger.warn('托盘进程已退出，尝试重新启动', { module: 'tray', action: 'watchdog-restart', context: { pid: this.pid } });
+        clearInterval(this.watchdogTimer);
+        this.watchdogTimer = null;
+        await this.start();
+    },
+
+    /** 轮询托盘事件队列文件，把菜单请求转成主程序动作。 */
+    startNotifyListener() {
+        if (!this.notifyTmpPath || this.notifyTimer) return;
+        this.notifyTimer = setInterval(() => { void this.drainNotifyQueue(); }, 500);
+    },
+
+    async drainNotifyQueue() {
+        if (this.notifyDraining) return;
+        this.notifyDraining = true;
+        try {
+            let text = '';
+            try { text = await Neutralino.filesystem.readFile(this.notifyTmpPath); } catch (error) { return; }
+            const lines = String(text || '').split(/\r?\n/).filter((line) => line.trim());
+            if (!lines.length) return;
+            await Neutralino.filesystem.writeFile(this.notifyTmpPath, '');
+            for (const line of lines) await this.handleNotifyCommand(line.trim());
+        } finally {
+            this.notifyDraining = false;
+        }
+    },
+
+    async handleNotifyCommand(command) {
+        void Logger.info('收到托盘菜单操作', { module: 'tray', action: 'menu-action', context: { command } });
+        try {
+            if (command === 'settings') {
+                await UI.showMainWindow();
+                await WindowManager.openSettings();
+            } else if (command === 'refresh') {
+                await UI.handleRefresh();
+            } else if (command === 'check-update') {
+                await Updater.check({ silent: false });
+            } else if (command === 'autostart') {
+                // 托盘菜单勾选后直接写入注册表，并回写配置保持一致
+                await Startup.setEnabled(AppData.autoStart === true);
+            } else if (command === 'exit') {
+                await App.shutdown('tray-menu');
+            }
+        } catch (error) {
+            void Logger.error('托盘菜单操作失败', { module: 'tray', action: 'menu-action', context: { command } }, error);
+        }
+    },
+
+    scheduleUpdate(visible = UI.windowVisible === true) {
+        if (!this.watchdogTimer) return;
+        void this.writeState(visible);
+    }
+};
+
+const Startup = {
     async getExecutablePath() {
         const argv = Array.isArray(window.NL_ARGS) ? window.NL_ARGS : [];
         if (argv.length && typeof argv[0] === 'string' && argv[0]) {
@@ -588,6 +825,13 @@ const Startup = {
         const home = await Neutralino.os.getEnv('HOME');
         if (!home) throw new Error('无法获取当前用户目录');
         return home;
+    },
+    /** 按当前平台写入或清除开机自启项。 */
+    async setEnabled(enabled) {
+        if (window.NL_OS === 'Windows') return this.setWindows(enabled);
+        if (window.NL_OS === 'Darwin') return this.setMacOS(enabled);
+        if (window.NL_OS === 'Linux') return this.setLinux(enabled);
+        throw new Error(`当前平台不支持开机自启: ${window.NL_OS}`);
     },
     async setWindows(enabled) {
         const runKey = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
@@ -942,133 +1186,136 @@ const Dialog = {
 };
 
 const Onboarding = {
-    
-    dialogWindowSize: { width: APP_CONFIG.windowSize.width, height: 620 },
+    dialogWindowSize: { width: 900, height: 620 },
     active: false,
 
-    async start({ returnTab = null } = {}) {
-        const fromSettings = typeof returnTab === 'string' && returnTab.length > 0;
-        const previousSize = await UI.getCurrentSize().catch(() => null);
+    /** 独立引导窗口内的初始化：绑定按钮与拖拽，不再走对话框。 */
+    startStandalone({ returnTab = null } = {}) {
         this.active = true;
-        document.body.classList.add('onboarding-active');
-        document.body.classList.add('dialog-enlarged');
-        try {
-            await UI.animateWindowSize(this.dialogWindowSize, APP_CONFIG.topOffset);
-            UI.appliedMainWidth = APP_CONFIG.windowSize.width;
-
-            const action = await this.showGuide();
-            AppData.onboardingCompleted = true;
-            AppData.onboardingCompletedAt = new Date().toISOString();
-            if (action === 'weather') {
-                await UI.openSettings(null, { tab: 'weather', guide: true });
-            } else if (fromSettings) {
-                await UI.openSettings(null, { tab: returnTab });
-            } else {
-                await UI.showMainWindow();
-            }
-            try {
-                await Store.saveToRegistry(AppData);
-            } catch (error) {
-                void Logger.warn('保存引导完成状态失败', { module: 'onboarding', action: 'save' }, error);
-            }
-            void Logger.info('完成首次使用引导', { module: 'onboarding', action: 'complete', context: { action, fromSettings } });
-        } finally {
-            this.active = false;
-            document.body.classList.remove('onboarding-active');
-            document.body.classList.remove('dialog-enlarged');
-            if (!AppData.onboardingCompleted) {
-                await this.restoreWindow(previousSize, fromSettings, returnTab);
-            }
-        }
-    },
-
-    async restoreWindow(previousSize, fromSettings, returnTab) {
-        const size = previousSize && previousSize.width && previousSize.height
-            ? { width: previousSize.width, height: previousSize.height }
-            : APP_CONFIG.windowSize;
-        if (fromSettings && !await UI.ensureSettingsAccess()) fromSettings = false;
-        try {
-            if (fromSettings) {
-                UI.el.viewMain.classList.add('hidden');
-                UI.el.viewSettings.classList.remove('hidden');
-                UI.applySettingsReadOnly(UI.getSettingsLockMode() === 'readonly');
-                await UI.animateWindowSize(size);
-                await UI.setWindowDragRegion('settings');
-            } else {
-                UI.el.viewSettings.classList.add('hidden');
-                UI.el.viewMain.classList.remove('hidden');
-                UI.appliedMainWidth = size.width;
-                await UI.positionWindow(size, APP_CONFIG.topOffset);
-                await UI.setWindowDragRegion('main');
-            }
-        } catch (error) {
-            void Logger.warn('引导中断后恢复窗口失败', { module: 'onboarding', action: 'restore' }, error);
-        }
-    },
-
-    showGuide() {
-        const html = `
-            <div class="onboarding">
-                <div class="onboarding-steps">
-                    <div class="onboarding-step">
-                        <div class="onboarding-step-index">1</div>
-                        <div class="onboarding-step-body">
-                            <b>它是什么</b>
-                            <span>常驻桌面的课程与天气挂件。拖动任意空白处可移动窗口，右上角依次是刷新、设置与关闭。</span>
-                        </div>
-                    </div>
-                    <div class="onboarding-step">
-                        <div class="onboarding-step-index">2</div>
-                        <div class="onboarding-step-body">
-                            <b>配置天气</b>
-                            <span>可选和风天气、Open-Meteo、WeatherAPI.com 或 OpenWeatherMap；Open-Meteo 无需密钥。</span>
-                        </div>
-                    </div>
-                    <div class="onboarding-step">
-                        <div class="onboarding-step-index">3</div>
-                        <div class="onboarding-step-body">
-                            <b>导入课表</b>
-                            <span>在设置的「课表」页按星期添加课程，或在「主界面」调整主题、字体与字号。</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="onboarding-weather">
-                    <div class="onboarding-weather-title">${ICONS.weather}天气服务商</div>
-                    <ul class="onboarding-weather-list">
-                        <li>在设置的天气页选择服务商，填写经纬度（经度,纬度）。</li>
-                        <li>需要密钥的服务商会显示凭据栏；和风天气使用 JWT 凭据。</li>
-                        <li>控制台支持在窗口内查看；若站点禁止嵌入，可改用系统浏览器。</li>
-                    </ul>
-                    <div class="onboarding-hint">${ICONS.warn}天气可稍后配置；未配置时不影响课表与时钟。</div>
-                </div>
-                <label class="onboarding-confirm"><input type="checkbox" id="onboarding-confirm">我已了解天气服务商和密钥要求各不相同</label>
-            </div>
-        `;
-
-        return new Promise((resolve) => {
-            const buttons = [
-                { text: '稍后再配置', value: 'later' },
-                { text: '选择天气服务商', value: 'weather', primary: true }
-            ];
-            const panel = Dialog.show({
-                title: '欢迎使用 ClassBroom',
-                html,
-                type: 'info',
-                wide: true,
-                buttons,
-                dismissible: false
+        document.body.classList.add('onboarding-window-mode');
+        document.getElementById('onboarding-body')?.scrollTo(0, 0);
+        const confirm = document.getElementById('onboarding-confirm');
+        const primary = document.getElementById('btn-onboarding-weather');
+        if (confirm && primary) {
+            primary.disabled = !confirm.checked;
+            confirm.addEventListener('change', () => {
+                primary.disabled = !confirm.checked;
+                if (confirm.checked) primary.focus({ preventScroll: true });
             });
-            const confirm = document.getElementById('onboarding-confirm');
-            const primary = document.querySelector('#app-dialog-footer .btn-primary');
-            if (confirm && primary) {
-                primary.disabled = true;
-                confirm.addEventListener('change', () => {
-                    primary.disabled = !confirm.checked;
-                    if (confirm.checked) primary.focus({ preventScroll: true });
-                });
-            }
-            panel.then((value) => resolve(typeof value === 'string' ? value : 'later'));
+        }
+        document.getElementById('btn-onboarding-later')?.addEventListener('click', () => this.completeStandalone(returnTab, 'later'));
+        primary?.addEventListener('click', () => this.completeStandalone(returnTab, 'weather'));
+        this.bindOnboardingDrag();
+    },
+
+    async completeStandalone(returnTab, action) {
+        AppData.onboardingCompleted = true;
+        AppData.onboardingCompletedAt = new Date().toISOString();
+        try {
+            await Store.saveToRegistry(AppData);
+        } catch (error) {
+            void Logger.warn('保存引导完成状态失败', { module: 'onboarding', action: 'save' }, error);
+        }
+        const target = action === 'weather' ? 'weather' : returnTab;
+        await WindowManager.broadcast('cb:config-updated');
+        if (target) await WindowManager.broadcast('cb:open-settings', { tab: target });
+        void Logger.info('完成首次使用引导', { module: 'onboarding', action: 'complete', context: { action, standalone: true } });
+        await WindowManager.closeSelf();
+    },
+
+    bindOnboardingDrag() {
+        const handle = document.getElementById('onboarding-drag-handle');
+        const header = document.querySelector('.onboarding-header');
+        if (!header || header.dataset.dragBound === '1') return;
+        header.dataset.dragBound = '1';
+        header.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            void Neutralino.window.beginDrag(event.screenX, event.screenY).catch((error) => {
+                void Logger.warn('窗口拖动失败', { module: 'onboarding', action: 'begin-drag' }, error);
+            });
         });
+        if (handle) handle.setAttribute('aria-hidden', 'true');
+    },
+
+    async openWindow({ returnTab = null } = {}) {
+        if (WINDOW_MODE !== 'main') return;
+        const params = new URLSearchParams({ window: 'onboarding' });
+        if (returnTab) params.set('tab', returnTab);
+        try {
+            await Neutralino.window.create(`/index.html?${params.toString()}`, {
+                title: 'ClassBroom 使用引导',
+                icon: 'www/app.ico',
+                width: this.dialogWindowSize.width,
+                height: this.dialogWindowSize.height,
+                minWidth: 640,
+                minHeight: 480,
+                resizable: true,
+                borderless: true,
+                transparent: true,
+                center: true
+            });
+        } catch (error) {
+            void Logger.warn('独立引导窗口创建失败', { module: 'onboarding', action: 'create-window' }, error);
+        }
+    }
+};
+
+const WindowManager = {
+    settingsCreating: false,
+    async broadcast(event, data) {
+        try {
+            await Neutralino.events.broadcast(event, data);
+        } catch (error) { }
+    },
+    async closeSelf() {
+        await this.broadcast('cb:child-closed', { mode: WINDOW_MODE });
+        try {
+            await Neutralino.app.exit();
+        } catch (error) {
+            try {
+                window.close();
+            } catch (closeError) { }
+        }
+    },
+    async openSettings({ tab = null } = {}) {
+        if (WINDOW_MODE !== 'main') return;
+        if (this.settingsCreating) return;
+        this.settingsCreating = true;
+        const params = new URLSearchParams({ window: 'settings' });
+        if (tab) params.set('tab', tab);
+        try {
+            await Neutralino.window.create(`/index.html?${params.toString()}`, {
+                title: 'ClassBroom 设置',
+                icon: 'www/app.ico',
+                width: APP_CONFIG.settingsSize.width,
+                height: APP_CONFIG.settingsSize.height,
+                minWidth: 960,
+                minHeight: 620,
+                resizable: true,
+                // 与主窗口一致：无边框透明窗口，圆角由 #view-settings 的 4px 留白透出
+                borderless: true,
+                transparent: true,
+                center: true
+            });
+        } catch (error) {
+            void Logger.warn('独立设置窗口创建失败，回退到主窗口', { module: 'settings', action: 'create-window' }, error);
+            await UI.openSettings(null, { tab });
+        } finally {
+            this.settingsCreating = false;
+        }
+    },
+
+    /** 引导窗口与设置窗口同级：始终以独立窗口打开，内容由 window=onboarding 承载。 */
+    async openGuide({ returnTab = null } = {}) {
+        if (WINDOW_MODE !== 'main') return;
+        if (this.guideCreating) return;
+        this.guideCreating = true;
+        try {
+            await Onboarding.openWindow({ returnTab });
+        } finally {
+            this.guideCreating = false;
+        }
     }
 };
 
@@ -1133,11 +1380,6 @@ const Updater = {
             const delta = this.compareVersions(latest.version, current);
             AppData.latestKnownVersion = latest.version;
             const hasUpdate = delta > 0;
-            void Logger.info('版本检查完成', {
-                module: 'update',
-                action: 'check',
-                context: { current, latest: latest.version, hasUpdate }
-            });
             if (hasUpdate && !silent) await this.promptUpdate(latest, current);
             return hasUpdate;
         } catch (error) {
@@ -1711,6 +1953,7 @@ const UI = {
     el: {
         viewMain: document.getElementById('view-main'),
         viewSettings: document.getElementById('view-settings'),
+        viewOnboarding: document.getElementById('view-onboarding'),
         settingsBody: document.querySelector('.settings-body'),
         settingsHeader: document.getElementById('settings-header'),
         settingsDragHandle: document.getElementById('settings-drag-handle'),
@@ -1732,7 +1975,9 @@ const UI = {
         refreshHint: document.getElementById('refresh-hint'),
         btnClose: document.getElementById('btn-close'),
         btnSaveSettings: document.getElementById('btn-save-settings'),
+        btnApplySettings: document.getElementById('btn-apply-settings'),
         btnCancelSettings: document.getElementById('btn-cancel-settings'),
+        saveState: document.getElementById('save-state'),
         btnImportConfig: document.getElementById('btn-import-config'),
         btnExportConfig: document.getElementById('btn-export-config'),
         btnRestartGuide: document.getElementById('btn-restart-guide'),
@@ -1770,11 +2015,8 @@ const UI = {
         inputProfileShowSeconds: document.getElementById('input-profile-show-seconds'),
         inputProfileBottomText: document.getElementById('input-profile-bottom-text'),
         btnSaveDisplayProfile: document.getElementById('btn-save-display-profile'),
+        btnApplyDisplayProfile: document.getElementById('btn-apply-display-profile'),
         btnDeleteDisplayProfile: document.getElementById('btn-delete-display-profile'),
-        inputDisplayRuleDate: document.getElementById('input-display-rule-date'),
-        displayRuleProfile: document.getElementById('select-display-rule-profile'),
-        btnAddDisplayRule: document.getElementById('btn-add-display-rule'),
-        displayRuleList: document.getElementById('display-rule-list'),
         inputBottomOffset: document.getElementById('input-bottom-offset'),
         bottomOffsetLabel: document.getElementById('bottom-offset-label'),
         bottomAlignGroup: document.getElementById('bottom-align-group'),
@@ -1788,6 +2030,9 @@ const UI = {
         fontSizeScaleLabel: document.getElementById('font-size-scale-label'),
         inputUiScale: document.getElementById('input-ui-scale'),
         uiScaleLabel: document.getElementById('ui-scale-label'),
+        inputSnapToTop: document.getElementById('input-snap-to-top'),
+        inputMainWindowWidth: document.getElementById('input-main-window-width'),
+        mainWindowWidthLabel: document.getElementById('main-window-width-label'),
         courseFontSizeLabel: document.getElementById('course-font-size-label'),
         bottomFontSizeLabel: document.getElementById('bottom-font-size-label'),
         fontPreview: document.getElementById('font-preview'),
@@ -1805,24 +2050,15 @@ const UI = {
         btnCheckUpdate: document.getElementById('btn-check-update'),
         btnOpenReleases: document.getElementById('btn-open-releases'),
         daySelector: document.getElementById('day-selector'),
+        btnCourseMore: document.getElementById('btn-course-more'),
+        courseMorePanel: document.getElementById('course-more-panel'),
+
         cycleWeekCount: document.getElementById('input-cycle-week-count'),
         cycleStartDate: document.getElementById('input-cycle-start-date'),
         cycleWeekSelector: document.getElementById('cycle-week-selector'),
-        overrideMode: document.getElementById('input-override-mode'),
-        overrideDate: document.getElementById('input-override-date'),
-        overrideDateRow: document.querySelector('.course-override-date'),
-        overrideStatus: document.getElementById('override-status'),
-        btnRestoreOverride: document.getElementById('btn-restore-override'),
-        overrideHint: document.querySelector('.course-override-hint'),
         btnSettingsMore: document.getElementById('btn-settings-more'),
         settingsMoreMenu: document.getElementById('settings-more-menu'),
-        btnCopyCoursesToggle: document.getElementById('btn-copy-courses-toggle'),
-        courseCopyPopover: document.getElementById('course-copy-popover'),
-        courseCopyControls: document.querySelector('.course-copy-controls'),
         courseDaySummary: document.getElementById('course-day-summary'),
-        inputCopyCourseWeek: document.getElementById('input-copy-course-week'),
-        inputCopyCourseDay: document.getElementById('input-copy-course-day'),
-        btnCopyCourses: document.getElementById('btn-copy-courses'),
         courseList: document.getElementById('course-list'),
         btnBulkMode: document.getElementById('btn-bulk-mode'),
         courseBulkBar: document.getElementById('course-bulk-bar'),
@@ -1844,9 +2080,13 @@ const UI = {
     locationResults: [],
     bulkMode: false,
     bulkSelected: new Set(),
+    embeddedSettings: false,
     async init() {
-        await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
-        await this.setWindowDragRegion('main');
+        if (WINDOW_MODE !== 'main') {
+            document.body.classList.add(WINDOW_MODE === 'settings' ? 'settings-window-mode' : 'onboarding-window-mode');
+            this.el.viewMain.classList.add('hidden');
+            if (WINDOW_MODE === 'onboarding') this.el.viewOnboarding?.classList.remove('hidden');
+        }
 
         Dialog.bindKeys();
         this.initCustomSelects();
@@ -1854,17 +2094,21 @@ const UI = {
         CustomSelect.bindGlobal();
         this.bindDragHandle();
         this.bindMainDrag();
+        this.bindSettingsHeaderDrag();
+        this.renderDragLockState();
 
         this.el.btnRefresh.addEventListener('click', () => this.handleRefresh());
         this.el.btnClose.addEventListener('click', () => this.hideMainWindow('close-button'));
-        this.el.btnSettings.addEventListener('click', () => this.openSettings());
+        this.el.btnSettings.addEventListener('click', () => WindowManager.openSettings());
         this.el.btnSettingsUnlock.addEventListener('click', () => {
             this.closeSettingsMoreMenu();
             this.applySettingsReadOnly(false);
         });
         this.el.inputSettingsLockMode.addEventListener('change', () => this.updateSettingsLockFields());
-        this.el.btnCancelSettings.addEventListener('click', () => this.cancelSettings());
+        this.el.btnCancelSettings?.addEventListener('click', () => this.cancelSettings());
         this.el.btnSaveSettings.addEventListener('click', () => this.saveSettings());
+        this.el.btnCourseMore?.addEventListener('click', () => this.toggleCourseMore());
+        this.el.btnApplySettings?.addEventListener('click', () => this.saveSettings({ close: false }));
         this.el.btnImportConfig.addEventListener('click', () => {
             this.closeSettingsMoreMenu();
             this.importConfig();
@@ -1902,6 +2146,10 @@ const UI = {
         window.addEventListener('dragleave', (event) => this.handleDragLeave(event));
         window.addEventListener('drop', (event) => this.handleDrop(event));
         await Neutralino.events.on('windowClose', () => {
+            if (WINDOW_MODE !== 'main') {
+                void WindowManager.broadcast('cb:child-closed', { mode: WINDOW_MODE });
+                return;
+            }
             if (App.shuttingDown) {
                 void Logger.info('退出期间允许窗口关闭', { module: 'window', action: 'close-during-shutdown' });
                 return;
@@ -1916,15 +2164,10 @@ const UI = {
         });
         this.el.btnRestartGuide?.addEventListener('click', async () => {
             this.closeSettingsMoreMenu();
-            this.el.viewSettings.classList.add('hidden');
-            this.el.viewMain.classList.add('hidden');
-            await Onboarding.start({ returnTab: 'about' });
+            await WindowManager.openGuide({ returnTab: 'about' });
         });
 
         this.renderDaySelector();
-        this.el.inputCopyCourseDay.addEventListener('change', () => this.updateCopyCourseButton());
-        this.el.inputCopyCourseWeek.addEventListener('change', () => this.updateCopyCourseButton());
-        this.el.btnCopyCourses.addEventListener('click', () => this.copyCoursesToDay());
         this.el.btnAddCourse.addEventListener('click', () => this.addCourseRow());
         this.el.btnBulkMode.addEventListener('click', () => this.toggleBulkMode());
         this.el.btnBulkExit.addEventListener('click', () => this.toggleBulkMode(false));
@@ -1933,38 +2176,39 @@ const UI = {
         this.el.btnBulkRename.addEventListener('click', () => this.bulkRenameCourses());
         this.el.cycleWeekCount.addEventListener('change', () => this.updateCourseRotationWeekCount());
         this.el.cycleStartDate.addEventListener('change', () => this.updateCourseRotationStartDate());
-        this.el.overrideMode.addEventListener('change', () => this.changeOverrideMode());
-        this.el.overrideDate.addEventListener('change', () => this.changeOverrideDate());
-        this.el.btnRestoreOverride?.addEventListener('click', () => this.removeCourseOverride());
         this.el.btnSettingsMore?.addEventListener('click', (event) => {
             event.stopPropagation();
             this.toggleSettingsMoreMenu();
-        });
-        this.el.btnCopyCoursesToggle?.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.toggleCourseCopyPopover();
         });
         document.addEventListener('click', (event) => {
             const target = event.target;
             if (!(target instanceof Element)) return;
             if (!target.closest('#settings-more')) this.closeSettingsMoreMenu();
-            if (!target.closest('.course-copy-controls')) this.closeCourseCopyPopover();
         }, true);
         window.addEventListener('resize', () => {
             if (this.el.settingsMoreMenu && !this.el.settingsMoreMenu.hidden) {
                 this.positionFloatingPanel(this.el.settingsMoreMenu, this.el.btnSettingsMore);
             }
-            if (this.el.courseCopyPopover && !this.el.courseCopyPopover.hidden) {
-                this.positionFloatingPanel(this.el.courseCopyPopover, this.el.btnCopyCoursesToggle);
-            }
         });
-        this.el.btnImportCourses.addEventListener('click', () => this.importCoursesSpreadsheet());
-        this.el.btnDownloadCourseTemplate.addEventListener('click', () => this.downloadCourseTemplate());
-        this.el.btnExportCourses.addEventListener('click', () => this.exportCoursesSpreadsheet());
+        this.el.btnImportCourses.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.importCoursesSpreadsheet();
+        });
+        this.el.btnDownloadCourseTemplate.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.downloadCourseTemplate();
+        });
+        this.el.btnExportCourses.addEventListener('click', () => {
+            this.closeSettingsMoreMenu();
+            this.exportCoursesSpreadsheet();
+        });
         this.el.displayProfileEdit.addEventListener('change', () => this.loadDisplayProfileForm());
+        this.el.inputDisplayProfileTheme?.addEventListener('change', () => {
+            this.previewDisplayProfileTheme(this.el.inputDisplayProfileTheme.value);
+        });
         this.el.btnSaveDisplayProfile.addEventListener('click', () => this.saveDisplayProfile());
+        this.el.btnApplyDisplayProfile?.addEventListener('click', () => this.applyDisplayProfile());
         this.el.btnDeleteDisplayProfile.addEventListener('click', () => this.deleteDisplayProfile());
-        this.el.btnAddDisplayRule.addEventListener('click', () => this.addDisplayRule());
         this.el.btnAddSubject.addEventListener('click', () => this.addSubject());
         this.el.inputNewSubject.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') { event.preventDefault(); this.addSubject(); }
@@ -1986,8 +2230,13 @@ const UI = {
                 this.syncUiScaleLabel();
                 this.applyUiScale(this.el.inputUiScale.value);
             });
-            window.addEventListener('resize', () => this.syncScaledViewBounds());
+            if (this.el.inputMainWindowWidth) {
+                this.el.inputMainWindowWidth.addEventListener('input', () => this.syncMainWindowWidthLabel());
+                this.el.inputMainWindowWidth.addEventListener('change', () => this.markSettingsDirty());
+            }
         }
+        window.addEventListener('resize', () => this.syncScaledViewBounds());
+        this.observeViewportSize();
         [this.el.inputCourseFontSize, this.el.inputBottomFontSize].forEach((input) => {
             if (!input) return;
             input.addEventListener('input', () => {
@@ -2010,17 +2259,17 @@ const UI = {
             if (!input) return;
             input.addEventListener('change', () => this.updateFontPreview());
         });
-        this.startClock();
+        if (WINDOW_MODE === 'main') {
+            await this.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            await this.setWindowDragRegion('main');
+        }
+        if (WINDOW_MODE === 'main') this.startClock();
     },
 
-    THEME_OPTIONS: [
-        { value: 'default', label: '默认' },
-        { value: 'ocean', label: '海洋蓝' },
-        { value: 'forest', label: '森林绿' },
-        { value: 'midnight', label: '午夜深色' },
-        { value: 'high-contrast', label: '高对比度' },
-        { value: 'monochrome', label: '纯黑白' }
-    ],
+    /** 首屏在 HTML 中默认不可见，等尺寸/位置落定后再释放，避免闪烁。 */
+    revealBootView() {
+        document.documentElement.classList.remove('ui-booting');
+    },
 
     FONT_OPTIONS: [
         { value: '', label: '跟随系统' },
@@ -2043,11 +2292,6 @@ const UI = {
     initCustomSelects() {
         CustomSelect.initAll();
         CustomSelect.setOptions('select-weather-provider', this.WEATHER_PROVIDER_OPTIONS);
-        const themeSelect = document.getElementById('select-theme');
-        if (themeSelect) {
-            CustomSelect.init(themeSelect);
-            CustomSelect.setOptions('select-theme', this.THEME_OPTIONS);
-        }
         if (document.getElementById('select-font-family')) {
             CustomSelect.setOptions('select-font-family', this.FONT_OPTIONS);
         }
@@ -2056,10 +2300,6 @@ const UI = {
                 index === 0 ? { value: '', label: '跟随全局' } : item
             )));
         }
-        this.el.inputTheme?.addEventListener('change', () => {
-            const value = this.el.inputTheme.value;
-            CustomSelect.setValue('select-theme', value);
-        });
     },
 
     startClock() {
@@ -2188,20 +2428,27 @@ const UI = {
     },
 
     applyTheme(theme) {
-        const supportedThemes = ['monochrome', 'midnight', 'ocean', 'forest', 'high-contrast'];
-        if (supportedThemes.includes(theme)) document.documentElement.dataset.theme = theme;
+        const supportedThemes = ['default', 'monochrome', 'midnight', 'graphite', 'ocean', 'forest', 'high-contrast'];
+        if (supportedThemes.includes(theme) && theme !== 'default') document.documentElement.dataset.theme = theme;
         else document.documentElement.removeAttribute('data-theme');
+        this.updateThemeColorScheme();
     },
 
-    getEffectiveDisplayConfig(date = new Date()) {
-        const profileId = AppData.displayRules?.[Schedule.getDateKey(date)];
-        const profiles = Array.isArray(AppData.displayProfiles) ? AppData.displayProfiles : [];
-        const profile = profiles.find((item) => item.id === profileId);
-        return profile ? { ...AppData, ...profile } : AppData;
+    /** 让浏览器控件（滚动条、原生下拉、复选框）跟随主题深浅色。 */
+    updateThemeColorScheme() {
+        const darkThemes = ['midnight', 'graphite', 'high-contrast'];
+        const scheme = darkThemes.includes(document.documentElement.dataset.theme) ? 'dark' : 'light';
+        if (document.documentElement.style.colorScheme !== scheme) {
+            document.documentElement.style.colorScheme = scheme;
+        }
+    },
+
+    getEffectiveDisplayConfig() {
+        return this.activeDisplayProfile || AppData;
     },
 
     applyActiveDisplayProfile(force = false) {
-        const config = this.getEffectiveDisplayConfig();
+        const config = this.activeDisplayProfile || AppData;
         const signature = JSON.stringify([
             config.theme, config.showWeather, config.showTimeline, config.showBottomText,
             config.showClockSeconds, config.bottomAlign, config.bottomOffset,
@@ -2247,6 +2494,14 @@ const UI = {
         this.el.uiScaleLabel.textContent = `${scale}%`;
     },
 
+    syncMainWindowWidthLabel() {
+        if (!this.el.inputMainWindowWidth || !this.el.mainWindowWidthLabel) return;
+        const width = DisplaySettings.normalizeWindowWidth(
+            this.el.inputMainWindowWidth.value, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+        );
+        this.el.mainWindowWidthLabel.textContent = `${width}px`;
+    },
+
     applyUiScale(value = AppData.uiScale) {
         const scale = DisplaySettings.normalizeUiScale(value) / 100;
         document.documentElement.style.setProperty('--ui-scale', String(scale));
@@ -2254,18 +2509,26 @@ const UI = {
     },
 
     syncScaledViewBounds(scale = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1) {
-        const width = Math.max(0, (window.innerWidth - 8) / scale);
-        const height = Math.max(0, (window.innerHeight - 8) / scale);
-        const inset = `${4 / scale}px`;
+        const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+        const inset = `${4 / safeScale}px`;
         [this.el.viewMain, this.el.viewSettings].forEach((view) => {
             if (!view) return;
             view.style.left = inset;
             view.style.top = inset;
-            view.style.right = 'auto';
-            view.style.bottom = 'auto';
-            view.style.width = `${width}px`;
-            view.style.height = `${height}px`;
+            // 保留 bottom/right 的绝对定位拉伸，交由浏览器按视口换算高度，避免手动计算失准
+            view.style.right = inset;
+            view.style.bottom = inset;
+            view.style.width = 'auto';
+            view.style.height = 'auto';
         });
+    },
+
+    observeViewportSize() {
+        if (typeof ResizeObserver !== 'function') return;
+        const root = document.documentElement;
+        const observer = new ResizeObserver(() => this.syncScaledViewBounds());
+        observer.observe(root);
+        this.viewportObserver = observer;
     },
 
     syncRangeLabels() {
@@ -2376,6 +2639,10 @@ const UI = {
     },
 
     async setWindowDragRegion(region) {
+        if (AppData.snapToTop === true) {
+            await this.clearWindowDragRegion();
+            return;
+        }
         try {
             await Neutralino.window.unsetDraggableRegion('view-main');
             await Neutralino.window.unsetDraggableRegion('settings-header');
@@ -2396,6 +2663,24 @@ const UI = {
         } catch (error) { }
     },
 
+    async clearWindowDragRegion() {
+        try {
+            await Neutralino.window.unsetDraggableRegion('view-main');
+            await Neutralino.window.unsetDraggableRegion('settings-header');
+        } catch (error) { }
+    },
+
+    isDragLocked() {
+        return AppData.snapToTop === true;
+    },
+
+    renderDragLockState() {
+        document.body.classList.toggle('snap-locked', this.isDragLocked());
+        if (this.el.settingsDragHandle) {
+            this.el.settingsDragHandle.title = this.isDragLocked() ? '按住拖动窗口（当前已吸附屏幕顶部）' : '按住拖动窗口';
+        }
+    },
+
     bindMainDrag() {
         const main = this.el.viewMain;
         if (!main || main.dataset.dragBound === '1') return;
@@ -2405,6 +2690,14 @@ const UI = {
             if (event.target.closest('button, input, textarea, select, a, label, .custom-select')) return;
             const startX = event.screenX;
             const startY = event.screenY;
+            // 吸附模式下没有原生拖拽区域，直接起拖；其余情况等位移超过阈值再起拖
+            if (this.isDragLocked()) {
+                event.preventDefault();
+                void Neutralino.window.beginDrag(startX, startY).catch((error) => {
+                    void Logger.warn('窗口拖动失败', { module: 'window', action: 'begin-drag-main' }, error);
+                });
+                return;
+            }
             const onMove = async (moveEvent) => {
                 const dx = Math.abs(moveEvent.screenX - startX);
                 const dy = Math.abs(moveEvent.screenY - startY);
@@ -2432,6 +2725,7 @@ const UI = {
         handle.addEventListener('mousedown', async (event) => {
             if (event.button !== 0) return;
             event.preventDefault();
+            if (this.isDragLocked()) return;
             try {
                 await Neutralino.window.beginDrag(event.screenX, event.screenY);
             } catch (error) {
@@ -2440,10 +2734,44 @@ const UI = {
         });
     },
 
+    bindSettingsHeaderDrag() {
+        const header = this.el.settingsHeader;
+        if (!header || header.dataset.dragBound === '1') return;
+        header.dataset.dragBound = '1';
+        header.addEventListener('mousedown', (event) => {
+            if (event.button !== 0) return;
+            if (event.target.closest('button, input, textarea, select, a, label, .custom-select, .tab-btn, .settings-actions')) return;
+            const startX = event.screenX;
+            const startY = event.screenY;
+            const onMove = async (moveEvent) => {
+                const dx = Math.abs(moveEvent.screenX - startX);
+                const dy = Math.abs(moveEvent.screenY - startY);
+                if (dx < 4 && dy < 4) return;
+                cleanup();
+                try {
+                    await Neutralino.window.beginDrag(startX, startY);
+                } catch (error) {
+                    void Logger.warn('窗口拖动失败', { module: 'window', action: 'begin-drag-settings' }, error);
+                }
+            };
+            const cleanup = () => {
+                document.removeEventListener('mousemove', onMove, true);
+                document.removeEventListener('mouseup', cleanup, true);
+            };
+            document.addEventListener('mousemove', onMove, true);
+            document.addEventListener('mouseup', cleanup, true);
+        });
+    },
+
     async positionWindow(size, top) {
         await Neutralino.window.setSize(size);
         this.syncScaledViewBounds();
         await Neutralino.window.center();
+        if (AppData.snapToTop === true) {
+            const centeredPosition = await Neutralino.window.getPosition();
+            await Neutralino.window.move(centeredPosition.x ?? 0, 0);
+            return;
+        }
         if (top !== undefined) {
             const centeredPosition = await Neutralino.window.getPosition();
             await Neutralino.window.move(centeredPosition.x ?? 0, top);
@@ -2462,6 +2790,7 @@ const UI = {
     },
 
     async fitWindowToContent() {
+        if (WINDOW_MODE !== 'main') return;
         if (this.el.viewSettings && !this.el.viewSettings.classList.contains('hidden')) return;
         const baseWidth = APP_CONFIG.windowSize.width;
         const maxWidth = APP_CONFIG.maxWindowWidth || 1920;
@@ -2514,11 +2843,6 @@ const UI = {
         try {
             if (extra > 0) {
                 await this.animateWindowSize({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
-                void Logger.info('主界面宽度自适应', {
-                    module: 'window',
-                    action: 'fit-width',
-                    context: { baseWidth, targetWidth, overflow: Math.ceil(extra) }
-                });
             } else {
                 await this.positionWindow({ width: targetWidth, height: APP_CONFIG.windowSize.height }, APP_CONFIG.topOffset);
             }
@@ -2600,20 +2924,16 @@ const UI = {
 
     hideMainWindow(source = 'unknown') {
         if (typeof Onboarding !== 'undefined' && Onboarding.active) {
-            void Logger.info('忽略隐藏主窗口请求（引导进行中）', {
-                module: 'window', action: 'hide-skip', context: { source, visible: this.windowVisible }
-            });
             try { void Neutralino.window.focus(); } catch (error) { }
             return;
         }
-        void Logger.info('收到隐藏主窗口请求', {
-            module: 'window', action: 'hide-request', context: { source, visible: this.windowVisible }
-        });
         const apply = () => {
             const changed = this.windowVisible;
             this.windowVisible = false;
-            if (changed) this.scheduleTrayUpdate(60, 'window-hidden');
-            void Logger.info('主窗口已隐藏', { module: 'window', action: 'hide-complete', context: { source } });
+            if (changed) {
+                TrayHost.scheduleUpdate(false);
+                this.scheduleTrayUpdate(60, 'window-hidden');
+            }
         };
         try {
             const task = Neutralino.window.hide();
@@ -2627,7 +2947,6 @@ const UI = {
     },
 
     async showMainWindow() {
-        void Logger.info('收到显示主窗口请求', { module: 'window', action: 'show-request', context: { visible: this.windowVisible } });
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
         this.appliedMainWidth = APP_CONFIG.windowSize.width;
@@ -2636,10 +2955,10 @@ const UI = {
             await this.setWindowDragRegion('main');
             await Neutralino.window.show();
             this.windowVisible = true;
+            TrayHost.scheduleUpdate(true);
             this.scheduleTrayUpdate(60, 'window-shown');
             await Neutralino.window.focus();
             this.scheduleFitWindow(200);
-            void Logger.info('主窗口已显示', { module: 'window', action: 'show-complete' });
         } catch (error) {
             void Logger.error('显示窗口失败', { module: 'window', action: 'show' }, error);
             throw error;
@@ -2648,132 +2967,11 @@ const UI = {
 
     trayBound: false,
     trayUpdateTimer: null,
-    trayUpdatePromise: Promise.resolve(),
-    trayMenuSignature: null,
     trayIconPathCache: new Map(),
+
     async initTray() {
-        if (this.trayBound) {
-            this.scheduleTrayUpdate(0, 'initialize-again');
-            return;
-        }
-        void Logger.info('初始化托盘菜单', { module: 'tray', action: 'init', context: { os: window.NL_OS } });
-        try {
-            const handleTrayAction = async (event) => {
-                const rawDetail = event.detail;
-                const menuItemId = typeof rawDetail === 'string'
-                    ? rawDetail
-                    : rawDetail?.id || rawDetail?.menuItemId || rawDetail?.itemId;
-                void Logger.info('收到托盘菜单操作', {
-                    module: 'tray', action: 'menu-action',
-                    context: { menuItemId: menuItemId || '', visible: this.windowVisible }
-                });
-                try {
-                    switch (menuItemId) {
-                        case 'show':
-                            await this.showMainWindow();
-                            break;
-                        case 'hide':
-                            this.hideMainWindow('tray-hide');
-                            break;
-                        case 'settings':
-                            await this.showMainWindow();
-                            await this.openSettings();
-                            break;
-                        case 'refresh':
-                            await this.handleRefresh();
-                            break;
-                        case 'check-update':
-                            await Updater.check({ silent: false });
-                            break;
-                        case 'autostart':
-                            await this.toggleAutoStart();
-                            break;
-                        case 'exit':
-                            await App.shutdown('tray-menu');
-                            break;
-                        default:
-                            void Logger.warn('忽略未知托盘菜单项', {
-                                module: 'tray', action: 'unknown-menu-action', context: { menuItemId: String(menuItemId || '') }
-                            });
-                    }
-                } catch (error) {
-                    void Logger.error('托盘菜单操作失败', {
-                        module: 'tray', action: 'menu-action', context: { menuItemId: String(menuItemId || '') }
-                    }, error);
-                }
-            };
-            await Neutralino.events.on('trayMenuItemClicked', handleTrayAction);
-            this.trayBound = true;
-            await this.updateTrayMenu('initialize');
-            void Logger.info('托盘菜单初始化完成', { module: 'tray', action: 'init-complete' });
-        } catch (error) {
-            void Logger.error('托盘菜单初始化失败', { module: 'tray', action: 'init' }, error);
-            try {
-                await Dialog.alert(error.message || String(error), '托盘菜单初始化失败', 'danger');
-            } catch (messageBoxError) { }
-        }
-    },
-
-    scheduleTrayUpdate(delay = 150, reason = 'state-change') {
-        clearTimeout(this.trayUpdateTimer);
-        this.trayUpdateTimer = setTimeout(() => {
-            void this.updateTrayMenu(reason).catch((error) => {
-                void Logger.error('托盘菜单更新任务失败', { module: 'tray', action: 'schedule-update', context: { reason } }, error);
-            });
-        }, delay);
-    },
-
-    updateTrayMenu(reason = 'manual') {
-        const update = this.trayUpdatePromise.catch(() => {}).then(() => this.applyTrayMenu(reason));
-        this.trayUpdatePromise = update;
-        return update;
-    },
-
-    async applyTrayMenu(reason = 'manual') {
-        const visible = this.windowVisible === true;
-        const stateSignature = JSON.stringify({ visible, autoStart: AppData.autoStart === true });
-        if (stateSignature === this.trayMenuSignature) {
-            void Logger.info('托盘菜单状态未变化，跳过重建', {
-                module: 'tray', action: 'menu-update-skip', context: { reason, visible }
-            });
-            return;
-        }
-        const menuItems = [
-            ...(visible
-                ? [
-                    { id: 'show', text: '显示主界面', isDisabled: true },
-                    { id: 'hide', text: '隐藏主界面' }
-                ]
-                : [
-                    { id: 'show', text: '显示主界面' },
-                    { id: 'hide', text: '隐藏主界面', isDisabled: true }
-                ]),
-            { id: 'settings', text: '设置' },
-            { id: 'refresh', text: '刷新' },
-            { id: 'check-update', text: '检查更新' },
-            { id: 'autostart', text: '开机自启', isChecked: AppData.autoStart === true },
-            { id: 'exit', text: '退出' }
-        ];
-        const iconCandidates = window.NL_OS === 'Windows'
-            ? ['tray.ico', 'app.ico']
-            : ['tray.png', 'tray.ico', 'app.ico'];
-        const errors = [];
-        for (const iconName of iconCandidates) {
-            try {
-                const iconPath = await this.getTrayIconPath(iconName);
-                await Neutralino.os.setTray({ icon: iconPath, menuItems });
-                this.trayMenuSignature = stateSignature;
-                void Logger.info('托盘菜单更新完成', {
-                    module: 'tray', action: 'menu-update', context: { reason, visible, iconName }
-                });
-                return;
-            } catch (error) {
-                errors.push(`${iconName}: ${error?.message || error}`);
-            }
-        }
-        void Logger.error('托盘创建失败', {
-            module: 'tray', action: 'set', context: { reason, visible, attempted: errors }
-        }, new Error(errors.join(' | ')));
+        this.trayBound = await TrayHost.start();
+        if (this.trayBound) void Logger.info('C++ 托盘宿主已就绪', { module: 'tray', action: 'init-complete' });
     },
 
     async getTrayIconPath(fileName) {
@@ -2813,6 +3011,19 @@ const UI = {
         throw new Error(errors.join(' | ') || `未找到托盘图标: ${fileName}`);
     },
 
+    scheduleTrayUpdate(delay = 150, reason = 'state-change') {
+        clearTimeout(this.trayUpdateTimer);
+        this.trayUpdateTimer = setTimeout(() => {
+            TrayHost.scheduleUpdate();
+        }, delay);
+    },
+
+    updateTrayMenu(reason = 'manual') {
+        if (!TrayHost.watchdogTimer) return Promise.resolve();
+        TrayHost.scheduleUpdate();
+        return Promise.resolve();
+    },
+
     getTrayIconCandidates(fileName) {
         const documentRoot = (APP_CONFIG.documentRoot || '/www/').replace(/^\/+|\/+$/g, '');
         const cwd = typeof window.NL_CWD === 'string' ? window.NL_CWD : '';
@@ -2842,6 +3053,8 @@ const UI = {
             await Store.saveToRegistry(updatedData);
             AppData = updatedData;
             this.el.inputAutoStart.checked = enabled;
+            // 只推送状态，托盘侧已按菜单勾选同步过、避免重复翻转
+            TrayHost.lastState = null;
             this.scheduleTrayUpdate();
         } catch (error) {
             void Logger.error('开机自启设置失败', { module: 'startup', action: 'toggle' }, error);
@@ -3008,7 +3221,7 @@ const UI = {
             }
             if (profileIds.has(profile.id)) throw new Error(`显示方案标识重复：${profile.id}`);
             profileIds.add(profile.id);
-            if (profile.theme && !['default', 'ocean', 'forest', 'midnight', 'high-contrast', 'monochrome'].includes(profile.theme)) {
+            if (profile.theme && !['default', 'ocean', 'forest', 'midnight', 'graphite', 'high-contrast', 'monochrome'].includes(profile.theme)) {
                 throw new Error(`显示方案主题无效：${profile.name}`);
             }
             if (profile.customBottomText !== undefined && typeof profile.customBottomText !== 'string') {
@@ -3020,16 +3233,7 @@ const UI = {
                 }
             }
         });
-        if (config.displayRules !== undefined) {
-            if (!config.displayRules || typeof config.displayRules !== 'object' || Array.isArray(config.displayRules)) {
-                throw new Error('显示方案日期规则无效');
-            }
-            Object.entries(config.displayRules).forEach(([date, profileId]) => {
-                if (Schedule.getDateKey(date) !== date || !profileIds.has(profileId)) {
-                    throw new Error(`显示方案日期规则无效：${date}`);
-                }
-            });
-        }
+        if (config.displayRules !== undefined) delete config.displayRules;
     },
 
     maskSecret(value) {
@@ -3689,16 +3893,16 @@ const UI = {
         this.el.viewSettings.classList.toggle('is-readonly', this.settingsReadOnly);
         this.el.settingsBody.inert = this.settingsReadOnly;
         this.el.inputAutoStart.disabled = this.settingsReadOnly;
-        this.el.themeSelectWrap.inert = this.settingsReadOnly;
+        if (this.el.themeSelectWrap) this.el.themeSelectWrap.inert = this.settingsReadOnly;
         this.el.btnSettingsUnlock.hidden = !this.settingsReadOnly;
-        this.el.btnSaveSettings.disabled = this.settingsReadOnly ||
-            this.getSettingsSnapshot() === this.settingsSnapshot;
+        this.syncSettingsActionButtons();
+        if (this.el.saveState) this.el.saveState.hidden = true;
         this.el.btnImportConfig.disabled = this.settingsReadOnly;
         this.el.btnExportConfig.disabled = this.settingsReadOnly;
     },
 
     async openSettings(configToEdit = null, options = {}) {
-        if (!await this.ensureSettingsAccess()) return;
+        if (!await this.ensureSettingsAccess()) return false;
         const { tab = null, guide = false } = options;
         EditData = configToEdit
             ? JSON.parse(JSON.stringify(configToEdit))
@@ -3713,7 +3917,7 @@ const UI = {
         }
         if (!EditData.courseOverrides || typeof EditData.courseOverrides !== 'object' || Array.isArray(EditData.courseOverrides)) EditData.courseOverrides = {};
         if (!Array.isArray(EditData.displayProfiles)) EditData.displayProfiles = [];
-        if (!EditData.displayRules || typeof EditData.displayRules !== 'object') EditData.displayRules = {};
+        delete EditData.displayRules;
         // 旧版曾用 showBottom 记录底部信息开关，这里统一到 showBottomText
         if (typeof EditData.showBottomText !== 'boolean' && typeof EditData.showBottom === 'boolean') {
             EditData.showBottomText = EditData.showBottom;
@@ -3721,19 +3925,19 @@ const UI = {
         delete EditData.showBottom;
         CurrentEditWeek = 1;
         const todayOverrideDate = Schedule.getDateKey(new Date());
-        const hasTodayOverride = Array.isArray(EditData.courseOverrides?.[todayOverrideDate]?.courses);
+        const todayOverride = EditData.courseOverrides?.[todayOverrideDate];
+        const hasTodayOverride = Array.isArray(todayOverride?.courses)
+            && todayOverride.courses.some((course) => course?.overridden === true);
         CurrentOverrideDate = hasTodayOverride ? todayOverrideDate : '';
         this.el.cycleWeekCount.value = String(EditData.courseRotation.weeks.length + 1);
         this.el.cycleStartDate.value = EditData.courseRotation.startDate;
-        this.el.overrideMode.checked = hasTodayOverride;
-        this.el.overrideDate.value = todayOverrideDate;
         if (hasTodayOverride) {
             const resolved = Schedule.resolveCourses(todayOverrideDate, EditData);
             CurrentEditDay = resolved.day;
             CurrentEditWeek = resolved.week;
         }
-        this.el.inputDisplayRuleDate.value = '';
-
+        this.renderSubjectList();
+        this.renderDisplayProfileEditor();
         const activeProvider = EditData.weather.provider || 'qweather';
         const hasProviderConfigs = EditData.weather.providers && typeof EditData.weather.providers === 'object';
         if (!hasProviderConfigs) EditData.weather.providers = {};
@@ -3771,16 +3975,25 @@ const UI = {
         this.el.inputFontFamily.value = EditData.fontFamily || '';
         this.el.inputFontSizeScale.value = EditData.fontSizeScale || 100;
         this.el.inputUiScale.value = DisplaySettings.normalizeUiScale(EditData.uiScale);
+        if (this.el.inputMainWindowWidth) {
+            this.el.inputMainWindowWidth.value = String(DisplaySettings.normalizeWindowWidth(
+                EditData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            ));
+            this.syncMainWindowWidthLabel();
+        }
+        if (this.el.inputSnapToTop) this.el.inputSnapToTop.checked = EditData.snapToTop === true;
+        this.renderDragLockState();
         this.syncFontSizeScaleLabel();
         this.syncUiScaleLabel();
         this.applyUiScale(this.el.inputUiScale.value);
         this.syncRangeLabels();
         this.updateFontPreview();
-        CustomSelect.setValue('select-theme', this.el.inputTheme.value);
         CustomSelect.setValue('select-font-family', this.el.inputFontFamily.value);
         CustomSelect.setValue('select-course-font', this.el.inputCourseFont.value);
         this.el.inputBottomColor.value = EditData.bottomColor || '#64748b';
         this.renderSubjectList();
+        // 打开设置时清空上次残留的选择，交给 renderDisplayProfileEditor 定位到当前方案
+        this.el.displayProfileEdit.value = '';
         this.renderDisplayProfileEditor();
         this.renderCourseCycleSelector();
         this.renderCourseModeControls();
@@ -3796,11 +4009,15 @@ const UI = {
         this.bindSettingsDirtyTracking();
         this.settingsSnapshot = this.getSettingsSnapshot();
         this.applySettingsReadOnly(this.getSettingsLockMode() === 'readonly');
-
-        await this.animateWindowSize(APP_CONFIG.settingsSize);
-        await this.setWindowDragRegion('settings');
+        this.syncSettingsActionButtons();
+        if (!this.embeddedSettings) {
+            await this.animateWindowSize(APP_CONFIG.settingsSize);
+            await this.setWindowDragRegion('settings');
+            this.syncScaledViewBounds();
+        }
         if (tab) this.switchTab(tab);
         if (guide) this.runWeatherGuide();
+        return true;
     },
 
     /**
@@ -3817,6 +4034,10 @@ const UI = {
         });
         const targetEl = document.getElementById(`tab-${target}`);
         if (targetEl) void targetEl.offsetWidth;
+        // 进入「显示与文本」时重新定位到当前生效的方案，并同步主题预览
+        if (target === 'bottom' && this.el.displayProfileEdit) {
+            this.loadDisplayProfileForm();
+        }
     },
 
     
@@ -4019,11 +4240,16 @@ const UI = {
 
     async closeSettings({ silent = false } = {}) {
         this.closeSettingsMoreMenu();
-        this.closeCourseCopyPopover();
         this.settingsAccessGranted = false;
         this.applySettingsReadOnly(false);
         this.el.inputSettingsLockPin.value = '';
         this.el.inputSettingsLockPinConfirm.value = '';
+        if (this.embeddedSettings) {
+            this.el.viewSettings.classList.add('hidden');
+            await WindowManager.broadcast('cb:config-updated');
+            await WindowManager.closeSelf();
+            return;
+        }
         this.el.viewSettings.classList.add('hidden');
         this.el.viewMain.classList.remove('hidden');
         this.applyUiScale(AppData.uiScale);
@@ -4040,7 +4266,12 @@ const UI = {
             hasChanges ? '有尚未保存的修改，确定放弃并退出设置吗？' : '确定退出设置吗？',
             { title: '取消设置', confirmText: hasChanges ? '放弃修改' : '退出设置' }
         );
-        if (confirmed) await this.closeSettings();
+        if (!confirmed) return;
+        if (WINDOW_MODE !== 'main') {
+            await WindowManager.closeSelf();
+            return;
+        }
+        await this.closeSettings();
     },
 
     getSettingsSnapshot() {
@@ -4049,12 +4280,13 @@ const UI = {
             'inputPrivateKey', 'inputWeatherApiKey', 'inputTheme', 'inputWeatherRefreshMinutes',
             'inputCountdownName', 'inputCountdownDate', 'inputBottomFontSize', 'inputBottomColor',
             'inputCourseFont', 'inputCourseFontSize', 'inputFontFamily', 'inputFontSizeScale',
-            'inputUiScale', 'inputSettingsLockMode',
+            'inputUiScale', 'inputMainWindowWidth', 'inputSettingsLockMode',
             'inputBottomOffset'
         ];
         const values = fields.map((key) => this.el[key]?.value ?? '');
         values.push(this.el.inputWeatherProvider?.value || 'qweather');
         values.push(this.el.inputAutoStart?.checked === true);
+        values.push(this.el.inputSnapToTop?.checked === true);
         values.push(this.pinInputRevision);
         values.push(this.getBottomAlign());
         values.push(
@@ -4066,8 +4298,6 @@ const UI = {
             this.el.inputProfileShowBottom?.checked === true,
             this.el.inputProfileShowSeconds?.checked === true,
             this.el.inputProfileBottomText?.value || '',
-            this.el.inputDisplayRuleDate?.value || '',
-            this.el.displayRuleProfile?.value || '',
             this.el.cycleWeekCount?.value || '',
             this.el.cycleStartDate?.value || ''
         );
@@ -4075,7 +4305,18 @@ const UI = {
     },
 
     markSettingsDirty() {
-        if (this.el.btnSaveSettings && !this.settingsReadOnly) this.el.btnSaveSettings.disabled = false;
+        this.syncSettingsActionButtons(true);
+        if (this.el.saveState && !this.settingsReadOnly) this.el.saveState.hidden = false;
+    },
+
+    /** 根据是否有未保存修改同步底部按钮可用状态；"保存并退出"始终保持可用。 */
+    syncSettingsActionButtons(dirty = null) {
+        const changed = this.settingsReadOnly
+            ? false
+            : (dirty === null ? this.getSettingsSnapshot() !== this.settingsSnapshot : dirty);
+        if (this.el.btnSaveSettings) this.el.btnSaveSettings.disabled = false;
+        if (this.el.btnApplySettings) this.el.btnApplySettings.disabled = this.settingsReadOnly || !changed;
+        if (this.el.btnCancelSettings) this.el.btnCancelSettings.disabled = false;
     },
 
     bindSettingsDirtyTracking() {
@@ -4117,6 +4358,7 @@ const UI = {
             }
             AppData.weather.apiHost = SecretVault.recall('weather:apiHost');
             AppData.weather.location = SecretVault.recall('weather:location');
+            TrayHost.scheduleUpdate();
         }, {
             module: 'config',
             action: 'save',
@@ -4130,13 +4372,22 @@ const UI = {
         const privateKeyInput = this.el.inputPrivateKey;
         if (privateKeyInput) privateKeyInput.value = '';
         if (EditData.weather?.jwtConfig) EditData.weather.jwtConfig.privateKey = '';
-        this.scheduleTrayUpdate();
-        await this.closeSettings();
-        await App.init();
+        if (WINDOW_MODE === 'main') this.scheduleTrayUpdate();
+        if (context.close !== false) {
+            await this.closeSettings();
+            if (WINDOW_MODE === 'main') await App.init();
+        } else {
+            // 保持对话框打开时视窗尺寸可能变化，重新同步一下界面缩放与快照
+            this.applyUiScale(AppData.uiScale);
+            this.settingsSnapshot = this.getSettingsSnapshot();
+            this.syncSettingsActionButtons();
+            if (this.el.saveState) this.el.saveState.hidden = true;
+        }
         return autoStartError;
     },
 
-    async saveSettings() {
+    /** 从表单回写 EditData；校验失败时返回 false。 */
+    async collectSettingsForm() {
         const lockMode = this.el.inputSettingsLockMode.value || 'off';
         const currentVerifier = EditData.settingsLock?.pinVerifier;
         if (lockMode === 'pin') {
@@ -4146,23 +4397,23 @@ const UI = {
             if (pin || confirmation) {
                 if (pin !== confirmation) {
                     await Dialog.alert('两次输入的 PIN 不一致。', '无法保存', 'warning');
-                    return;
+                    return false;
                 }
                 if (pin.trim().length < 6 || pin.length > 64) {
                     await Dialog.alert('PIN 须为 6 到 64 个字符。', 'PIN 无效', 'warning');
-                    return;
+                    return false;
                 }
                 try {
                     pinVerifier = await SettingsLock.createVerifier(pin);
                 } catch (error) {
                     void Logger.warn('设置 PIN 生成失败', { module: 'settings-lock', action: 'create-pin' }, error);
                     await Dialog.alert('无法安全设置 PIN，请检查运行环境后重试。', '设置失败', 'danger');
-                    return;
+                    return false;
                 }
             }
             if (!pinVerifier) {
                 await Dialog.alert('请设置至少 6 个字符的 PIN。', '需要设置 PIN', 'warning');
-                return;
+                return false;
             }
             EditData.settingsLock = { mode: 'pin', pinVerifier };
         } else {
@@ -4187,7 +4438,7 @@ const UI = {
         const weatherRefreshMinutes = Number(this.el.inputWeatherRefreshMinutes.value);
         if (!Number.isInteger(weatherRefreshMinutes) || weatherRefreshMinutes < 1 || weatherRefreshMinutes > 1440) {
             await Dialog.alert('天气刷新间隔须为 1 到 1440 分钟', '参数无效', 'warning');
-            return;
+            return false;
         }
         EditData.weatherRefreshMinutes = weatherRefreshMinutes;
         EditData.autoStart = this.el.inputAutoStart.checked;
@@ -4200,14 +4451,26 @@ const UI = {
         EditData.fontFamily = this.el.inputFontFamily.value || '';
         EditData.fontSizeScale = Math.max(80, Math.min(150, Number(this.el.inputFontSizeScale.value) || 100));
         EditData.uiScale = DisplaySettings.normalizeUiScale(this.el.inputUiScale.value);
+        if (this.el.inputMainWindowWidth) {
+            EditData.mainWindowWidth = DisplaySettings.normalizeWindowWidth(
+                this.el.inputMainWindowWidth.value, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            );
+        }
+        EditData.snapToTop = this.el.inputSnapToTop?.checked === true;
+        this.renderDragLockState();
         EditData.bottomColor = this.el.inputBottomColor.value || '#64748b';
         EditData.bottomAlign = this.getBottomAlign();
         EditData.bottomOffset = this.getBottomOffset();
         EditData.courseRotation.startDate = Schedule.getDateKey(Schedule.getMonday(this.el.cycleStartDate.value));
         if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
+        return true;
+    },
 
+    /** close=false 时只保存不退出，供“应用”按钮使用。 */
+    async saveSettings({ close = true } = {}) {
+        if (!await this.collectSettingsForm()) return;
         try {
-            const autoStartError = await this.persistSettings({ trigger: 'save-button' });
+            const autoStartError = await this.persistSettings({ trigger: close ? 'save-button' : 'apply-button', close });
             if (autoStartError) {
                 await Dialog.alert(`其余配置已保存。\n${autoStartError.message || autoStartError}`, '开机自启设置失败', 'warning');
             }
@@ -4221,39 +4484,45 @@ const UI = {
         const profiles = EditData.displayProfiles || [];
         const selectedId = this.el.displayProfileEdit.value;
         this.el.displayProfileEdit.innerHTML = '<option value="">新建方案</option>';
-        this.el.displayRuleProfile.innerHTML = '';
         profiles.forEach((profile) => {
             const editOption = document.createElement('option');
             editOption.value = profile.id;
             editOption.textContent = profile.name;
             this.el.displayProfileEdit.appendChild(editOption);
-            const ruleOption = document.createElement('option');
-            ruleOption.value = profile.id;
-            ruleOption.textContent = profile.name;
-            this.el.displayRuleProfile.appendChild(ruleOption);
         });
-        this.el.displayProfileEdit.value = profiles.some((profile) => profile.id === selectedId) ? selectedId : '';
-        this.el.displayRuleProfile.disabled = profiles.length === 0;
-        this.el.btnAddDisplayRule.disabled = profiles.length === 0;
+        // 没有手动选择过方案时，默认定位到当前生效的方案
+        if (!selectedId) {
+            const activeId = this.activeDisplayProfile?.id || AppData.activeDisplayProfileId || '';
+            if (profiles.some((profile) => profile.id === activeId)) this.el.displayProfileEdit.value = activeId;
+        }
+        this.el.displayProfileEdit.value = profiles.some((profile) => profile.id === this.el.displayProfileEdit.value)
+            ? this.el.displayProfileEdit.value
+            : (profiles.some((profile) => profile.id === selectedId) ? selectedId : '');
         CustomSelect.refreshNativeSelect('select-display-profile-edit');
-        CustomSelect.refreshNativeSelect('select-display-rule-profile');
         CustomSelect.sync('select-display-profile-edit');
-        CustomSelect.sync('select-display-rule-profile');
         this.loadDisplayProfileForm();
-        this.renderDisplayRules();
     },
 
     loadDisplayProfileForm() {
         const profile = EditData.displayProfiles?.find((item) => item.id === this.el.displayProfileEdit.value);
         this.el.inputDisplayProfileName.value = profile?.name || '';
         this.el.inputDisplayProfileTheme.value = profile?.theme || EditData.theme || 'default';
-        CustomSelect.sync('input-display-profile-theme');
         this.el.inputProfileShowWeather.checked = profile?.showWeather ?? EditData.showWeather !== false;
         this.el.inputProfileShowTimeline.checked = profile?.showTimeline ?? EditData.showTimeline !== false;
         this.el.inputProfileShowBottom.checked = profile?.showBottomText ?? EditData.showBottomText !== false;
         this.el.inputProfileShowSeconds.checked = profile?.showClockSeconds ?? EditData.showClockSeconds !== false;
         this.el.inputProfileBottomText.value = profile?.customBottomText ?? EditData.customBottomText ?? '';
         this.el.btnDeleteDisplayProfile.hidden = !profile;
+        CustomSelect.refreshNativeSelect('input-display-profile-theme');
+        CustomSelect.sync('input-display-profile-theme');
+        // 选择方案后立即按该方案预览主题，便于直接看到效果
+        this.previewDisplayProfileTheme(profile?.theme);
+    },
+
+    /** 在设置窗口内即时预览方案主题；传空则回退到配置中的主题。 */
+    previewDisplayProfileTheme(theme) {
+        this.previewedProfileTheme = theme || EditData?.theme || 'default';
+        UI.applyTheme(this.previewedProfileTheme);
     },
 
     saveDisplayProfile() {
@@ -4280,16 +4549,14 @@ const UI = {
         this.loadDisplayProfileForm();
         CustomSelect.sync('select-display-profile-edit');
         this.markSettingsDirty();
-        // 方案保存即落盘并即时生效，省去再点一次底部“保存设置”
         void this.persistDisplayProfiles(profile.name);
     },
 
-    /** 仅持久化显示方案与日期规则，不关闭设置面板。 */
+    
     async persistDisplayProfiles(name) {
         try {
             await Store.saveToRegistry(EditData);
             AppData.displayProfiles = JSON.parse(JSON.stringify(EditData.displayProfiles || []));
-            AppData.displayRules = JSON.parse(JSON.stringify(EditData.displayRules || {}));
             this.settingsSnapshot = this.getSettingsSnapshot();
             this.applySettingsReadOnly(this.getSettingsLockMode() === 'readonly');
             this.activeDisplayProfileKey = null;
@@ -4300,69 +4567,57 @@ const UI = {
         }
     },
 
+    /** 把当前方案参数直接应用到主界面并立即保存。 */
+    async applyDisplayProfile() {
+        const config = {
+            theme: this.el.inputDisplayProfileTheme.value,
+            showWeather: this.el.inputProfileShowWeather.checked,
+            showTimeline: this.el.inputProfileShowTimeline.checked,
+            showBottomText: this.el.inputProfileShowBottom.checked,
+            showClockSeconds: this.el.inputProfileShowSeconds.checked,
+            customBottomText: this.el.inputProfileBottomText.value.trim()
+        };
+        const profileId = this.el.displayProfileEdit.value;
+        const profile = (EditData.displayProfiles || []).find((item) => item.id === profileId);
+        const applied = { ...config, ...(profile ? { id: profile.id, name: profile.name } : {}) };
+        const previous = this.activeDisplayProfile;
+        try {
+            EditData.theme = config.theme;
+            EditData.showWeather = config.showWeather;
+            EditData.showTimeline = config.showTimeline;
+            EditData.showBottomText = config.showBottomText;
+            EditData.showClockSeconds = config.showClockSeconds;
+            EditData.customBottomText = config.customBottomText;
+            await Store.saveToRegistry(EditData);
+            AppData = JSON.parse(JSON.stringify(EditData));
+            this.activeDisplayProfile = applied;
+            AppData.activeDisplayProfileId = profile ? profile.id : '';
+            this.settingsSnapshot = this.getSettingsSnapshot();
+            this.applySettingsReadOnly(this.getSettingsLockMode() === 'readonly');
+            UI.activeDisplayProfileKey = null;
+            UI.applyActiveDisplayProfile(true);
+            void Logger.info('显示方案已应用', { module: 'display', action: 'apply-profile', context: { name: applied.name || '未命名' } });
+        } catch (error) {
+            this.activeDisplayProfile = previous;
+            void Logger.error('显示方案应用失败', { module: 'display', action: 'apply-profile' }, error);
+            await Dialog.alert(`应用失败：${error.message || error}`, '应用失败', 'danger');
+        }
+    },
+
     async deleteDisplayProfile() {
         const profileId = this.el.displayProfileEdit.value;
         if (!profileId) return;
         const profile = EditData.displayProfiles.find((item) => item.id === profileId);
-        const confirmed = await Dialog.confirm(`删除“${profile?.name || '未命名方案'}”并移除关联的日期规则？`, {
+        const confirmed = await Dialog.confirm(`删除显示方案“${profile?.name || '未命名方案'}”？`, {
             title: '删除显示方案', confirmText: '删除'
         });
         if (!confirmed) return;
         EditData.displayProfiles = EditData.displayProfiles.filter((item) => item.id !== profileId);
-        Object.keys(EditData.displayRules).forEach((date) => {
-            if (EditData.displayRules[date] === profileId) delete EditData.displayRules[date];
-        });
+        if (this.activeDisplayProfile?.id === profileId) this.activeDisplayProfile = null;
+        if (AppData.activeDisplayProfileId === profileId) AppData.activeDisplayProfileId = '';
+        this.el.displayProfileEdit.value = '';
         this.renderDisplayProfileEditor();
         this.markSettingsDirty();
-    },
-
-    async addDisplayRule() {
-        const date = this.el.inputDisplayRuleDate.value;
-        const profileId = this.el.displayRuleProfile.value;
-        if (!date || !profileId) {
-            await Dialog.alert('请选择日期和显示方案', '信息不完整', 'warning');
-            return;
-        }
-        const oldProfileId = EditData.displayRules[date];
-        if (oldProfileId && oldProfileId !== profileId) {
-            const confirmed = await Dialog.confirm(`${date} 已关联其他方案，是否替换？`, {
-                title: '替换日期方案', confirmText: '替换'
-            });
-            if (!confirmed) return;
-        }
-        EditData.displayRules[date] = profileId;
-        this.renderDisplayRules();
-        this.markSettingsDirty();
-    },
-
-    renderDisplayRules() {
-        this.el.displayRuleList.innerHTML = '';
-        const profiles = new Map((EditData.displayProfiles || []).map((profile) => [profile.id, profile.name]));
-        const entries = Object.entries(EditData.displayRules || {}).sort(([left], [right]) => left.localeCompare(right));
-        if (!entries.length) {
-            const empty = document.createElement('div');
-            empty.className = 'display-rule-empty';
-            empty.textContent = '尚未按日期应用方案，当前使用“默认显示”。';
-            this.el.displayRuleList.appendChild(empty);
-            return;
-        }
-        entries.forEach(([date, profileId]) => {
-            const row = document.createElement('div');
-            row.className = 'display-rule-item';
-            const label = document.createElement('span');
-            label.textContent = `${CustomDatePicker.formatDate(date)} · ${profiles.get(profileId) || '已删除方案'}`;
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'btn btn-secondary';
-            remove.textContent = '移除';
-            remove.addEventListener('click', () => {
-                delete EditData.displayRules[date];
-                this.renderDisplayRules();
-                this.markSettingsDirty();
-            });
-            row.append(label, remove);
-            this.el.displayRuleList.appendChild(row);
-        });
     },
 
     getSelectedCourseOverride() {
@@ -4370,6 +4625,7 @@ const UI = {
     },
 
     getEditCoursesForDay(day) {
+        if (!day) return null;
         if (CurrentOverrideDate) {
             return this.ensureCourseOverride().courses;
         }
@@ -4400,8 +4656,6 @@ const UI = {
                 CurrentEditWeek = week;
                 CurrentEditCourseIndex = null;
                 this.renderCourseCycleSelector();
-                this.renderCopyCourseWeekOptions();
-                this.updateCopyCourseButton();
                 this.renderCourseList();
             });
             this.el.cycleWeekSelector.appendChild(button);
@@ -4415,82 +4669,58 @@ const UI = {
         return CourseOverride.ensure(EditData.courseOverrides, CurrentOverrideDate, resolved);
     },
 
-    changeOverrideMode() {
-        const enabled = this.el.overrideMode.checked;
-        CurrentOverrideDate = enabled
-            ? (this.el.overrideDate.value || Schedule.getDateKey(new Date()))
-            : '';
-        CurrentEditCourseIndex = null;
-        if (enabled) {
-            const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
+    /** 切换单个科目的调课：开启后只影响今天，关闭则恢复常规课表。 */
+    toggleCourseOverride(courseIndex, enabled) {
+        if (enabled && !CurrentOverrideDate) {
+            const todayKey = Schedule.getDateKey(new Date());
+            CurrentOverrideDate = todayKey;
+            const resolved = Schedule.resolveCourses(todayKey, EditData);
             CurrentEditDay = resolved.day;
             CurrentEditWeek = resolved.week;
-            this.el.overrideDate.value = CurrentOverrideDate;
-            this.ensureCourseOverride();
+            const overrideCourses = this.ensureCourseOverride().courses;
+            courseIndex = Math.min(courseIndex, overrideCourses.length - 1);
+            if (courseIndex < 0) {
+                CurrentOverrideDate = '';
+                return;
+            }
         }
-        this.renderDaySelector();
-        this.renderCourseCycleSelector();
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        if (!courses || !courses[courseIndex]) return;
+        const course = courses[courseIndex];
+        if (enabled) {
+            const override = this.ensureCourseOverride();
+            if (!override) return;
+            const target = override.courses[courseIndex];
+            if (target) target.overridden = true;
+            const label = target?.course || course.course || '未命名课程';
+            this.showUndoToast(`已将「${label}」标记为 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 调课`, () => {
+                const current = this.getSelectedCourseOverride();
+                if (current?.courses?.[courseIndex]) current.courses[courseIndex].overridden = false;
+                this.renderCourseList();
+                this.markSettingsDirty();
+            });
+        } else {
+            const removed = this.getSelectedCourseOverride();
+            const previous = removed?.courses?.[courseIndex]?.overridden;
+            const label = removed?.courses?.[courseIndex]?.course || course.course || '未命名课程';
+            if (removed?.courses?.[courseIndex]) removed.courses[courseIndex].overridden = false;
+            const date = CurrentOverrideDate;
+            this.showUndoToast(`已取消「${label}」的调课`, () => {
+                if (EditData.courseOverrides?.[date]?.courses?.[courseIndex]) {
+                    EditData.courseOverrides[date].courses[courseIndex].overridden = previous !== false;
+                }
+                this.renderCourseList();
+                this.markSettingsDirty();
+            });
+        }
         this.renderCourseList();
+        this.markSettingsDirty();
     },
 
     renderCourseModeControls() {
-        const isOverride = Boolean(CurrentOverrideDate);
-        const override = isOverride ? this.getSelectedCourseOverride() : null;
-        this.el.overrideMode.checked = isOverride;
-        this.el.cycleWeekSelector.hidden = isOverride
-            ? true
-            : (EditData.courseRotation?.weeks?.length || 0) === 0;
+        this.el.cycleWeekSelector.hidden = Boolean(CurrentOverrideDate)
+            || (EditData.courseRotation?.weeks?.length || 0) === 0;
         CustomSelect.sync('input-cycle-week-count');
-        if (this.el.overrideDateRow) this.el.overrideDateRow.hidden = !isOverride;
-        if (this.el.overrideDate && isOverride) this.el.overrideDate.value = CurrentOverrideDate;
-        if (this.el.overrideStatus) {
-            this.el.overrideStatus.textContent = !isOverride
-                ? ''
-                : override
-                    ? `${CustomDatePicker.formatDate(CurrentOverrideDate)} 已调课`
-                    : `${CustomDatePicker.formatDate(CurrentOverrideDate)} 与常规课表一致`;
-            this.el.overrideStatus.classList.toggle('is-override', Boolean(override));
-        }
-        if (this.el.btnRestoreOverride) this.el.btnRestoreOverride.hidden = !override;
-        if (this.el.overrideHint) {
-            this.el.overrideHint.textContent = isOverride
-                ? `调课模式已开启：正在编辑 ${CustomDatePicker.formatDate(CurrentOverrideDate)}（${DAY_MAP[CurrentEditDay]}）的课程，常规课表保持不变。`
-                : '开启调课模式后，课程调整只会保存到所选日期（默认今天），常规课表保持不变。';
-            this.el.overrideHint.classList.toggle('is-warning', isOverride);
-        }
-    },
-
-    changeOverrideDate() {
-        if (!this.el.overrideMode.checked) {
-            this.el.overrideDate.value = CurrentOverrideDate || Schedule.getDateKey(new Date());
-            return;
-        }
-        CurrentOverrideDate = this.el.overrideDate.value || Schedule.getDateKey(new Date());
-        this.el.overrideDate.value = CurrentOverrideDate;
-        const resolved = Schedule.resolveCourses(CurrentOverrideDate, EditData);
-        CurrentEditDay = resolved.day;
-        CurrentEditWeek = resolved.week;
-        CurrentEditCourseIndex = null;
-        this.ensureCourseOverride();
-        this.renderDaySelector();
-        this.renderCourseCycleSelector();
-        this.renderCourseList();
-    },
-
-    async removeCourseOverride() {
-        const removed = this.getSelectedCourseOverride();
-        if (!removed) return;
-        const date = CurrentOverrideDate;
-        CourseOverride.remove(EditData.courseOverrides, date);
-        this.el.overrideMode.checked = false;
-        CurrentOverrideDate = '';
-        this.renderCourseList();
-        this.markSettingsDirty();
-        this.showUndoToast(`已恢复 ${CustomDatePicker.formatDate(date)} 的常规课表`, () => {
-            EditData.courseOverrides[date] = removed;
-            this.renderCourseList();
-            this.markSettingsDirty();
-        });
     },
 
     async updateCourseRotationWeekCount() {
@@ -4526,7 +4756,6 @@ const UI = {
         const menu = this.el.settingsMoreMenu;
         if (!menu) return;
         const open = menu.hidden;
-        this.closeCourseCopyPopover();
         menu.hidden = !open;
         this.el.btnSettingsMore?.setAttribute('aria-expanded', String(open));
         if (open) this.positionFloatingPanel(menu, this.el.btnSettingsMore);
@@ -4536,26 +4765,6 @@ const UI = {
         if (!this.el.settingsMoreMenu || this.el.settingsMoreMenu.hidden) return;
         this.el.settingsMoreMenu.hidden = true;
         this.el.btnSettingsMore?.setAttribute('aria-expanded', 'false');
-    },
-
-    toggleCourseCopyPopover() {
-        const popover = this.el.courseCopyPopover;
-        if (!popover) return;
-        const open = popover.hidden;
-        this.closeSettingsMoreMenu();
-        popover.hidden = !open;
-        this.el.btnCopyCoursesToggle?.setAttribute('aria-expanded', String(open));
-        if (open) {
-            this.renderCopyCourseWeekOptions();
-            this.updateCopyCourseButton();
-            this.positionFloatingPanel(popover, this.el.btnCopyCoursesToggle);
-        }
-    },
-
-    closeCourseCopyPopover() {
-        if (!this.el.courseCopyPopover || this.el.courseCopyPopover.hidden) return;
-        this.el.courseCopyPopover.hidden = true;
-        this.el.btnCopyCoursesToggle?.setAttribute('aria-expanded', 'false');
     },
 
     positionFloatingPanel(panel, anchor) {
@@ -4581,98 +4790,31 @@ const UI = {
 
     renderDaySelector() {
         this.el.daySelector.innerHTML = '';
-        const isOverrideEditing = Boolean(CurrentOverrideDate);
-        this.el.daySelector.hidden = isOverrideEditing;
-        this.el.cycleWeekSelector.hidden = isOverrideEditing || (EditData.courseRotation?.weeks?.length || 0) === 0;
-        this.el.inputCopyCourseDay.innerHTML = '<option value="">复制到星期…</option>';
+        this.el.daySelector.hidden = Boolean(CurrentOverrideDate);
+        this.el.cycleWeekSelector.hidden = Boolean(CurrentOverrideDate) || (EditData.courseRotation?.weeks?.length || 0) === 0;
         Object.keys(DAY_MAP).forEach(dayKey => {
             const btn = document.createElement('button');
             btn.className = `day-btn ${dayKey === CurrentEditDay ? 'active' : ''}`;
             btn.textContent = DAY_MAP[dayKey];
-            btn.onclick = () => {
-                CurrentEditDay = dayKey;
-                CurrentEditCourseIndex = null;
-                this.renderDaySelector();
-                this.renderCourseList();
-            };
+            btn.onclick = () => this.selectEditDay(dayKey);
             this.el.daySelector.appendChild(btn);
-            if (dayKey !== CurrentEditDay) {
-                const option = document.createElement('option');
-                option.value = dayKey;
-                option.textContent = DAY_MAP[dayKey];
-                this.el.inputCopyCourseDay.appendChild(option);
-            }
         });
-        CustomSelect.refreshNativeSelect('input-copy-course-day');
-        this.renderCopyCourseWeekOptions();
-        this.el.btnCopyCourses.disabled = true;
     },
 
-    renderCopyCourseWeekOptions() {
-        const weekCount = (EditData.courseRotation?.weeks?.length || 0) + 1;
-        this.el.inputCopyCourseWeek.innerHTML = '';
-        for (let week = 1; week <= weekCount; week += 1) {
-            const option = document.createElement('option');
-            option.value = String(week);
-            option.textContent = weekCount === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
-            this.el.inputCopyCourseWeek.appendChild(option);
-        }
-        this.el.inputCopyCourseWeek.value = String(CurrentEditWeek);
-        this.el.inputCopyCourseWeek.disabled = weekCount <= 1;
-        CustomSelect.refreshNativeSelect('input-copy-course-week');
-    },
-
-    updateCopyCourseButton() {
-        this.el.btnCopyCourses.disabled = !this.el.inputCopyCourseDay.value;
-    },
-
-    async copyCoursesToDay() {
-        const targetDay = this.el.inputCopyCourseDay.value;
-        if (!targetDay || !DAY_MAP[targetDay]) return;
-        if (targetDay === CurrentEditDay) return;
-        const courses = this.getEditCoursesForDay(CurrentEditDay) || [];
-        if (CurrentOverrideDate) {
-            this.ensureCourseOverride();
-            const confirmed = await Dialog.confirm(
-                `将 ${CustomDatePicker.formatDate(CurrentOverrideDate)} 的 ${courses.length} 节课程复制为 ${DAY_MAP[targetDay]} 的安排？该日原本的课表将被替换。`,
-                { title: '复制到其他星期', confirmText: '复制并覆盖' }
-            );
-            if (!confirmed) return;
-            const override = this.ensureCourseOverride();
-            override.courses = JSON.parse(JSON.stringify(courses));
-            CurrentEditDay = targetDay;
-            CurrentEditDay = targetDay;
-            this.el.inputCopyCourseDay.value = '';
-            this.updateCopyCourseButton();
-            this.closeCourseCopyPopover();
-            this.markSettingsDirty();
-            this.renderCourseList();
-            return;
-        }
-        const targetWeek = Math.max(1, Math.min(
-            (EditData.courseRotation?.weeks?.length || 0) + 1,
-            Number(this.el.inputCopyCourseWeek.value) || CurrentEditWeek
-        ));
-        if (targetWeek === CurrentEditWeek) return;
-        const weekLabel = (week) => {
-            const count = (EditData.courseRotation?.weeks?.length || 0) + 1;
-            return count === 2 ? (week === 1 ? 'A周' : 'B周') : `第${week}周`;
-        };
-        const confirmed = await Dialog.confirm(
-            `将${weekLabel(CurrentEditWeek)}${DAY_MAP[CurrentEditDay]}的 ${courses.length} 节课程复制到${weekLabel(targetWeek)}${DAY_MAP[targetDay]}？目标星期的课程将被替换。`,
-            { title: '复制课表', confirmText: '复制并覆盖' }
-        );
-        if (!confirmed) return;
-        const targetCourses = targetWeek === 1
-            ? EditData.courses
-            : EditData.courseRotation.weeks[targetWeek - 2];
-        if (!targetCourses) return;
-        targetCourses[targetDay] = JSON.parse(JSON.stringify(courses));
-        this.el.inputCopyCourseDay.value = '';
-        this.updateCopyCourseButton();
-        this.closeCourseCopyPopover();
-        this.markSettingsDirty();
+    selectEditDay(dayKey) {
+        CurrentEditDay = dayKey;
+        CurrentEditCourseIndex = null;
+        this.renderDaySelector();
         this.renderCourseList();
+    },
+
+    /** 折叠/展开"更多设置"面板（课表设置与课程名称）。 */
+    toggleCourseMore(force) {
+        const panel = this.el?.courseMorePanel;
+        if (!panel) return;
+        const next = typeof force === 'boolean' ? force : panel.hidden;
+        panel.hidden = !next;
+        this.el.btnCourseMore?.setAttribute('aria-expanded', next ? 'true' : 'false');
     },
 
     createCourseEditForm(course, courseIndex) {
@@ -4700,9 +4842,9 @@ const UI = {
             subjectButton.classList.toggle('active', course.course === subject);
             subjectButton.addEventListener('click', (event) => {
                 event.stopPropagation();
+                const previous = course.course;
                 course.course = subject;
-                this.renderCourseList();
-                this.markSettingsDirty();
+                this.applyCourseSubjectChange(courseIndex, course, previous);
             });
             subjectOptions.appendChild(subjectButton);
         });
@@ -4729,12 +4871,12 @@ const UI = {
                 confirmEvent.stopPropagation();
                 const customName = customInput.value.trim();
                 if (!customName) return;
+                const previous = course.course;
                 course.course = customName;
                 if (!Array.isArray(EditData.subjects)) EditData.subjects = [];
                 if (!EditData.subjects.includes(customName)) EditData.subjects.push(customName);
                 this.renderSubjectList();
-                this.renderCourseList();
-                this.markSettingsDirty();
+                this.applyCourseSubjectChange(courseIndex, course, previous);
             });
             subjectOptions.append(customInput, confirmButton);
             customInput.focus();
@@ -4829,21 +4971,7 @@ const UI = {
         this.markSettingsDirty();
     },
 
-    createCourseActionButtons(course, index, courses) {
-        const duplicate = document.createElement('button');
-        duplicate.type = 'button';
-        duplicate.className = 'btn-course-action btn-course-duplicate';
-        duplicate.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/></svg><span>复制</span>';
-        duplicate.title = '复制课程';
-        duplicate.setAttribute('aria-label', `复制${course.course || '未命名课程'}`);
-        duplicate.addEventListener('click', (event) => {
-            event.stopPropagation();
-            courses.splice(index + 1, 0, JSON.parse(JSON.stringify(course)));
-            CurrentEditCourseIndex = index + 1;
-            this.renderCourseList();
-            this.markSettingsDirty();
-        });
-
+    createCourseActionButtons(course, index) {
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'btn-delete';
@@ -4854,10 +4982,62 @@ const UI = {
             event.stopPropagation();
             this.deleteCourseWithUndo(courses, index);
         });
-        return [duplicate, remove];
+        return [remove];
+    },
+    createCourseOverrideToggle(course, index) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'course-editor-switches';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'course-override-switch';
+        button.setAttribute('role', 'switch');
+        button.setAttribute('aria-checked', course.overridden === true ? 'true' : 'false');
+        button.setAttribute('aria-label', '临时调课');
+        button.disabled = this.settingsReadOnly === true;
+        const track = document.createElement('span');
+        track.className = 'course-override-switch-track';
+        const knob = document.createElement('span');
+        knob.className = 'course-override-switch-knob';
+        track.appendChild(knob);
+        button.append(track, document.createTextNode('临时调课'));
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (button.disabled) return;
+            this.toggleCourseOverride(index, button.getAttribute('aria-checked') !== 'true');
+        });
+        wrapper.appendChild(button);
+        return wrapper;
     },
 
-    /** 删除单节课程并提供撤销，避免误删。 */
+    
+    /** 课程名改选后立即收起下拉、刷新触发文案与卡片，并保留其他行编辑态。 */
+    applyCourseSubjectChange(courseIndex, course, previous) {
+        const menu = document.getElementById(`course-subject-menu-${courseIndex}`);
+        const trigger = menu?.querySelector('.course-subject-menu-trigger');
+        if (trigger) {
+            trigger.textContent = course.course || '选择课程名称';
+            trigger.setAttribute('aria-label', `选择课程名称，当前为${course.course || '未设置'}`);
+        }
+        menu?.querySelectorAll('.course-subject-option').forEach((option) => {
+            if (option.classList.contains('course-custom-button')) return;
+            option.classList.toggle('active', option.textContent === course.course);
+        });
+        if (menu && menu.open) menu.open = false;
+        if (previous !== course.course && this.el.courseList) {
+            const row = this.el.courseList.querySelector(`.course-item[data-course-index="${courseIndex}"]`);
+            row?.classList.remove('is-adjusted');
+        }
+        this.updateCourseCardText(courseIndex);
+        this.markSettingsDirty();
+    },
+
+    updateCourseCardText(index) {
+        const row = this.el.courseList?.querySelector(`.course-item[data-course-index="${index}"]`);
+        if (!row || row.classList.contains('selected')) return;
+        this.populateCourseCard(row, index);
+    },
+
+    
     deleteCourseWithUndo(courses, index) {
         const [removed] = courses.splice(index, 1);
         if (!removed) return;
@@ -4875,7 +5055,7 @@ const UI = {
         });
     },
 
-    /** 轻量撤销提示：挂在课程摘要旁，不覆盖摘要文本。 */
+    
     showUndoToast(message, onUndo) {
         const host = this.el.courseDaySummary?.parentElement;
         if (!host || typeof onUndo !== 'function') return;
@@ -5281,7 +5461,7 @@ const UI = {
 
             const subjectPanel = document.createElement('div');
             subjectPanel.className = 'course-subject-panel';
-            const [btnDuplicate, btnDelete] = this.createCourseActionButtons(course, index, courses);
+            const [btnDelete] = this.createCourseActionButtons(course, index);
 
             let isAdjusted = false;
             if (regularKeys) {
@@ -5297,7 +5477,7 @@ const UI = {
             if (timeRangeEditor) timePanel.appendChild(timeRangeEditor);
 
             if (CurrentEditCourseIndex === index) {
-                row.append(this.createCourseEditForm(course, index), timePanel, btnDuplicate, btnDelete);
+                row.append(this.createCourseEditForm(course, index), timePanel, this.createCourseOverrideToggle(course, index), btnDelete);
                 if (isAdjusted) row.appendChild(this.createAdjustedTag());
                 this.el.courseList.appendChild(row);
                 return;
@@ -5308,7 +5488,7 @@ const UI = {
             if (CurrentEditCourseIndex !== index) {
                 compactName = document.createElement('span');
                 compactName.className = 'course-name-summary';
-                compactName.textContent = course.course || '未设置课程';
+                compactName.textContent = `${index + 1}. ${course.course || '未设置课程'}`;
                 compactName.tabIndex = 0;
                 compactName.setAttribute('role', 'button');
                 compactName.title = '点击编辑课程';
@@ -5340,14 +5520,29 @@ const UI = {
                     CurrentEditCourseIndex = index;
                     this.renderCourseList();
                 });
-                subjectPanel.append(compactName, compactTime);
-                if (isAdjusted) subjectPanel.appendChild(this.createAdjustedTag());
+                if (isAdjusted) {
+                    // 课程名与"调课"标签同行，标签紧跟名称右侧
+                    const header = document.createElement('div');
+                    header.className = 'course-subject-header';
+                    header.append(compactName, this.createAdjustedTag());
+                    subjectPanel.append(header);
+                } else {
+                    subjectPanel.append(compactName);
+                }
+                subjectPanel.append(compactTime);
             }
 
             row.appendChild(subjectPanel);
-            row.append(btnDuplicate, btnDelete);
+            row.append(btnDelete);
             this.el.courseList.appendChild(row);
         });
+    },
+
+    populateCourseCard(card, index) {
+        const courses = this.getEditCoursesForDay(CurrentEditDay);
+        const course = courses?.[index] || { start: '--:--', end: '--:--', course: '未设置课程' };
+        card.querySelector('.course-name-summary').textContent = `${index + 1}. ${course.course || '未设置课程'}`;
+        card.querySelector('.course-time-summary').textContent = `${course.start || '--:--'}–${course.end || '--:--'}`;
     },
 
     renderSubjectList() {
@@ -5366,7 +5561,7 @@ const UI = {
                 const courses = this.getEditCoursesForDay(CurrentEditDay);
                 if (CurrentEditCourseIndex !== null && courses?.[CurrentEditCourseIndex]) {
                     courses[CurrentEditCourseIndex].course = subject;
-                    this.renderCourseList();
+                    this.updateCourseCardText(CurrentEditCourseIndex);
                     this.markSettingsDirty();
                 }
             });
@@ -5561,31 +5756,105 @@ const App = {
     weatherRefreshTimer: null,
     weatherRefreshInFlight: null,
     nextWeatherRefreshAt: null,
-    async init() {
-        await Logger.init();
-        await Store.init();
-        APP_CONFIG.windowSize.width = DisplaySettings.normalizeWindowWidth(
-            AppData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
-        );
-        UI.activeDisplayProfileKey = null;
-        UI.applyFontStyles();
-        UI.applyActiveDisplayProfile(true);
-        if (!this.trayInitialized) {
-            await UI.initTray();
-            this.trayInitialized = UI.trayBound;
-        }
-        this.refreshCourses();
-        UI.renderCustomBottomInfo();
-        this.startRefreshTimers();
-        await this.refreshWeather();
-        void Logger.info('应用初始化完成', { module: 'lifecycle', action: 'init' });
-        Updater.scheduleStartupCheck();
-        if (AppData.onboardingCompleted !== true) {
-            await Onboarding.start();
+    childEventsBound: false,
+    configSignature: null,
+    reloadingConfig: false,
+    async getConfigSignature() {
+        try {
+            const stats = await Neutralino.filesystem.getStats(await Store.getConfigPath());
+            return `${stats.modifiedAt || 0}:${stats.size || 0}`;
+        } catch (error) {
+            return null;
         }
     },
+    async reloadConfigIfChanged(force = false) {
+        if (this.reloadingConfig) return;
+        const signature = await this.getConfigSignature();
+        if (!force && (!signature || signature === this.configSignature)) return;
+        this.reloadingConfig = true;
+        try {
+            await Store.init();
+            this.configSignature = signature;
+            APP_CONFIG.windowSize.width = DisplaySettings.normalizeWindowWidth(
+                AppData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            );
+            UI.applyFontStyles();
+            UI.applyActiveDisplayProfile(true);
+            await UI.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            TrayHost.scheduleUpdate();
+            this.refreshCourses();
+            this.scheduleNextWeatherRefresh();
+            await this.refreshWeather();
+        } catch (error) {
+            void Logger.warn('重新加载配置失败', { module: 'config', action: 'reload' }, error);
+        } finally {
+            this.reloadingConfig = false;
+        }
+    },
+    async bindChildWindowEvents() {
+        if (this.childEventsBound) return;
+        this.childEventsBound = true;
+        await Neutralino.events.on('cb:config-updated', async () => {
+            await this.reloadConfigIfChanged(true);
+        });
+        await Neutralino.events.on('cb:tray-request', async (event) => {
+            // 子窗口没有托盘管道信息，统一转给主窗口下发
+            if (WINDOW_MODE !== 'main') {
+                await WindowManager.broadcast('cb:tray-request', event?.detail || {});
+                return;
+            }
+            const command = String(event?.detail?.command || '');
+            if (command) await TrayHost.sendPipe(command);
+        });
+        await Neutralino.events.on('cb:open-settings', async (event) => {
+            const tab = event?.detail?.tab || 'weather';
+            await WindowManager.openSettings({ tab });
+        });
+        window.addEventListener('focus', () => {
+            void this.reloadConfigIfChanged();
+        });
+    },
+    async init() {
+        try {
+            await Logger.init();
+            await Store.init();
+            this.configSignature = await this.getConfigSignature();
+            await this.bindChildWindowEvents();
+            APP_CONFIG.windowSize.width = DisplaySettings.normalizeWindowWidth(
+                AppData.mainWindowWidth, DEFAULT_MAIN_WINDOW_WIDTH, APP_CONFIG.maxWindowWidth
+            );
+            await UI.positionWindow(APP_CONFIG.windowSize, APP_CONFIG.topOffset);
+            UI.activeDisplayProfileKey = null;
+            UI.applyFontStyles();
+            UI.applyActiveDisplayProfile(true);
+            if (!this.trayInitialized) {
+                await UI.initTray();
+                this.trayInitialized = UI.trayBound;
+            }
+            this.refreshCourses();
+            UI.renderCustomBottomInfo();
+            this.startRefreshTimers();
+            this.revealMainWindow();
+            void this.refreshWeather();
+            Updater.scheduleStartupCheck();
+            if (AppData.onboardingCompleted !== true) {
+                await Onboarding.openWindow();
+            }
+        } finally {
+            UI.revealBootView();
+        }
+    },
+
+    /** 首个内容与窗口尺寸就绪后再显示窗口，避免看到空白或中间态。 */
+    revealMainWindow() {
+        UI.revealBootView();
+        if (UI.windowVisible) return;
+        UI.windowVisible = true;
+        try {
+            void Neutralino.window.show();
+        } catch (error) { }
+    },
     refreshCourses() {
-        const startedAt = performance.now();
         try {
             UI.applyActiveDisplayProfile();
             const schedule = Schedule.resolveCourses(new Date(), AppData);
@@ -5595,7 +5864,6 @@ const App = {
                 : [];
             UI.renderTimeline(courses, schedule.override, regularCourses);
             UI.renderCustomBottomInfo();
-            void Logger.info('课程刷新完成', { module: 'course', action: 'refresh', durationMs: Math.round(performance.now() - startedAt), context: { courseCount: courses.length } });
         } catch (error) {
             void Logger.error('课程刷新失败', { module: 'course', action: 'refresh' }, error);
         }
@@ -5604,7 +5872,6 @@ const App = {
         clearInterval(this.courseRefreshTimer);
         clearInterval(this.weatherRefreshTimer);
         this.courseRefreshTimer = setInterval(() => this.refreshCourses(), 5000);
-        void Logger.info('课程刷新定时器已启动', { module: 'course', action: 'schedule', context: { intervalMs: 5000 } });
         this.scheduleNextWeatherRefresh();
     },
     scheduleNextWeatherRefresh() {
@@ -5631,11 +5898,7 @@ const App = {
             clearTimeout(UI.fitWidthTimer);
             clearTimeout(UI.weatherRemeasureTimer);
             UI.windowTransitionToken += 1;
-            try {
-                await UI.trayUpdatePromise;
-            } catch (error) {
-                await Logger.warn('退出时托盘菜单更新未完成', { module: 'tray', action: 'shutdown-wait' }, error);
-            }
+            await TrayHost.stop();
             await Logger.info('应用退出', { module: 'lifecycle', action: 'shutdown', context: { source } });
             await Neutralino.app.exit();
         })();
@@ -5677,6 +5940,31 @@ const App = {
 
 window.onload = async () => {
     AutoFillGuard.init();
-    await UI.init();
-    await App.init();
+    if (WINDOW_MODE === 'main') {
+        try {
+            await UI.init();
+            await App.init();
+        } finally {
+            UI.revealBootView();
+        }
+        return;
+    }
+    try {
+        await Logger.init();
+        await UI.init();
+        await Store.init();
+        UI.applyFontStyles();
+        UI.applyTheme(UI.getEffectiveDisplayConfig().theme);
+        if (WINDOW_MODE === 'settings') {
+            UI.embeddedSettings = true;
+            const opened = await UI.openSettings(null, { tab: WINDOW_PARAMS.get('tab') || null });
+            UI.revealBootView();
+            if (opened === false) await WindowManager.closeSelf();
+        } else if (WINDOW_MODE === 'onboarding') {
+            await Onboarding.startStandalone({ returnTab: WINDOW_PARAMS.get('tab') });
+            UI.revealBootView();
+        }
+    } finally {
+        UI.revealBootView();
+    }
 };

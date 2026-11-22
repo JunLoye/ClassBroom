@@ -1,7 +1,7 @@
 [Setup]
 AppId=ClassBroom
 AppName=ClassBroom
-AppVersion=2.2.1
+AppVersion=2.2.2
 VersionInfoDescription=ClassBroom - 桌面课程与天气挂件
 VersionInfoProductName=ClassBroom
 VersionInfoCompany=JunLoye
@@ -17,13 +17,16 @@ DefaultGroupName=ClassBroom
 DisableProgramGroupPage=yes
 
 OutputDir=installer
-OutputBaseFilename=ClassBroom-Setup-v2.2.1
+OutputBaseFilename=ClassBroom-Setup-v2.2.2
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+
+CloseApplications=yes
+RestartApplications=no
 
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -38,6 +41,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "dist\classbroom\classbroom-win_x64.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\classbroom\classbroom-crypto.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\classbroom\classbroom-tray.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\classbroom\resources.neu"; DestDir: "{app}"; Flags: ignoreversion
 Source: "www\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "www\tray.ico"; DestDir: "{app}"; Flags: ignoreversion
@@ -53,3 +57,12 @@ Filename: "{app}\classbroom-win_x64.exe"; Description: "{cm:LaunchProgram,ClassB
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.tmp"
 Type: filesandordirs; Name: "{app}\logs"
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/F /IM classbroom-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Result := '';
+end;

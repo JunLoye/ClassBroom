@@ -1,13 +1,21 @@
-#include <iostream>
+﻿#include <iostream>
 #include <string>
+#include <vector>
 #include <iterator>
 #include <cstdio>
 #include <windows.h>
 #include <winhttp.h>
 #include <wincrypt.h>
 
+#include "tray-core.h"
+
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "crypt32.lib")
+
+#ifndef CLASSBROOM_TRAY_HOST
+#pragma comment(linker, "/SUBSYSTEM:WINDOWS")
+#pragma comment(linker, "/ENTRY:mainCRTStartup")
+#endif
 
 std::wstring StringToWString(const std::string& str) {
     if (str.empty()) return std::wstring();
@@ -21,7 +29,6 @@ std::string HttpGet(const std::wstring& host, const std::wstring& path, const st
     HINTERNET hSession = WinHttpOpen(L"ClassBroom/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return "";
     
-    // 设置超时：解析 2秒，连接 2秒，发送 2秒，接收 2秒。防止无限卡死崩溃
     WinHttpSetTimeouts(hSession, 2000, 2000, 2000, 2000);
 
     HINTERNET hConnect = WinHttpConnect(hSession, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
@@ -30,7 +37,6 @@ std::string HttpGet(const std::wstring& host, const std::wstring& path, const st
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
     if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return ""; }
 
-    // 智能判断认证方式
     std::wstring headers = L"";
     if (apiKey.find(L'.') != std::wstring::npos) {
         headers = L"Authorization: Bearer " + apiKey + L"\r\n";
@@ -83,7 +89,6 @@ bool Base64Decode(const std::string& text, std::string& out) {
     return true;
 }
 
-// 使用当前用户 DPAPI 保护数据，仅同一用户在本机可解密
 std::string DpapiProtect(const std::string& plain) {
     DATA_BLOB in = { (DWORD)plain.size(), (BYTE*)plain.data() };
     DATA_BLOB out = { 0, nullptr };
@@ -127,7 +132,71 @@ std::string JsonEscape(const std::string& text) {
     return out;
 }
 
-// 通过标准输入/输出处理加解密子命令，避免敏感数据出现在进程命令行
+std::wstring JoinFsPath(const std::wstring& base, const std::wstring& name) {
+    if (base.empty()) return name;
+    const wchar_t last = base.back();
+    return last == L'\\' || last == L'/' ? base + name : base + L"\\" + name;
+}
+
+// 返回 exe 所在目录（而非完整路径），供托盘子进程推导图标与主程序位置
+std::wstring GetAppDirectory() {
+    std::vector<wchar_t> buffer(MAX_PATH);
+    for (;;) {
+        const DWORD length = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (length == 0) return std::wstring();
+        if (length < buffer.size()) {
+            const std::wstring path(buffer.data(), length);
+            const size_t slash = path.find_last_of(L"\\/");
+            return slash == std::wstring::npos ? std::wstring() : path.substr(0, slash);
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+}
+
+std::wstring GetCommandLineArg(int argc, char* argv[], const char* name) {
+    const std::string prefix = std::string(name) + "=";
+    for (int i = 1; i < argc; ++i) {
+        const char* current = argv[i];
+        if (!current) continue;
+        std::string arg(current);
+        if (arg.rfind(prefix, 0) == 0) return StringToWString(arg.substr(prefix.size()));
+    }
+    return std::wstring();
+}
+
+int RunTray(int argc, char* argv[]) {
+    TrayOptions options;
+    options.stateFile = GetCommandLineArg(argc, argv, "--state");
+    options.iconPath = GetCommandLineArg(argc, argv, "--icon");
+    options.pipeName = GetCommandLineArg(argc, argv, "--pipe");
+    options.notifyFile = GetCommandLineArg(argc, argv, "--notify-file");
+    options.stateName = GetCommandLineArg(argc, argv, "--state-name");
+    options.appPath = GetCommandLineArg(argc, argv, "--app");
+    const std::wstring base = GetCommandLineArg(argc, argv, "--data");
+    const std::wstring appDir = GetAppDirectory();
+    const std::wstring workingDir = base.empty() ? appDir : base;
+    if (options.stateFile.empty()) options.stateFile = JoinFsPath(workingDir, L"tray-state.txt");
+    if (options.pipeName.empty()) options.pipeName = L"classbroom-tray";
+    if (options.stateName.empty()) options.stateName = L"classbroom-tray-state";
+    if (options.appPath.empty()) {
+        // Windows Explorer 会以自身为父进程，这里始终使用主程序所在目录的 exe
+        for (const wchar_t* name : { L"classbroom-win_x64.exe", L"classbroom.exe" }) {
+            const std::wstring candidate = JoinFsPath(appDir, name);
+            if (GetFileAttributesW(candidate.c_str()) != INVALID_FILE_ATTRIBUTES) { options.appPath = candidate; break; }
+        }
+    }
+    if (options.iconPath.empty()) {
+        for (const wchar_t* name : { L"tray.ico", L"app.ico" }) {
+            const std::wstring candidate = JoinFsPath(appDir, name);
+            if (GetFileAttributesW(candidate.c_str()) != INVALID_FILE_ATTRIBUTES) { options.iconPath = candidate; break; }
+        }
+    }
+
+    TrayHost host(std::move(options));
+    if (!host.start()) return 1;
+    return host.runUntilQuit();
+}
+
 int RunCrypto(const std::string& mode) {
     std::string input((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
     while (!input.empty() && (input.back() == '\n' || input.back() == '\r')) input.pop_back();
@@ -154,6 +223,7 @@ int main(int argc, char* argv[]) {
         if (argc >= 2) {
             std::string command = argv[1];
             if (command == "encrypt" || command == "decrypt") return RunCrypto(command);
+            if (command == "tray") return RunTray(argc, argv);
         }
 
         if (argc < 4) {
@@ -186,7 +256,6 @@ int main(int argc, char* argv[]) {
         if (!t.empty()) temp = t.substr(0, t.find('.')) + "°";
         if (!tx.empty()) text = tx;
 
-        // 预警暂不处理，直接返回空
         std::string json = R"({"weather":{"temp":")" + temp + R"(","desc":")" + text + R"("},"warning":{"hasWarning":false,"event":""}})";
         std::cout << json << std::endl;
         
